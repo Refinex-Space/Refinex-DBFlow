@@ -2,6 +2,7 @@ package com.refinex.dbflow.audit.repository;
 
 import com.refinex.dbflow.audit.entity.DbfAuditEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 
@@ -10,7 +11,7 @@ import java.util.List;
  *
  * @author refinex
  */
-public interface DbfAuditEventRepository extends JpaRepository<DbfAuditEvent, Long> {
+public interface DbfAuditEventRepository extends JpaRepository<DbfAuditEvent, Long>, JpaSpecificationExecutor<DbfAuditEvent> {
 
     /**
      * 查询指定用户最近的审计事件。

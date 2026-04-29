@@ -562,11 +562,47 @@ public class DbfAuditEvent {
     }
 
     /**
+     * 读取影响行数。
+     *
+     * @return 影响行数
+     */
+    public Long getAffectedRows() {
+        return affectedRows;
+    }
+
+    /**
+     * 读取错误码。
+     *
+     * @return 错误码
+     */
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    /**
+     * 读取错误信息摘要。
+     *
+     * @return 错误信息摘要
+     */
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    /**
      * 读取确认挑战标识。
      *
      * @return 确认挑战标识
      */
     public String getConfirmationId() {
         return confirmationId;
+    }
+
+    /**
+     * 读取创建时间。
+     *
+     * @return 创建时间
+     */
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 }

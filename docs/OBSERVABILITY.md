@@ -19,7 +19,8 @@ summaries, MySQL 5.7-compatible traditional rows, indexed/unindexed plans, and n
 authorized `dbflow_inspect_schema` and schema resource coverage for `information_schema` tables, columns, indexes,
 views, procedures, functions, filtering, truncation, and denial-before-target-access behavior. The audit layer now has
 `AuditEventWriter` coverage for request received, policy denied, confirmation-required, executed, failed, and
-confirmation-expired decisions with bounded summaries and token-plaintext exclusion. The Testcontainers
+confirmation-expired decisions with bounded summaries and token-plaintext exclusion. The management backend now has
+audit query service/API coverage for filters, pagination, sanitized details, and admin-only access. The Testcontainers
 classes are skipped automatically when the local machine has no Docker runtime. Spring
 Cloud
 Alibaba Nacos Config and Discovery dependencies are present, while default local startup keeps Nacos disabled unless
@@ -136,6 +137,9 @@ Configuration sources and secret boundary:
 - SQL execution, EXPLAIN, and TRUNCATE confirmation paths now write audit events through `AuditEventWriter`. The writer
   caps `result_summary` before persistence and covers request received, policy denied, requires confirmation, executed,
   failed, confirmation confirmed, and confirmation expired decisions.
+- `/admin/api/audit-events` exposes administrator-only audit list/detail queries with time, user, project,
+  environment, risk, decision, SQL hash, and tool filters, bounded pagination, sort-field whitelisting, and sanitized
+  DTOs that omit token id/prefix and redact password-like text or JDBC URLs.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -225,6 +229,10 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   rejection, and confirmation lifecycle audit statuses.
 - `AuditEventWriterTests` covers unified audit writer decisions, non-empty core audit fields, token id/prefix storage
   without Token plaintext, and bounded `result_summary`.
+- `AuditQueryServiceTests` covers time/user/project/environment/risk/decision/SQL hash/tool filtering, pagination,
+  sorting, and sanitized detail results.
+- `AdminAuditEventControllerTests` covers administrator audit list/detail API access, JSON response shape, sensitive
+  field omission/redaction, and non-admin rejection.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,

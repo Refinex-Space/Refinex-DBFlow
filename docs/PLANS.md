@@ -22,6 +22,9 @@ No active execution plans.
 
 ## Completed Plans
 
+- [2026-04-29 Admin Audit Query API](exec-plans/completed/2026-04-29-admin-audit-query-api.md) -
+  Completed; implemented management-side audit list/detail API with filtering, pagination, sorting, admin-only access,
+  and sanitized DTOs.
 - [2026-04-29 Unified Audit Event Writer](exec-plans/completed/2026-04-29-unified-audit-event-writer.md) -
   Completed; implemented unified audit writing for request, denial, confirmation, execution, failure, and expiration
   events with token-safe metadata and bounded result summaries.

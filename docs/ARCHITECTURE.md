@@ -17,8 +17,10 @@ index advice. `dbflow_inspect_schema` and the schema resource now use an authori
 inspection service for schemas, tables, columns, indexes, views, procedures, and functions with bounded results. It
 now has a unified `AuditEventWriter` for request received, policy denied, confirmation-required, executed, failed, and
 confirmation-expired audit events with token id, client metadata, tool name, decision, SQL hash, and bounded summaries.
-It does not yet contain a full management UI, CI configuration, or production deployment configuration. The architecture
-below records the approved target design from
+It also exposes a management-side audit list/detail API with filtering, pagination, sorting, administrator-only access,
+and sanitized DTOs that exclude Token metadata and redact password-like text. It does not yet contain a full management
+UI, CI configuration, or production deployment configuration. The architecture below records the approved target design
+from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
 and must be updated as implementation packages are added.
 
@@ -74,6 +76,7 @@ and must be updated as implementation packages are added.
 |   |   |   |   |   +-- ProjectEnvironmentCatalogService.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- admin/
+|   |   |   |   +-- AdminAuditEventController.java
 |   |   |   |   +-- AdminHomeController.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- audit/
@@ -84,10 +87,16 @@ and must be updated as implementation packages are added.
 |   |   |   |   |   +-- DbfAuditEventRepository.java
 |   |   |   |   |   +-- DbfConfirmationChallengeRepository.java
 |   |   |   |   +-- service/
+|   |   |   |   |   +-- AuditEventDetail.java
+|   |   |   |   |   +-- AuditEventPageResponse.java
+|   |   |   |   |   +-- AuditEventSummary.java
 |   |   |   |   |   +-- AuditEventWriteRequest.java
 |   |   |   |   |   +-- AuditEventWriter.java
+|   |   |   |   |   +-- AuditQueryCriteria.java
+|   |   |   |   |   +-- AuditQueryService.java
 |   |   |   |   |   +-- AuditRequestContext.java
 |   |   |   |   |   +-- AuditService.java
+|   |   |   |   |   +-- AuditTextSanitizer.java
 |   |   |   |   |   +-- ConfirmationService.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- common/
@@ -180,6 +189,7 @@ and must be updated as implementation packages are added.
 |   +-- test/
 |       +-- java/com/refinex/dbflow/
 |           +-- DbflowApplicationTests.java
+|           +-- admin/AdminAuditEventControllerTests.java
 |           +-- common/
 |           |   +-- ApiResultTests.java
 |           |   +-- DbflowExceptionTests.java
@@ -187,6 +197,7 @@ and must be updated as implementation packages are added.
 |           +-- access/AccessDecisionServiceJpaTests.java
 |           +-- audit/AuditAndConfirmationServiceJpaTests.java
 |           +-- audit/AuditEventWriterTests.java
+|           +-- audit/AuditQueryServiceTests.java
 |           +-- config/DbflowPropertiesTests.java
 |           +-- config/MetadataSchemaMigrationTests.java
 |           +-- config/NacosProfileConfigurationTests.java
@@ -273,6 +284,11 @@ and must be updated as implementation packages are added.
   client name/version, user agent, source IP, project/environment, tool, operation, risk, SQL text/hash, confirmation
   id, error fields, and a bounded `result_summary`. It does not accept or persist Token plaintext and caps summaries
   before persistence.
+- Management audit query baseline: `AuditQueryService` supports administrator-facing time range, user, project,
+  environment, risk, decision, SQL hash, and tool filters with bounded pagination and sort-field whitelisting. The
+  `/admin/api/audit-events` API returns dedicated summary/detail DTOs, does not return token id or token prefix, and
+  redacts password-like text and JDBC URLs before display. Full audit queries are currently admin-only through the
+  `/admin/**` security chain; future ordinary-user audit access must be scoped to the caller's own rows.
 
 ## Current Source Package Boundaries
 
@@ -286,8 +302,8 @@ and must be updated as implementation packages are added.
 | `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java`                                | Spring AI MCP tools/resources/prompts, service delegation, and the MCP authentication/authorization boundary.                                                                                                                                                 |
 | `com.refinex.dbflow.sqlpolicy`     | `SqlClassifier`, `SqlClassification`, SQL operation/status/risk/type enums, `DangerousDdlPolicyEngine`, dangerous DDL decision/reason records, `TruncateConfirmationService`, TRUNCATE confirmation request/decision records, `package-info.java`                           | SQL parsing, auditable risk classification, DROP DATABASE / DROP TABLE YAML whitelist decisions, and TRUNCATE server-side confirmation lifecycle.                                                                                                             |
 | `com.refinex.dbflow.executor`      | `DataSourceConfigReloader`, `DataSourceReloadResult`, `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `SqlExecutionService`, `SqlExplainService`, `SchemaInspectService`, SQL execution/explain/schema inspect request/result DTOs, `package-info.java` | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement, controlled bounded JDBC SQL execution, non-mutating EXPLAIN, and authorized `information_schema` inspection. |
-| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditEventWriter`, audit write/context records, `AuditService`, `ConfirmationService`                                                                                                                           | Unified audit event writing, bounded result summaries, confirmation challenges, audit insertion/query, and confirmation status transitions.                                                                                                                   |
-| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                                                  | Minimal management endpoint surface for session-security verification.                                                                                                                                                                                        |
+| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditEventWriter`, audit write/query DTOs, `AuditQueryService`, `AuditService`, `ConfirmationService`                                                                                                           | Unified audit event writing, bounded result summaries, sanitized admin audit queries, confirmation challenges, audit insertion/query, and confirmation status transitions.                                                                                    |
+| `com.refinex.dbflow.admin`         | `AdminHomeController`, `AdminAuditEventController`, `package-info.java`                                                                                                                                                                                                     | Management endpoint surface for session-security verification and administrator audit list/detail APIs.                                                                                                                                                       |
 | `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                                                      | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                                                                                                            |
 
 ## Current Dependency Direction
@@ -626,6 +642,7 @@ Current metadata services:
 - `AuditEventWriter` writes bounded audit events for request received, denial, confirmation, execution, failure, and
   expiration decisions.
 - `AuditService` records audit events and queries recent events by user.
+- `AuditQueryService` performs administrator-facing filtered audit search and maps events into sanitized DTOs.
 
 ## Target System Shape
 

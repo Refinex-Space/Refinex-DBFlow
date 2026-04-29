@@ -6,7 +6,7 @@ This document records the current verification state of the repository. Refinex-
 spec, a minimal single-module Spring Boot Maven scaffold, package boundaries, common model tests, request id filter
 tests, Flyway metadata schema migration tests, and JPA service slice tests for access/audit/confirmation metadata.
 It also includes validated `dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous
-DDL policy.
+DDL policy, plus management-side Spring Security tests for form login and CSRF.
 
 ## Build & Run
 
@@ -37,6 +37,7 @@ Planned baseline:
 - Spring Cloud Alibaba `2025.0.0.0`
 - Maven compiler release 21, UTF-8 encoding, and compiler `-parameters`
 - Flyway V1 metadata migration with H2 MySQL mode verification
+- Spring Security management session login for `/admin/**`, `/login`, and `/logout`
 - MySQL 8 and MySQL 5.7 via Testcontainers after scaffold
 - Nacos for configuration and discovery after scaffold
 
@@ -51,8 +52,12 @@ Configuration sources and secret boundary:
 - DBFlow target database and dangerous DDL policy settings bind from Spring external configuration under `dbflow.*`.
 - Database passwords may use environment placeholders such as `${DBFLOW_DEFAULT_PASSWORD:}` and
   `${DBFLOW_DEMO_ENV_PASSWORD:}`.
+- Initial administrator credentials should come from environment variables, local development profile files excluded
+  from source control, or a secret-managed BCrypt hash under `dbflow.admin.initial-user.password-hash`.
 - Secrets and credentials must not be committed. Database passwords, token pepper values, and Nacos credentials should
   be injected through environment variables, encrypted configuration, Nacos secret handling, or a secret manager.
+- MCP Bearer Token authentication is not part of the management session chain and should be verified separately when
+  implemented.
 
 ## Verify Before Completion
 
@@ -75,5 +80,7 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   grant uniqueness, and key audit/schema indexes.
 - `DbflowPropertiesTests` covers `dbflow.*` binding, dangerous DDL defaults, duplicate project/environment rejection,
   missing JDBC URL/driver rejection, and invalid whitelist rejection.
+- `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
+  and BCrypt storage of the initialized admin password.
 - `AccessServiceJpaTests` covers active token uniqueness, token revocation/reissue, and grant query boundaries.
 - `AuditAndConfirmationServiceJpaTests` covers confirmation status transition and audit insertion/query behavior.

@@ -111,6 +111,24 @@ public class DbfUser {
     }
 
     /**
+     * 读取用户展示名称。
+     *
+     * @return 用户展示名称
+     */
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    /**
+     * 读取管理端密码 hash。
+     *
+     * @return 管理端密码 hash
+     */
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    /**
      * 读取用户状态。
      *
      * @return 用户状态

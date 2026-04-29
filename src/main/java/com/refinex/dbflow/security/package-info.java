@@ -1,5 +1,5 @@
 /**
- * 安全边界，后续承载管理端 session 与 MCP Bearer Token 认证链路。
+ * 安全边界，承载管理端会话认证，并为后续 MCP Bearer Token 独立认证链路预留边界。
  *
  * @author refinex
  */

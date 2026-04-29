@@ -69,6 +69,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Spring Security 基础依赖：提供管理端 session 登录、退出、CSRF 与后续 MCP 独立认证链路能力。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
         <!-- JPA 基础依赖：为后续元数据 entity/repository 阶段提供持久化底座。 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -111,6 +117,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Spring Security 测试依赖：提供 MockMvc formLogin、CSRF 和认证断言支持。 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

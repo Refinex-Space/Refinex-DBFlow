@@ -25,3 +25,8 @@ spring:
 #     driver-class-name: com.mysql.cj.jdbc.Driver
 #     username: ${DBFLOW_DEFAULT_USERNAME:}
 #     password: ${DBFLOW_DEFAULT_PASSWORD:}
+#   admin:
+#     initial-user:
+#       enabled: ${DBFLOW_ADMIN_INITIAL_USER_ENABLED:false}
+#       username: ${DBFLOW_ADMIN_INITIAL_USERNAME:}
+#       password: ${DBFLOW_ADMIN_INITIAL_PASSWORD:}

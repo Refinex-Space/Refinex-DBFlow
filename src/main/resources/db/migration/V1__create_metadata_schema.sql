@@ -1,6 +1,12 @@
 -- Refinex-DBFlow 元数据库 V1 schema。
 -- 约束：不存 Token 明文；审计表不存完整结果集。
 
+create
+database if not exists dbf;
+
+use
+dbf;
+
 CREATE TABLE dbf_users
 (
     id            BIGINT       NOT NULL AUTO_INCREMENT,

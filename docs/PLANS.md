@@ -22,6 +22,8 @@ _No active execution plans._
 
 ## Completed Plans
 
+- [2026-04-29 YAML Configuration Binding](exec-plans/completed/2026-04-29-yaml-configuration-binding.md) - Completed;
+  implemented `dbflow.*` datasource, project, environment, and dangerous DDL policy configuration binding.
 - [2026-04-29 Metadata JPA Services](exec-plans/completed/2026-04-29-metadata-jpa-services.md) - Completed; implemented
   P02.2 metadata entities, repositories, and access/audit/confirmation services.
 - [2026-04-29 Metadata Flyway Schema](exec-plans/completed/2026-04-29-metadata-flyway-schema.md) - Completed; created

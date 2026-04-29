@@ -5,6 +5,8 @@
 This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture
 spec, a minimal single-module Spring Boot Maven scaffold, package boundaries, common model tests, request id filter
 tests, Flyway metadata schema migration tests, and JPA service slice tests for access/audit/confirmation metadata.
+It also includes validated `dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous
+DDL policy.
 
 ## Build & Run
 
@@ -44,7 +46,13 @@ Local reference checkouts:
 
 When Spring AI MCP APIs, auto-configuration, annotations, starter behavior, or transport details matter, inspect this checkout during implementation and verification.
 
-Secrets and credentials must not be committed. Database passwords, token pepper values, and Nacos credentials should be injected through environment variables, encrypted configuration, or a secret manager.
+Configuration sources and secret boundary:
+
+- DBFlow target database and dangerous DDL policy settings bind from Spring external configuration under `dbflow.*`.
+- Database passwords may use environment placeholders such as `${DBFLOW_DEFAULT_PASSWORD:}` and
+  `${DBFLOW_DEMO_ENV_PASSWORD:}`.
+- Secrets and credentials must not be committed. Database passwords, token pepper values, and Nacos credentials should
+  be injected through environment variables, encrypted configuration, Nacos secret handling, or a secret manager.
 
 ## Verify Before Completion
 
@@ -65,5 +73,7 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `RequestIdFilterTests` covers incoming and generated request id behavior.
 - `MetadataSchemaMigrationTests` covers all seven metadata tables, token plaintext absence, active token uniqueness,
   grant uniqueness, and key audit/schema indexes.
+- `DbflowPropertiesTests` covers `dbflow.*` binding, dangerous DDL defaults, duplicate project/environment rejection,
+  missing JDBC URL/driver rejection, and invalid whitelist rejection.
 - `AccessServiceJpaTests` covers active token uniqueness, token revocation/reissue, and grant query boundaries.
 - `AuditAndConfirmationServiceJpaTests` covers confirmation status transition and audit insertion/query behavior.

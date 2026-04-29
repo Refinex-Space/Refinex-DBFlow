@@ -75,6 +75,12 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!-- 配置校验依赖：为 @ConfigurationProperties 提供 Jakarta Validation 启动期校验能力。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
         <!-- Flyway 核心依赖：负责版本化管理 DBFlow 元数据库 schema。 -->
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -92,6 +98,13 @@
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- 配置元数据处理器：生成 IDE 可识别的 dbflow.* 配置提示，不参与运行时。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
         </dependency>
 
         <!-- 测试基础依赖：提供 JUnit、Spring Boot Test 与当前 context smoke test 能力。 -->
@@ -112,6 +125,14 @@
                     <release>${maven.compiler.release}</release>
                     <parameters>${maven.compiler.parameters}</parameters>
                     <encoding>${project.build.sourceEncoding}</encoding>
+                    <annotationProcessorPaths>
+                        <!-- 配置元数据处理器路径：显式声明注解处理器，避免依赖 classpath 隐式发现。 -->
+                        <path>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-configuration-processor</artifactId>
+                            <version>${project.parent.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <!-- Maven 测试插件：沿用 JUnit Platform，并关闭模块路径以保持当前单模块 classpath 测试模型稳定。 -->

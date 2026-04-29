@@ -17,3 +17,11 @@ spring:
   # Flyway 默认读取 classpath:db/migration，本处显式记录元数据库迁移入口。
   flyway:
     locations: classpath:db/migration
+
+# DBFlow 目标库配置入口：当前阶段只完成 dbflow.* 绑定和校验，真实密码必须通过环境变量占位、Nacos
+# 或安全配置系统注入，不允许写入仓库。
+# dbflow:
+#   datasource-defaults:
+#     driver-class-name: com.mysql.cj.jdbc.Driver
+#     username: ${DBFLOW_DEFAULT_USERNAME:}
+#     password: ${DBFLOW_DEFAULT_PASSWORD:}

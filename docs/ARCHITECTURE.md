@@ -4,7 +4,12 @@
 
 Refinex-DBFlow is planned as an internal MySQL MCP database operation gateway. Its purpose is to let AI tools operate authorized MySQL project environments while the server enforces authentication, authorization, dangerous SQL policy, confirmation, and audit logging.
 
-The current repository contains a minimal single-module Spring Boot Maven scaffold, a context smoke test, and Harness control-plane documentation. It does not yet contain MCP tools, SQL policy, database execution, security, audit, management UI, CI configuration, or production runtime configuration. The architecture below records the approved target design from [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md) and must be updated as implementation packages are added.
+The current repository contains a single-module Spring Boot Maven scaffold, metadata persistence/services, validated
+`dbflow.*` configuration binding, and Harness control-plane documentation. It does not yet contain MCP tools, SQL
+policy enforcement, target database execution, security authentication, management UI, CI configuration, or production
+deployment configuration. The architecture below records the approved target design from
+[docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
+and must be updated as implementation packages are added.
 
 ## Current Repository Map
 
@@ -67,7 +72,11 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 |   |   |   |   +-- DbflowException.java
 |   |   |   |   +-- ErrorCode.java
 |   |   |   |   +-- package-info.java
-|   |   |   +-- config/package-info.java
+|   |   |   +-- config/
+|   |   |   |   +-- DangerousDdlDecision.java
+|   |   |   |   +-- DangerousDdlOperation.java
+|   |   |   |   +-- DbflowProperties.java
+|   |   |   |   +-- package-info.java
 |   |   |   +-- executor/package-info.java
 |   |   |   +-- mcp/package-info.java
 |   |   |   +-- observability/
@@ -86,6 +95,7 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 |           |   +-- DbflowExceptionTests.java
 |           +-- access/AccessServiceJpaTests.java
 |           +-- audit/AuditAndConfirmationServiceJpaTests.java
+|           +-- config/DbflowPropertiesTests.java
 |           +-- config/MetadataSchemaMigrationTests.java
 |           +-- observability/RequestIdFilterTests.java
 +-- scripts/
@@ -105,6 +115,8 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 - Metadata persistence baseline: Flyway V1 creates DBFlow metadata tables, JPA entity/repository mappings exist for all
   seven metadata tables, and access/audit/confirmation services cover the first CRUD, status transition, and query
   boundaries.
+- Configuration binding baseline: `dbflow.*` YAML properties bind datasource defaults, project environments, and
+  dangerous DDL policy into `DbflowProperties` with startup validation.
 
 ## Current Source Package Boundaries
 
@@ -112,7 +124,7 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 |------------------------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
 | `com.refinex.dbflow`               | `DbflowApplication`                                                                                        | Spring Boot application entrypoint.                                                          |
 | `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                           | Shared result and exception primitives; no DBFlow business policy.                           |
-| `com.refinex.dbflow.config`        | `package-info.java`                                                                                        | Reserved boundary for YAML, Nacos, datasource, and policy configuration binding.             |
+| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                   | YAML datasource defaults, project environments, and dangerous DDL policy binding.            |
 | `com.refinex.dbflow.security`      | `package-info.java`                                                                                        | Reserved boundary for admin session and MCP Bearer Token authentication.                     |
 | `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService` | Users, tokens, project/environment registry, grants, and access metadata service boundary.   |
 | `com.refinex.dbflow.mcp`           | `package-info.java`                                                                                        | Reserved boundary for MCP tools, resources, prompts, and transport adapters.                 |
@@ -144,12 +156,36 @@ audit
         -> common
         -> Spring Data JPA / Spring Transactions
 
+config
+        -> Spring Boot ConfigurationProperties / Jakarta Validation
+
 metadata migration test
         -> Flyway / JDBC / H2 MySQL mode
 ```
 
-`config`, `security`, `mcp`, `sqlpolicy`, `executor`, and `admin` currently contain only package documentation and have
-no implementation dependencies. Future code should keep the approved target dependency direction below.
+`security`, `mcp`, `sqlpolicy`, `executor`, and `admin` currently contain only package documentation and have no
+implementation dependencies. Future code should keep the approved target dependency direction below.
+
+## Current Runtime Configuration
+
+DBFlow reads target database and dangerous DDL policy configuration from `dbflow.*` properties in Spring external
+configuration sources such as `application.yml`, profile-specific YAML, environment variables, and later Nacos.
+
+Current typed configuration model:
+
+- `dbflow.datasource-defaults`: default JDBC driver, username, and password placeholder for target environments.
+- `dbflow.projects[].environments[]`: project/environment registry with required environment `jdbc-url` and effective
+  driver from either the environment or `datasource-defaults.driver-class-name`.
+- `dbflow.policies.dangerous-ddl.defaults`: default handling for high-risk DDL. `DROP_TABLE` and `DROP_DATABASE`
+  default to `DENY`; `TRUNCATE` defaults to `REQUIRE_CONFIRMATION`.
+- `dbflow.policies.dangerous-ddl.whitelist[]`: project/environment/schema/table/operation granularity whitelist model
+  for later `sqlpolicy` enforcement.
+
+Sensitive configuration boundary:
+
+- Database passwords may be empty or environment-variable placeholders such as `${DBFLOW_DEFAULT_PASSWORD:}`.
+- Real database passwords, token peppers, Nacos credentials, and connection-string secrets must not be committed.
+- The configuration layer only binds and validates values; it does not open target database connections yet.
 
 ## Current Metadata Schema
 

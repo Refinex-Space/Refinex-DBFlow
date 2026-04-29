@@ -2,6 +2,7 @@ package com.refinex.dbflow;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
  * Refinex-DBFlow Spring Boot 应用启动入口。
@@ -9,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author refinex
  */
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class DbflowApplication {
 
     /**

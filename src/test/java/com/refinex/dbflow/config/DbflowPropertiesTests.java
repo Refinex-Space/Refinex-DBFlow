@@ -54,7 +54,8 @@ class DbflowPropertiesTests {
                 "dbflow.policies.dangerous-ddl.whitelist[1].project-key=demo",
                 "dbflow.policies.dangerous-ddl.whitelist[1].environment-key=dev",
                 "dbflow.policies.dangerous-ddl.whitelist[1].schema-name=refinex_demo",
-                "dbflow.policies.dangerous-ddl.whitelist[1].operation=DROP_DATABASE"
+                "dbflow.policies.dangerous-ddl.whitelist[1].operation=DROP_DATABASE",
+                "dbflow.policies.dangerous-ddl.whitelist[1].allow-prod-dangerous-ddl=true"
         };
         for (String override : overrides) {
             String overrideKey = override.substring(0, override.indexOf('='));
@@ -99,6 +100,8 @@ class DbflowPropertiesTests {
             assertThat(properties.getProjects().get(0).getEnvironments().get(0).getJdbcUrl())
                     .isEqualTo("jdbc:mysql://127.0.0.1:3306/refinex_demo");
             assertThat(properties.getPolicies().getDangerousDdl().getWhitelist()).hasSize(2);
+            assertThat(properties.getPolicies().getDangerousDdl().getWhitelist().get(1).isAllowProdDangerousDdl())
+                    .isTrue();
         });
     }
 

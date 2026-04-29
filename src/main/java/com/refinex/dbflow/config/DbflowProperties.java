@@ -858,6 +858,11 @@ public class DbflowProperties implements InitializingBean {
         private DangerousDdlOperation operation;
 
         /**
+         * 是否显式允许生产环境执行该白名单命中的高危 DDL。
+         */
+        private boolean allowProdDangerousDdl;
+
+        /**
          * 返回白名单所属项目标识。
          *
          * @return 白名单所属项目标识
@@ -945,6 +950,24 @@ public class DbflowProperties implements InitializingBean {
          */
         public void setOperation(DangerousDdlOperation operation) {
             this.operation = operation;
+        }
+
+        /**
+         * 返回是否显式允许生产环境高危 DDL。
+         *
+         * @return 允许时返回 true
+         */
+        public boolean isAllowProdDangerousDdl() {
+            return allowProdDangerousDdl;
+        }
+
+        /**
+         * 设置是否显式允许生产环境高危 DDL。
+         *
+         * @param allowProdDangerousDdl 是否允许生产环境高危 DDL
+         */
+        public void setAllowProdDangerousDdl(boolean allowProdDangerousDdl) {
+            this.allowProdDangerousDdl = allowProdDangerousDdl;
         }
 
         /**

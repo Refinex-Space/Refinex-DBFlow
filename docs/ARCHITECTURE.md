@@ -8,9 +8,9 @@ The current repository contains a single-module Spring Boot Maven scaffold, meta
 `dbflow.*` configuration binding, project/environment scoped Hikari target `DataSource` registry, candidate-first
 datasource config reload, management-side Spring Security session login, MCP Token lifecycle services, MCP Bearer Token
 HTTP authentication, project/environment access decisions, a Spring AI MCP WebMVC Streamable HTTP endpoint, stable MCP
-tool/resource/prompt skeletons, SQL parsing/risk classification, and Spring Cloud Alibaba Nacos Config/Discovery
-baseline wiring. It does not yet contain real database execution MCP tools, SQL policy enforcement decisions, target
-database SQL execution, full management UI, CI
+tool/resource/prompt skeletons, SQL parsing/risk classification, DROP high-risk DDL whitelist decisions, and Spring
+Cloud Alibaba Nacos Config/Discovery baseline wiring. It does not yet contain real database execution MCP tools, full
+SQL policy enforcement for all operations, target database SQL execution, full management UI, CI
 configuration, or production deployment configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -131,6 +131,9 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- McpTokenValidationResult.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- sqlpolicy/
+|   |   |   |   +-- DangerousDdlPolicyDecision.java
+|   |   |   |   +-- DangerousDdlPolicyEngine.java
+|   |   |   |   +-- DangerousDdlPolicyReasonCode.java
 |   |   |   |   +-- SqlClassification.java
 |   |   |   |   +-- SqlClassifier.java
 |   |   |   |   +-- SqlOperation.java
@@ -162,6 +165,7 @@ and must be updated as implementation packages are added.
 |           +-- security/AdminSecurityTests.java
 |           +-- security/McpSecurityTests.java
 |           +-- security/McpTokenServiceJpaTests.java
+|           +-- sqlpolicy/DangerousDdlPolicyEngineTests.java
 |           +-- sqlpolicy/SqlClassifierTests.java
 +-- scripts/
     +-- check_harness.py
@@ -204,6 +208,9 @@ and must be updated as implementation packages are added.
 - SQL classification baseline: `SqlClassifier` uses JSQLParser to classify a single SQL statement into auditable
   statement type, operation, risk level, target schema/table, DDL/DML flags, parse status, and default rejection state.
   Multi-statement input is rejected, and failed DDL/DML/admin parsing fails closed.
+- Dangerous DROP policy baseline: `DangerousDdlPolicyEngine` evaluates `DROP_TABLE` and `DROP_DATABASE` classification
+  results against YAML whitelist entries, denies by default, requires explicit `allow-prod-dangerous-ddl=true` for prod,
+  and returns audit-ready reason codes and reasons for every decision.
 
 ## Current Source Package Boundaries
 
@@ -215,7 +222,7 @@ and must be updated as implementation packages are added.
 | `com.refinex.dbflow.security`      | Admin session security classes, `McpSecurityConfiguration`, `McpBearerTokenAuthenticationFilter`, `McpAuthenticationToken`, `McpRequestMetadata*`, `McpTokenService`, MCP Token DTO records, `package-info.java`                             | Management session login, BCrypt admin password model, initial admin bootstrap, MCP Bearer HTTP security, request metadata extraction, and MCP Token lifecycle primitives.                                                          |
 | `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records                                                  | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.                                                                                                                      |
 | `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java` | Spring AI MCP tools/resources/prompts skeleton and the MCP authentication/authorization boundary.                                                                                                                                   |
-| `com.refinex.dbflow.sqlpolicy`     | `SqlClassifier`, `SqlClassification`, SQL operation/status/risk/type enums, `package-info.java`                                                                                                                                              | SQL parsing and auditable risk classification. Whitelist decisions, confirmation policy, and SQL execution gates are still future work.                                                                                             |
+| `com.refinex.dbflow.sqlpolicy`     | `SqlClassifier`, `SqlClassification`, SQL operation/status/risk/type enums, `DangerousDdlPolicyEngine`, dangerous DDL decision/reason records, `package-info.java`                                                                           | SQL parsing, auditable risk classification, and DROP DATABASE / DROP TABLE YAML whitelist decisions. Confirmation policy and SQL execution gates are still future work.                                                             |
 | `com.refinex.dbflow.executor`      | `DataSourceConfigReloader`, `DataSourceReloadResult`, `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `package-info.java`                                                                                                | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement; future JDBC execution and EXPLAIN must resolve target pools through this boundary. |
 | `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                             | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                                                                                        |
 | `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                   | Minimal management endpoint surface for session-security verification.                                                                                                                                                              |
@@ -250,6 +257,7 @@ config
 
 sqlpolicy
         -> JSQLParser
+        -> config dangerous DDL properties
 
 security
         -> access
@@ -274,8 +282,8 @@ metadata migration test
         -> Flyway / JDBC / H2 MySQL mode
 ```
 
-`sqlpolicy` currently contains parsing and classification only. Future policy enforcement code should keep the approved
-target dependency direction below.
+`sqlpolicy` currently contains parsing/classification and DROP high-risk DDL whitelist decisions. Future confirmation
+and execution enforcement code should keep the approved target dependency direction below.
 
 ## Current Runtime Configuration
 
@@ -290,7 +298,9 @@ Current typed configuration model:
 - `dbflow.policies.dangerous-ddl.defaults`: default handling for high-risk DDL. `DROP_TABLE` and `DROP_DATABASE`
   default to `DENY`; `TRUNCATE` defaults to `REQUIRE_CONFIRMATION`.
 - `dbflow.policies.dangerous-ddl.whitelist[]`: project/environment/schema/table/operation granularity whitelist model
-  for later `sqlpolicy` enforcement.
+  for `DROP_TABLE` and `DROP_DATABASE` policy decisions. `project-key`, `environment-key`, `schema-name`, and
+  table-level `table-name` support `*` wildcard matching. Prod environments require
+  `allow-prod-dangerous-ddl=true` on the matching entry.
 - `dbflow.security.mcp-token.pepper`: MCP Token hash pepper. It has no committed default and should be supplied by
   `DBFLOW_MCP_TOKEN_PEPPER`, encrypted configuration, Nacos secret handling, or a secret manager.
 - `spring.ai.mcp.server`: Spring AI MCP server name `refinex-dbflow`, version `0.1.0-SNAPSHOT`, `SYNC` type,
@@ -325,8 +335,7 @@ Sensitive configuration boundary:
 ## Current SQL Classification
 
 `SqlClassifier` is the implemented SQL policy entry point for parsing and risk classification. It is classification
-only: it does not execute SQL, consult grants, apply YAML whitelists, create confirmation challenges, or write audit
-rows yet.
+only: it does not execute SQL, consult grants, create confirmation challenges, or write audit rows yet.
 
 Current classifier output:
 
@@ -349,6 +358,34 @@ Security posture:
   falls back to first-keyword handling, while retaining `parseStatus=PARSE_FAILED` when applicable.
 - MySQL-specific parser gaps observed in JSQLParser 5.3, such as `LOAD DATA`, MySQL account syntax in `GRANT`, and
   `DROP DATABASE`, are handled by conservative fallback classification and are not allowed by default.
+
+## Current DROP Dangerous DDL Policy
+
+`DangerousDdlPolicyEngine` is the implemented YAML policy boundary for `DROP_TABLE` and `DROP_DATABASE` after SQL
+classification. It accepts project key, environment key, and `SqlClassification`, then returns
+`DangerousDdlPolicyDecision`.
+
+Decision output is audit-ready:
+
+- `projectKey`, `environmentKey`, `operation`, `targetSchema`, and `targetTable` identify the policy subject.
+- `allowed` records the allow/deny result.
+- `reasonCode` is machine-readable, including `WHITELIST_MATCH`, `DEFAULT_DENY`,
+  `PROD_REQUIRES_EXPLICIT_ALLOW`, `MISSING_TARGET`, `CLASSIFICATION_REJECTED`, and `NOT_APPLICABLE`.
+- `reason` is a human-readable Chinese explanation.
+- `matchedWhitelist` records whether a YAML whitelist entry matched.
+- `auditRequired` is always `true`; future SQL execution must persist every policy decision before or with execution
+  audit.
+
+Security posture:
+
+- `DROP DATABASE` and `DROP TABLE` deny by default unless a YAML whitelist entry matches.
+- Whitelist entries must match operation plus project/environment/schema/table scope. `*` matches any value for the
+  configured scope.
+- `DROP_DATABASE` entries do not accept `table-name`; `DROP_TABLE` entries require `table-name`.
+- If the effective environment is `prod` or `production`, a matching whitelist entry is still denied unless
+  `allow-prod-dangerous-ddl=true` is explicitly set on that entry.
+- Classification-stage rejection is final for this policy stage; a YAML whitelist cannot override
+  `rejectedByDefault=true` or `riskLevel=REJECTED`.
 
 ## Current Datasource Refresh Flow
 

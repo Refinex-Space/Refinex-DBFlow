@@ -10,7 +10,8 @@ Spring AI MCP WebMVC Streamable HTTP server smoke test, and MCP tools/resources/
 includes
 validated `dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous DDL policy, plus
 project/environment scoped Hikari target `DataSource` registry lifecycle tests, candidate datasource reload tests, and
-SQL parsing/risk classification tests, and management-side Spring Security tests for form login and CSRF. Spring Cloud
+SQL parsing/risk classification tests, DROP DATABASE / DROP TABLE YAML whitelist policy tests, and management-side
+Spring Security tests for form login and CSRF. Spring Cloud
 Alibaba Nacos Config and Discovery dependencies are present, while default local startup keeps Nacos disabled unless
 the `nacos` profile is explicitly activated.
 
@@ -101,6 +102,11 @@ Configuration sources and secret boundary:
 - SQL classification is performed by `SqlClassifier` before future policy and execution stages. Multi-statement input
   is rejected by default; failed DDL/DML/admin parsing is rejected by default; readable commands such as `SELECT`,
   `SHOW`, `DESCRIBE`, and `EXPLAIN` retain explicit classification and parse status for audit.
+- DROP dangerous DDL decisions are performed by `DangerousDdlPolicyEngine` after classification. `DROP DATABASE` and
+  `DROP TABLE` deny by default, allow only through YAML whitelist matches, support `*` wildcards across
+  project/environment/schema/table scope, require `allow-prod-dangerous-ddl=true` for prod, and return
+  machine-readable reason codes plus human-readable reasons. Every decision has `auditRequired=true` for future audit
+  persistence.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -149,7 +155,8 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `MetadataSchemaMigrationTests` covers all seven metadata tables, token plaintext absence, active token uniqueness,
   grant uniqueness, and key audit/schema indexes.
 - `DbflowPropertiesTests` covers `dbflow.*` binding, dangerous DDL defaults, duplicate project/environment rejection,
-  missing JDBC URL/driver rejection, invalid Hikari pool settings, and invalid whitelist rejection.
+  missing JDBC URL/driver rejection, invalid Hikari pool settings, invalid whitelist rejection, and
+  `allow-prod-dangerous-ddl` binding.
 - `NacosProfileConfigurationTests` covers default local Nacos disablement, `nacos` profile Config Data imports,
   namespace/group placeholders, Discovery group, and absence of committed Nacos credential defaults.
 - `HikariDataSourceRegistryTests` covers one isolated Hikari pool per configured project/environment, shared Hikari
@@ -161,6 +168,10 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `SqlClassifierTests` covers MySQL 8 `SELECT`, MySQL 5.7 `SHOW`/`DESCRIBE`/`EXPLAIN`, DML operations
   `INSERT`/`UPDATE`/`DELETE`/`LOAD DATA`, DDL operations `CREATE`/`ALTER`/`DROP`/`TRUNCATE`, `GRANT`, multi-statement
   rejection, and fail-closed parsing behavior for unsafe statements.
+- `DangerousDdlPolicyEngineTests` covers `DROP TABLE`/`DROP DATABASE` default denial, exact whitelist allow,
+  prod whitelist denial without explicit `allow-prod-dangerous-ddl`, prod allow with explicit flag, wildcard matching,
+  machine-readable reason codes, human-readable reasons, audit-required decisions, and classification-stage rejection
+  precedence.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,

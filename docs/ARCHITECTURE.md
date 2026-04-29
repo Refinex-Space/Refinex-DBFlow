@@ -6,9 +6,10 @@ Refinex-DBFlow is planned as an internal MySQL MCP database operation gateway. I
 
 The current repository contains a single-module Spring Boot Maven scaffold, metadata persistence/services, validated
 `dbflow.*` configuration binding, management-side Spring Security session login, MCP Token lifecycle services,
-project/environment access decisions, and Harness control-plane documentation. It does not yet contain MCP tools, MCP
-Bearer Token HTTP authentication, SQL policy enforcement, target database execution, full management UI, CI
-configuration, or production deployment configuration. The architecture
+project/environment access decisions, a Spring AI MCP WebMVC Streamable HTTP endpoint, a minimal MCP smoke tool, and
+Harness control-plane documentation. It does not yet contain database execution MCP tools, MCP Bearer Token HTTP
+authentication, SQL policy enforcement, target database execution, full management UI, CI configuration, or production
+deployment configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
 and must be updated as implementation packages are added.
@@ -89,7 +90,10 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- DbflowProperties.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- executor/package-info.java
-|   |   |   +-- mcp/package-info.java
+|   |   |   +-- mcp/
+|   |   |   |   +-- DbflowMcpSmokeTool.java
+|   |   |   |   +-- DbflowMcpToolConfiguration.java
+|   |   |   |   +-- package-info.java
 |   |   |   +-- observability/
 |   |   |   |   +-- RequestIdFilter.java
 |   |   |   |   +-- package-info.java
@@ -118,6 +122,7 @@ and must be updated as implementation packages are added.
 |           +-- audit/AuditAndConfirmationServiceJpaTests.java
 |           +-- config/DbflowPropertiesTests.java
 |           +-- config/MetadataSchemaMigrationTests.java
+|           +-- mcp/DbflowMcpServerTests.java
 |           +-- observability/RequestIdFilterTests.java
 |           +-- security/AdminSecurityTests.java
 |           +-- security/McpTokenServiceJpaTests.java
@@ -132,7 +137,8 @@ and must be updated as implementation packages are added.
 - Application package root: `com.refinex.dbflow`.
 - Current test baseline: Spring Boot application context smoke test, common model tests, request id filter tests, and
   Flyway metadata schema migration tests.
-- Spring AI MCP dependency management is imported through the Spring AI BOM, but the MCP server starter and MCP endpoint are intentionally deferred to the MCP scaffold phase.
+- Spring AI MCP dependency management is imported through the Spring AI BOM; the WebMVC MCP server starter is active
+  and configured for Streamable HTTP at `/mcp`.
 - Development standard baseline: `docs/references/java-development-standards.md` requires Chinese JavaDoc, parameter-complete method comments, field comments, Maven dependency comments, and logging XML comments.
 - Maven quality baseline: Java release 21, UTF-8 source/reporting encoding, compiler `-parameters`, JUnit Platform via Surefire, and classpath-based test execution.
 - Metadata persistence baseline: Flyway V1 creates DBFlow metadata tables, JPA entity/repository mappings exist for all
@@ -158,7 +164,7 @@ and must be updated as implementation packages are added.
 | `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                               | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                   |
 | `com.refinex.dbflow.security`      | `AdminSecurityConfiguration`, `AdminSecurityProperties`, `AdminUserDetailsService`, `InitialAdminUserInitializer`, `McpTokenProperties`, `McpTokenService`, MCP Token DTO records, `package-info.java` | Management session login, BCrypt admin password model, initial admin bootstrap, and MCP Token lifecycle primitives. |
 | `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records            | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.      |
-| `com.refinex.dbflow.mcp`           | `package-info.java`                                                                                                                                                                                    | Reserved boundary for MCP tools, resources, prompts, and transport adapters.                                        |
+| `com.refinex.dbflow.mcp`           | `DbflowMcpSmokeTool`, `DbflowMcpToolConfiguration`, `package-info.java`                                                                                                                                | Spring AI MCP tool registration and the current no-database smoke tool.                                             |
 | `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                                                                                                                    | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.                         |
 | `com.refinex.dbflow.executor`      | `package-info.java`                                                                                                                                                                                    | Reserved boundary for Hikari data sources, JDBC execution, and EXPLAIN.                                             |
 | `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                       | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                        |
@@ -200,6 +206,9 @@ admin
         -> Spring Web
         -> security filter chain at request boundary
 
+mcp
+        -> Spring AI MCP Server / Spring AI ToolCallbackProvider
+
 metadata migration test
         -> Flyway / JDBC / H2 MySQL mode
 ```
@@ -223,6 +232,8 @@ Current typed configuration model:
   for later `sqlpolicy` enforcement.
 - `dbflow.security.mcp-token.pepper`: MCP Token hash pepper. It has no committed default and should be supplied by
   `DBFLOW_MCP_TOKEN_PEPPER`, encrypted configuration, Nacos secret handling, or a secret manager.
+- `spring.ai.mcp.server`: Spring AI MCP server name `refinex-dbflow`, version `0.1.0-SNAPSHOT`, `SYNC` type,
+  `STREAMABLE` protocol, enabled tool/resource/prompt capabilities, and Streamable HTTP endpoint `/mcp`.
 
 Sensitive configuration boundary:
 

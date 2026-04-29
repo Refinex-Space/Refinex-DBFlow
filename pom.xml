@@ -69,6 +69,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Spring AI MCP WebMVC Server：提供 Streamable HTTP MCP endpoint 与工具暴露能力。 -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+        </dependency>
+
         <!-- Spring Security 基础依赖：提供管理端 session 登录、退出、CSRF 与后续 MCP 独立认证链路能力。 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

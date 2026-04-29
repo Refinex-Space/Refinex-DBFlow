@@ -17,6 +17,22 @@ spring:
   # Flyway 默认读取 classpath:db/migration，本处显式记录元数据库迁移入口。
   flyway:
     locations: classpath:db/migration
+  # Spring AI MCP Server 配置：当前阶段只启用 Streamable HTTP 和最小 smoke tool，不包含数据库执行能力。
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: refinex-dbflow
+        version: 0.1.0-SNAPSHOT
+        type: SYNC
+        protocol: STREAMABLE
+        instructions: Refinex-DBFlow MCP server exposes guarded database operation capabilities in later phases.
+        capabilities:
+          tool: true
+          resource: true
+          prompt: true
+        streamable-http:
+          mcp-endpoint: /mcp
 
 # DBFlow 目标库配置入口：当前阶段只完成 dbflow.* 绑定和校验，真实密码必须通过环境变量占位、Nacos
 # 或安全配置系统注入，不允许写入仓库。

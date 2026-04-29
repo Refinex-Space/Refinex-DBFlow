@@ -2,18 +2,20 @@
 
 # Observability
 
-This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture spec, a minimal single-module Spring Boot Maven scaffold, package boundaries, common model tests, and request id filter tests.
+This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture
+spec, a minimal single-module Spring Boot Maven scaffold, package boundaries, common model tests, request id filter
+tests, and Flyway metadata schema migration tests.
 
 ## Build & Run
 
-| Task | Command | Expected |
-| --- | --- | --- |
-| Install dependencies | `./mvnw dependency:go-offline` | Maven resolves project dependencies for offline use. |
-| Build | `./mvnw package` | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`. |
-| Run tests | `./mvnw test` | Current baseline: Spring Boot context, common model, exception model, and request id filter tests pass. |
-| Lint / format check | Not available yet; no formatter is configured. | Future scaffold must replace this row. |
-| Start dev server | `./mvnw spring-boot:run` | Starts the scaffolded Spring Boot application locally. |
-| Validate Harness | `python3 scripts/check_harness.py` | Exit 0, all manifest entries and AGENTS links valid. |
+| Task                 | Command                                        | Expected                                                                                                                                  |
+|----------------------|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| Install dependencies | `./mvnw dependency:go-offline`                 | Maven resolves project dependencies for offline use.                                                                                      |
+| Build                | `./mvnw package`                               | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                    |
+| Run tests            | `./mvnw test`                                  | Current baseline: Spring Boot context, common model, exception model, request id filter, and Flyway metadata schema migration tests pass. |
+| Lint / format check  | Not available yet; no formatter is configured. | Future scaffold must replace this row.                                                                                                    |
+| Start dev server     | `./mvnw spring-boot:run`                       | Starts the scaffolded Spring Boot application locally.                                                                                    |
+| Validate Harness     | `python3 scripts/check_harness.py`             | Exit 0, all manifest entries and AGENTS links valid.                                                                                      |
 
 ## CI Configuration
 
@@ -32,6 +34,7 @@ Planned baseline:
 - Spring Cloud 2025.0.2
 - Spring Cloud Alibaba `2025.0.0.0`
 - Maven compiler release 21, UTF-8 encoding, and compiler `-parameters`
+- Flyway V1 metadata migration with H2 MySQL mode verification
 - MySQL 8 and MySQL 5.7 via Testcontainers after scaffold
 - Nacos for configuration and discovery after scaffold
 
@@ -53,3 +56,12 @@ python3 scripts/check_harness.py
 ```
 
 Expected: Maven tests pass and Harness validation passes. Use `harness-verify` before completion claims.
+
+## Current Test Coverage
+
+- `DbflowApplicationTests` verifies the Spring Boot context starts with the local H2 metadata datasource and Flyway
+  migration.
+- `ApiResultTests` and `DbflowExceptionTests` cover the current common result/exception primitives.
+- `RequestIdFilterTests` covers incoming and generated request id behavior.
+- `MetadataSchemaMigrationTests` covers all seven metadata tables, token plaintext absence, active token uniqueness,
+  grant uniqueness, and key audit/schema indexes.

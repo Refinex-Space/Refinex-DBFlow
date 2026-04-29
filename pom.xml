@@ -41,6 +41,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
             <!-- Spring Cloud 版本基线：后续 Nacos、Actuator 与云原生集成沿用此 BOM。 -->
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
@@ -49,6 +50,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
             <!-- Spring Cloud Alibaba 版本基线：后续 Nacos Config/Discovery starter 由此 BOM 管理。 -->
             <dependency>
                 <groupId>com.alibaba.cloud</groupId>
@@ -66,6 +68,32 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!-- JPA 基础依赖：为后续元数据 entity/repository 阶段提供持久化底座。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- Flyway 核心依赖：负责版本化管理 DBFlow 元数据库 schema。 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <!-- Flyway MySQL 支持：保留后续真实 MySQL 元数据库验证和部署能力。 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
+        <!-- H2 本地元数据库：当前阶段用于本地启动和 Flyway migration 测试。 -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- 测试基础依赖：提供 JUnit、Spring Boot Test 与当前 context smoke test 能力。 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

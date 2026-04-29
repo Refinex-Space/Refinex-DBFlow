@@ -3,3 +3,17 @@ spring:
   # 应用名称用于日志、Actuator 和后续注册发现标识。
   application:
     name: refinex-dbflow
+  # 本地元数据库占位配置：P02 阶段使用 H2 MySQL mode 验证 Flyway schema，生产凭据后续由安全配置注入。
+  datasource:
+    url: jdbc:h2:mem:dbflow_metadata;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  # JPA 当前只消费 Flyway 管理后的 schema，不允许 Hibernate 自动建表或改表。
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  # Flyway 默认读取 classpath:db/migration，本处显式记录元数据库迁移入口。
+  flyway:
+    locations: classpath:db/migration

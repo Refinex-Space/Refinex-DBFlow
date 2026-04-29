@@ -52,6 +52,7 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 |   |   |   +-- security/package-info.java
 |   |   |   +-- sqlpolicy/package-info.java
 |   |   +-- resources/application.yml
+|   |   +-- resources/db/migration/V1__create_metadata_schema.sql
 |   |   +-- resources/logback-spring.xml
 |   +-- test/
 |       +-- java/com/refinex/dbflow/
@@ -59,6 +60,7 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 |           +-- common/
 |           |   +-- ApiResultTests.java
 |           |   +-- DbflowExceptionTests.java
+|           +-- config/MetadataSchemaMigrationTests.java
 |           +-- observability/RequestIdFilterTests.java
 +-- scripts/
     +-- check_harness.py
@@ -69,10 +71,13 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 - Build system: single-module Maven project with Maven wrapper 3.9.12.
 - Java runtime: JDK 21.
 - Application package root: `com.refinex.dbflow`.
-- Current test baseline: Spring Boot application context smoke test plus common model and request id filter tests.
+- Current test baseline: Spring Boot application context smoke test, common model tests, request id filter tests, and
+  Flyway metadata schema migration tests.
 - Spring AI MCP dependency management is imported through the Spring AI BOM, but the MCP server starter and MCP endpoint are intentionally deferred to the MCP scaffold phase.
 - Development standard baseline: `docs/references/java-development-standards.md` requires Chinese JavaDoc, parameter-complete method comments, field comments, Maven dependency comments, and logging XML comments.
 - Maven quality baseline: Java release 21, UTF-8 source/reporting encoding, compiler `-parameters`, JUnit Platform via Surefire, and classpath-based test execution.
+- Metadata schema baseline: Flyway V1 creates DBFlow metadata tables and is verified against H2 MySQL mode. Spring Data
+  JPA is present for the next entity/repository phase, but no JPA entities or repositories exist yet.
 
 ## Current Source Package Boundaries
 
@@ -103,9 +108,33 @@ observability
 
 common
         -> JDK only
+
+metadata migration test
+        -> Flyway / JDBC / H2 MySQL mode
 ```
 
 Reserved packages currently contain only `package-info.java`, so they have no implementation dependency on each other. Future code should keep the approved target dependency direction below.
+
+## Current Metadata Schema
+
+Flyway migration `src/main/resources/db/migration/V1__create_metadata_schema.sql` creates these metadata tables:
+
+| Table                         | Purpose                                                | Sensitive-data boundary                                                                                             |
+|-------------------------------|--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `dbf_users`                   | Users and administrator password hash metadata.        | Stores password hash only; no plaintext password.                                                                   |
+| `dbf_api_tokens`              | MCP token metadata.                                    | Stores `token_hash`, `token_prefix`, status, expiry, revocation, and last-used metadata; no plaintext token column. |
+| `dbf_projects`                | Project registry.                                      | No credentials.                                                                                                     |
+| `dbf_environments`            | Project environment registry.                          | No database password fields in V1.                                                                                  |
+| `dbf_user_env_grants`         | User-to-environment grants.                            | Unique `(user_id, environment_id)` grant boundary.                                                                  |
+| `dbf_confirmation_challenges` | Server-side confirmation challenges for high-risk SQL. | Stores SQL text/hash and challenge state; no result set data.                                                       |
+| `dbf_audit_events`            | Operation audit events.                                | Stores SQL text/hash, status, summary, affected rows, and error fields; does not store full result sets.            |
+
+Key constraints and indexes currently verified by tests:
+
+- `uk_dbf_api_tokens_user_active` ensures a user can have at most one active token by using nullable `active_flag`.
+- `uk_dbf_user_env_grants_user_env` ensures a user has one grant row per environment.
+- `idx_dbf_audit_user_time`, `idx_dbf_audit_target_time`, `idx_dbf_audit_status_time`, `idx_dbf_audit_sql_hash`, and
+  `idx_dbf_audit_request_id` support common audit queries.
 
 ## Target System Shape
 

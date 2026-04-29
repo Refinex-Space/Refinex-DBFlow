@@ -130,6 +130,38 @@ class MetadataSchemaMigrationTests {
     }
 
     /**
+     * 验证确认挑战绑定 user、token、project/env 和 SQL hash。
+     *
+     * @throws SQLException 数据库元数据读取异常
+     */
+    @Test
+    void confirmationSchemaShouldBindTokenTargetAndSqlHash() throws SQLException {
+        try (Connection connection = migratedConnection()) {
+            Set<String> confirmationColumns = readColumnNames(connection, "dbf_confirmation_challenges");
+            Set<String> confirmationIndexes = readIndexNames(connection, "dbf_confirmation_challenges");
+
+            assertThat(confirmationColumns)
+                    .contains(
+                            "user_id",
+                            "token_id",
+                            "environment_id",
+                            "project_key",
+                            "environment_key",
+                            "confirmation_id",
+                            "sql_hash",
+                            "risk_level",
+                            "expires_at",
+                            "confirmed_at"
+                    );
+            assertThat(confirmationIndexes).contains(
+                    "idx_dbf_confirmation_user_status",
+                    "idx_dbf_confirmation_environment_status",
+                    "idx_dbf_confirmation_target_status"
+            );
+        }
+    }
+
+    /**
      * 验证关键唯一索引和约束名称存在，便于后续故障诊断。
      *
      * @throws SQLException 数据库元数据读取异常

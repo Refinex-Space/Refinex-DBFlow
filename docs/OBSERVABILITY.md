@@ -11,7 +11,9 @@ includes
 validated `dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous DDL policy, plus
 project/environment scoped Hikari target `DataSource` registry lifecycle tests, candidate datasource reload tests, and
 SQL parsing/risk classification tests, DROP DATABASE / DROP TABLE YAML whitelist policy tests, and management-side
-Spring Security tests for form login and CSRF. Spring Cloud
+Spring Security tests for form login and CSRF. It now also covers the TRUNCATE server-side confirmation lifecycle:
+challenge creation, successful confirmation, mismatched token, mismatched SQL, expiry, and replay rejection. Spring
+Cloud
 Alibaba Nacos Config and Discovery dependencies are present, while default local startup keeps Nacos disabled unless
 the `nacos` profile is explicitly activated.
 
@@ -107,6 +109,9 @@ Configuration sources and secret boundary:
   project/environment/schema/table scope, require `allow-prod-dangerous-ddl=true` for prod, and return
   machine-readable reason codes plus human-readable reasons. Every decision has `auditRequired=true` for future audit
   persistence.
+- TRUNCATE does not rely on AI/client verbal confirmation. `dbflow_execute_sql` creates a server-side challenge and
+  does not execute; `dbflow_confirm_sql` validates the same user, token, project/environment, SQL hash, pending status,
+  and expiry before consuming the challenge. Confirmation lifecycle states are persisted as audit events.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -132,8 +137,9 @@ MCP server runtime boundary:
 - Current resources: `dbflow://targets`, `dbflow://projects/{project}/envs/{env}/schema`, and
   `dbflow://projects/{project}/envs/{env}/policy`.
 - Current prompts: `dbflow_safe_mysql_change` and `dbflow_explain_plan_review`.
-- DBFlow skeleton tools return only empty/mock structures and do not access target databases, execute SQL, write audit,
-  or expose token plaintext. Each tool response includes authentication and authorization boundary state.
+- DBFlow skeleton tools do not access target databases, execute SQL, or expose token plaintext. Most tools return
+  empty/mock structures; the TRUNCATE path in `dbflow_execute_sql`/`dbflow_confirm_sql` now persists confirmation
+  challenge and audit metadata. Each tool response includes authentication and authorization boundary state.
 
 ## Verify Before Completion
 
@@ -153,7 +159,7 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `ApiResultTests` and `DbflowExceptionTests` cover the current common result/exception primitives.
 - `RequestIdFilterTests` covers incoming and generated request id behavior.
 - `MetadataSchemaMigrationTests` covers all seven metadata tables, token plaintext absence, active token uniqueness,
-  grant uniqueness, and key audit/schema indexes.
+  grant uniqueness, confirmation challenge token/target/SQL hash binding, and key audit/schema indexes.
 - `DbflowPropertiesTests` covers `dbflow.*` binding, dangerous DDL defaults, duplicate project/environment rejection,
   missing JDBC URL/driver rejection, invalid Hikari pool settings, invalid whitelist rejection, and
   `allow-prod-dangerous-ddl` binding.
@@ -172,6 +178,9 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   prod whitelist denial without explicit `allow-prod-dangerous-ddl`, prod allow with explicit flag, wildcard matching,
   machine-readable reason codes, human-readable reasons, audit-required decisions, and classification-stage rejection
   precedence.
+- `TruncateConfirmationServiceJpaTests` covers TRUNCATE challenge creation, same user/token/project/env/SQL
+  confirmation success, different-token rejection, different-SQL rejection, expired challenge rejection, repeated-use
+  rejection, and confirmation lifecycle audit statuses.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,

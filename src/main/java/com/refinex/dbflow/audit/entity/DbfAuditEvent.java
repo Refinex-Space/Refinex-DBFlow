@@ -180,6 +180,54 @@ public class DbfAuditEvent {
     }
 
     /**
+     * 创建确认挑战审计事件。
+     *
+     * @param requestId      请求标识
+     * @param userId         用户主键
+     * @param tokenPrefix    Token 前缀
+     * @param projectKey     项目标识
+     * @param environmentKey 环境标识
+     * @param status         确认状态
+     * @param sqlHash        SQL hash
+     * @param sqlText        SQL 原文
+     * @param confirmationId 确认挑战标识
+     * @param errorCode      错误码
+     * @param errorMessage   错误摘要
+     * @return 审计事件实体
+     */
+    public static DbfAuditEvent confirmation(
+            String requestId,
+            Long userId,
+            String tokenPrefix,
+            String projectKey,
+            String environmentKey,
+            String status,
+            String sqlHash,
+            String sqlText,
+            String confirmationId,
+            String errorCode,
+            String errorMessage
+    ) {
+        DbfAuditEvent event = new DbfAuditEvent();
+        event.requestId = requestId;
+        event.userId = userId;
+        event.tokenPrefix = tokenPrefix;
+        event.projectKey = projectKey;
+        event.environmentKey = environmentKey;
+        event.operationType = "TRUNCATE";
+        event.riskLevel = "CRITICAL";
+        event.status = status;
+        event.sqlHash = sqlHash;
+        event.sqlText = sqlText;
+        event.resultSummary = "TRUNCATE 确认挑战状态变化";
+        event.affectedRows = 0L;
+        event.confirmationId = confirmationId;
+        event.errorCode = errorCode;
+        event.errorMessage = errorMessage;
+        return event;
+    }
+
+    /**
      * 持久化前补齐创建时间。
      */
     @PrePersist
@@ -212,5 +260,14 @@ public class DbfAuditEvent {
      */
     public String getStatus() {
         return status;
+    }
+
+    /**
+     * 读取确认挑战标识。
+     *
+     * @return 确认挑战标识
+     */
+    public String getConfirmationId() {
+        return confirmationId;
     }
 }

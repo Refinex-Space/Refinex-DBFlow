@@ -22,6 +22,9 @@ No active execution plans.
 
 ## Completed Plans
 
+- [2026-04-29 TRUNCATE Confirmation Challenge](exec-plans/completed/2026-04-29-truncate-confirmation-challenge.md) -
+  Completed; implemented server-side TRUNCATE confirmation challenge creation, validation, consumption, and audit
+  lifecycle.
 - [2026-04-29 Dangerous DDL Policy Engine](exec-plans/completed/2026-04-29-dangerous-ddl-policy-engine.md) -
   Completed; implemented YAML whitelist policy decisions for `DROP DATABASE` and `DROP TABLE`.
 - [2026-04-29 SQL Classifier](exec-plans/completed/2026-04-29-sql-classifier.md) -

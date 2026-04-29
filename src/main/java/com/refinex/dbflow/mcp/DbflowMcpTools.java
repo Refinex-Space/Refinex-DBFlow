@@ -1,9 +1,14 @@
 package com.refinex.dbflow.mcp;
 
+import com.refinex.dbflow.sqlpolicy.TruncateConfirmationConfirmRequest;
+import com.refinex.dbflow.sqlpolicy.TruncateConfirmationDecision;
+import com.refinex.dbflow.sqlpolicy.TruncateConfirmationRequest;
+import com.refinex.dbflow.sqlpolicy.TruncateConfirmationService;
 import org.springaicommunity.mcp.annotation.McpTool;
 import org.springaicommunity.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -26,17 +31,25 @@ public class DbflowMcpTools {
     private final McpAccessBoundaryService accessBoundaryService;
 
     /**
+     * TRUNCATE 服务端二次确认服务。
+     */
+    private final TruncateConfirmationService truncateConfirmationService;
+
+    /**
      * 创建 DBFlow MCP 工具 skeleton。
      *
      * @param authenticationContextResolver MCP 认证上下文解析器
      * @param accessBoundaryService         MCP 访问授权边界服务
+     * @param truncateConfirmationService   TRUNCATE 服务端二次确认服务
      */
     public DbflowMcpTools(
             McpAuthenticationContextResolver authenticationContextResolver,
-            McpAccessBoundaryService accessBoundaryService
+            McpAccessBoundaryService accessBoundaryService,
+            TruncateConfirmationService truncateConfirmationService
     ) {
         this.authenticationContextResolver = authenticationContextResolver;
         this.accessBoundaryService = accessBoundaryService;
+        this.truncateConfirmationService = truncateConfirmationService;
     }
 
     /**
@@ -242,6 +255,35 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_EXECUTE_SQL
         );
+        if (boundary.allowed() && truncateConfirmationService.isTruncate(sql)) {
+            TruncateConfirmationDecision decision = truncateConfirmationService.createChallenge(
+                    new TruncateConfirmationRequest(
+                            context.requestId(),
+                            context.userId(),
+                            context.tokenId(),
+                            null,
+                            project,
+                            env,
+                            sql,
+                            Instant.now()
+                    )
+            );
+            return response(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
+                    "project", project,
+                    "env", env,
+                    "schema", schema,
+                    "sqlReceived", true,
+                    "dryRun", Boolean.TRUE.equals(dryRun),
+                    "reason", reason,
+                    "resultRows", java.util.List.of(),
+                    "affectedRows", 0,
+                    "confirmationRequired", decision.confirmationRequired(),
+                    "confirmationId", decision.confirmationId(),
+                    "sqlHash", decision.sqlHash(),
+                    "riskLevel", decision.riskLevel().name(),
+                    "expiresAt", decision.expiresAt()
+            ));
+        }
         return response(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
                 "project", project,
                 "env", env,
@@ -258,15 +300,17 @@ public class DbflowMcpTools {
     /**
      * 确认高风险 SQL skeleton。
      *
-     * @param confirmationId   确认挑战标识
-     * @param confirmationCode 确认码
-     * @param reason           确认原因
+     * @param project        项目标识
+     * @param env            环境标识
+     * @param confirmationId 确认挑战标识
+     * @param sql            SQL 原文
+     * @param reason         确认原因
      * @return SQL 确认 skeleton 响应
      */
     @McpTool(
             name = DbflowMcpNames.TOOL_CONFIRM_SQL,
             title = "Confirm DBFlow SQL",
-            description = "Confirm a server-side SQL challenge before a future high-risk operation can proceed. Skeleton validates only the authentication boundary shape.",
+            description = "Confirm a server-side SQL challenge before a future high-risk operation can proceed. The same user, token, project, environment, SQL hash, and non-expired challenge must match.",
             annotations = @McpTool.McpAnnotations(
                     title = "Confirm DBFlow SQL",
                     readOnlyHint = false,
@@ -277,18 +321,50 @@ public class DbflowMcpTools {
             generateOutputSchema = true
     )
     public DbflowMcpSkeletonResponse confirmSql(
+            @McpToolParam(description = "Project key configured in dbflow.projects[].key.") String project,
+            @McpToolParam(description = "Environment key configured under the project.") String env,
             @McpToolParam(description = "Server-issued confirmation challenge id.") String confirmationId,
-            @McpToolParam(description = "Confirmation code supplied by the operator.") String confirmationCode,
+            @McpToolParam(description = "Original TRUNCATE SQL text. Server compares its hash with the challenge.") String sql,
             @McpToolParam(required = false, description = "Human-readable reason for audit context.") String reason
     ) {
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
-        McpAuthorizationBoundary boundary = accessBoundaryService.metadataBoundary(
+        McpAuthorizationBoundary boundary = accessBoundaryService.targetBoundary(
                 context,
+                project,
+                env,
                 DbflowMcpNames.TOOL_CONFIRM_SQL
         );
+        if (boundary.allowed()) {
+            TruncateConfirmationDecision decision = truncateConfirmationService.confirm(
+                    new TruncateConfirmationConfirmRequest(
+                            context.requestId(),
+                            context.userId(),
+                            context.tokenId(),
+                            null,
+                            project,
+                            env,
+                            confirmationId,
+                            sql,
+                            Instant.now()
+                    )
+            );
+            return response(DbflowMcpNames.TOOL_CONFIRM_SQL, context, boundary, data(
+                    "project", project,
+                    "env", env,
+                    "confirmationId", decision.confirmationId(),
+                    "sqlReceived", sql != null && !sql.isBlank(),
+                    "reason", reason,
+                    "confirmed", decision.confirmed(),
+                    "status", decision.status(),
+                    "sqlHash", decision.sqlHash(),
+                    "riskLevel", decision.riskLevel().name()
+            ));
+        }
         return response(DbflowMcpNames.TOOL_CONFIRM_SQL, context, boundary, data(
+                "project", project,
+                "env", env,
                 "confirmationId", confirmationId,
-                "confirmationCodeReceived", confirmationCode != null && !confirmationCode.isBlank(),
+                "sqlReceived", sql != null && !sql.isBlank(),
                 "reason", reason,
                 "confirmed", false
         ));

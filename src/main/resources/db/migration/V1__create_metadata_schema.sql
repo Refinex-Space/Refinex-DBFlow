@@ -89,7 +89,10 @@ CREATE TABLE dbf_confirmation_challenges
 (
     id              BIGINT       NOT NULL AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL,
+    token_id        BIGINT       NOT NULL,
     environment_id  BIGINT       NOT NULL,
+    project_key     VARCHAR(128) NOT NULL,
+    environment_key VARCHAR(128) NOT NULL,
     confirmation_id VARCHAR(64)  NOT NULL,
     sql_hash        VARCHAR(128) NOT NULL,
     sql_text        TEXT         NOT NULL,
@@ -102,6 +105,7 @@ CREATE TABLE dbf_confirmation_challenges
     CONSTRAINT pk_dbf_confirmation_challenges PRIMARY KEY (id),
     CONSTRAINT uk_dbf_confirmation_challenges_confirmation_id UNIQUE (confirmation_id),
     CONSTRAINT fk_dbf_confirmation_challenges_user FOREIGN KEY (user_id) REFERENCES dbf_users (id),
+    CONSTRAINT fk_dbf_confirmation_challenges_token FOREIGN KEY (token_id) REFERENCES dbf_api_tokens (id),
     CONSTRAINT fk_dbf_confirmation_challenges_environment FOREIGN KEY (environment_id) REFERENCES dbf_environments (id),
     CONSTRAINT ck_dbf_confirmation_challenges_risk CHECK (risk_level IN ('HIGH', 'CRITICAL')),
     CONSTRAINT ck_dbf_confirmation_challenges_status CHECK (status IN ('PENDING', 'CONFIRMED', 'EXPIRED', 'CANCELLED'))
@@ -133,14 +137,16 @@ CREATE TABLE dbf_audit_events
     CONSTRAINT fk_dbf_audit_events_user FOREIGN KEY (user_id) REFERENCES dbf_users (id),
     CONSTRAINT ck_dbf_audit_events_risk CHECK (risk_level IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'FORBIDDEN')),
     CONSTRAINT ck_dbf_audit_events_status CHECK (
-        status IN ('ALLOWED_EXECUTED', 'DENIED', 'FAILED', 'REQUIRES_CONFIRMATION', 'CONFIRMATION_EXPIRED')
+        status IN ('ALLOWED_EXECUTED', 'DENIED', 'FAILED', 'REQUIRES_CONFIRMATION', 'CONFIRMATION_CONFIRMED',
+                   'CONFIRMATION_EXPIRED')
         )
 );
 
 CREATE INDEX idx_dbf_api_tokens_user_status ON dbf_api_tokens (user_id, status);
 CREATE INDEX idx_dbf_environments_project_status ON dbf_environments (project_id, status);
-CREATE INDEX idx_dbf_confirmation_user_status ON dbf_confirmation_challenges (user_id, status, expires_at);
+CREATE INDEX idx_dbf_confirmation_user_status ON dbf_confirmation_challenges (user_id, token_id, status, expires_at);
 CREATE INDEX idx_dbf_confirmation_environment_status ON dbf_confirmation_challenges (environment_id, status, expires_at);
+CREATE INDEX idx_dbf_confirmation_target_status ON dbf_confirmation_challenges (project_key, environment_key, status, expires_at);
 CREATE INDEX idx_dbf_audit_user_time ON dbf_audit_events (user_id, created_at);
 CREATE INDEX idx_dbf_audit_target_time ON dbf_audit_events (project_key, environment_key, created_at);
 CREATE INDEX idx_dbf_audit_status_time ON dbf_audit_events (status, created_at);

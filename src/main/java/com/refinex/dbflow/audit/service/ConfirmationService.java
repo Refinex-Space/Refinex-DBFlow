@@ -36,7 +36,10 @@ public class ConfirmationService {
      * 创建待确认挑战。
      *
      * @param userId         用户主键
+     * @param tokenId        MCP Token 主键
      * @param environmentId  环境主键
+     * @param projectKey     项目标识
+     * @param environmentKey 环境标识
      * @param confirmationId 对外确认标识
      * @param sqlHash        SQL hash
      * @param sqlText        SQL 原文
@@ -47,7 +50,10 @@ public class ConfirmationService {
     @Transactional
     public DbfConfirmationChallenge createPending(
             Long userId,
+            Long tokenId,
             Long environmentId,
+            String projectKey,
+            String environmentKey,
             String confirmationId,
             String sqlHash,
             String sqlText,
@@ -56,7 +62,10 @@ public class ConfirmationService {
     ) {
         return confirmationChallengeRepository.save(DbfConfirmationChallenge.pending(
                 userId,
+                tokenId,
                 environmentId,
+                projectKey,
+                environmentKey,
                 confirmationId,
                 sqlHash,
                 sqlText,

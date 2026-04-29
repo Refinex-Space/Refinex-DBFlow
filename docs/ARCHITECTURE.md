@@ -9,7 +9,8 @@ The current repository contains a single-module Spring Boot Maven scaffold, meta
 datasource config reload, management-side Spring Security session login, MCP Token lifecycle services, MCP Bearer Token
 HTTP authentication, project/environment access decisions, a Spring AI MCP WebMVC Streamable HTTP endpoint, stable MCP
 tool/resource/prompt skeletons, SQL parsing/risk classification, DROP high-risk DDL whitelist decisions, and Spring
-Cloud Alibaba Nacos Config/Discovery baseline wiring. It does not yet contain real database execution MCP tools, full
+Cloud Alibaba Nacos Config/Discovery baseline wiring. `TRUNCATE` now has a server-side confirmation challenge
+lifecycle wired through the MCP skeleton. It does not yet contain real database execution MCP tools, full
 SQL policy enforcement for all operations, target database SQL execution, full management UI, CI
 configuration, or production deployment configuration. The architecture
 below records the approved target design from
@@ -140,6 +141,10 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- SqlParseStatus.java
 |   |   |   |   +-- SqlRiskLevel.java
 |   |   |   |   +-- SqlStatementType.java
+|   |   |   |   +-- TruncateConfirmationConfirmRequest.java
+|   |   |   |   +-- TruncateConfirmationDecision.java
+|   |   |   |   +-- TruncateConfirmationRequest.java
+|   |   |   |   +-- TruncateConfirmationService.java
 |   |   |   |   +-- package-info.java
 |   |   +-- resources/application.yml
 |   |   +-- resources/application-nacos.yml
@@ -211,22 +216,26 @@ and must be updated as implementation packages are added.
 - Dangerous DROP policy baseline: `DangerousDdlPolicyEngine` evaluates `DROP_TABLE` and `DROP_DATABASE` classification
   results against YAML whitelist entries, denies by default, requires explicit `allow-prod-dangerous-ddl=true` for prod,
   and returns audit-ready reason codes and reasons for every decision.
+- TRUNCATE confirmation baseline: `dbflow_execute_sql` detects successfully parsed `TRUNCATE` SQL and creates a
+  pending server-side confirmation challenge instead of executing. `dbflow_confirm_sql` consumes only a matching
+  challenge for the same user, token, project/environment, SQL hash, pending status, and valid expiry, while recording
+  audit events for required, confirmed, denied, and expired states.
 
 ## Current Source Package Boundaries
 
-| Package                            | Current contents                                                                                                                                                                                                                             | Responsibility                                                                                                                                                                                                                      |
-|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `com.refinex.dbflow`               | `DbflowApplication`                                                                                                                                                                                                                          | Spring Boot application entrypoint.                                                                                                                                                                                                 |
-| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                                                                                                                             | Shared result and exception primitives; no DBFlow business policy.                                                                                                                                                                  |
-| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                                                                     | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                                                                                                                                   |
-| `com.refinex.dbflow.security`      | Admin session security classes, `McpSecurityConfiguration`, `McpBearerTokenAuthenticationFilter`, `McpAuthenticationToken`, `McpRequestMetadata*`, `McpTokenService`, MCP Token DTO records, `package-info.java`                             | Management session login, BCrypt admin password model, initial admin bootstrap, MCP Bearer HTTP security, request metadata extraction, and MCP Token lifecycle primitives.                                                          |
-| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records                                                  | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.                                                                                                                      |
-| `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java` | Spring AI MCP tools/resources/prompts skeleton and the MCP authentication/authorization boundary.                                                                                                                                   |
-| `com.refinex.dbflow.sqlpolicy`     | `SqlClassifier`, `SqlClassification`, SQL operation/status/risk/type enums, `DangerousDdlPolicyEngine`, dangerous DDL decision/reason records, `package-info.java`                                                                           | SQL parsing, auditable risk classification, and DROP DATABASE / DROP TABLE YAML whitelist decisions. Confirmation policy and SQL execution gates are still future work.                                                             |
-| `com.refinex.dbflow.executor`      | `DataSourceConfigReloader`, `DataSourceReloadResult`, `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `package-info.java`                                                                                                | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement; future JDBC execution and EXPLAIN must resolve target pools through this boundary. |
-| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                             | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                                                                                        |
-| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                   | Minimal management endpoint surface for session-security verification.                                                                                                                                                              |
-| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                       | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                                                                                  |
+| Package                            | Current contents                                                                                                                                                                                                                                  | Responsibility                                                                                                                                                                                                                      |
+|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `com.refinex.dbflow`               | `DbflowApplication`                                                                                                                                                                                                                               | Spring Boot application entrypoint.                                                                                                                                                                                                 |
+| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                                                                                                                                  | Shared result and exception primitives; no DBFlow business policy.                                                                                                                                                                  |
+| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                                                                          | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                                                                                                                                   |
+| `com.refinex.dbflow.security`      | Admin session security classes, `McpSecurityConfiguration`, `McpBearerTokenAuthenticationFilter`, `McpAuthenticationToken`, `McpRequestMetadata*`, `McpTokenService`, MCP Token DTO records, `package-info.java`                                  | Management session login, BCrypt admin password model, initial admin bootstrap, MCP Bearer HTTP security, request metadata extraction, and MCP Token lifecycle primitives.                                                          |
+| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records                                                       | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.                                                                                                                      |
+| `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java`      | Spring AI MCP tools/resources/prompts skeleton and the MCP authentication/authorization boundary.                                                                                                                                   |
+| `com.refinex.dbflow.sqlpolicy`     | `SqlClassifier`, `SqlClassification`, SQL operation/status/risk/type enums, `DangerousDdlPolicyEngine`, dangerous DDL decision/reason records, `TruncateConfirmationService`, TRUNCATE confirmation request/decision records, `package-info.java` | SQL parsing, auditable risk classification, DROP DATABASE / DROP TABLE YAML whitelist decisions, and TRUNCATE server-side confirmation lifecycle.                                                                                   |
+| `com.refinex.dbflow.executor`      | `DataSourceConfigReloader`, `DataSourceReloadResult`, `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `package-info.java`                                                                                                     | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement; future JDBC execution and EXPLAIN must resolve target pools through this boundary. |
+| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                                  | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                                                                                        |
+| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                        | Minimal management endpoint surface for session-security verification.                                                                                                                                                              |
+| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                            | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                                                                                  |
 
 ## Current Dependency Direction
 
@@ -256,6 +265,9 @@ config
         -> optional Spring Cloud Alibaba Nacos Config profile
 
 sqlpolicy
+        -> access repositories
+        -> audit services / repositories
+        -> common
         -> JSQLParser
         -> config dangerous DDL properties
 
@@ -282,8 +294,9 @@ metadata migration test
         -> Flyway / JDBC / H2 MySQL mode
 ```
 
-`sqlpolicy` currently contains parsing/classification and DROP high-risk DDL whitelist decisions. Future confirmation
-and execution enforcement code should keep the approved target dependency direction below.
+`sqlpolicy` currently contains parsing/classification, DROP high-risk DDL whitelist decisions, and TRUNCATE
+confirmation challenge orchestration. Future execution enforcement code should keep the approved target dependency
+direction below.
 
 ## Current Runtime Configuration
 
@@ -317,6 +330,12 @@ Current MCP surface:
   `McpAccessBoundaryService`. Over HTTP, `McpAuthenticationContextResolver` reads the DBFlow MCP authentication from
   Spring SecurityContext; direct in-process calls without SecurityContext still resolve as anonymous and return
   `AUTHENTICATION_REQUIRED`.
+- `dbflow_execute_sql` still does not access target databases. For `TRUNCATE`, after MCP authentication and target
+  authorization succeed, it creates a `dbf_confirmation_challenges` row and returns `confirmationRequired=true`,
+  `confirmationId`, `sqlHash`, `riskLevel`, and `expiresAt`.
+- `dbflow_confirm_sql` requires `project`, `env`, `confirmationId`, and the original SQL text. It validates the
+  server-side challenge against user id, token id, project key, environment key, SQL hash, status, and expiry before
+  marking the challenge `CONFIRMED`.
 
 Sensitive configuration boundary:
 
@@ -334,8 +353,9 @@ Sensitive configuration boundary:
 
 ## Current SQL Classification
 
-`SqlClassifier` is the implemented SQL policy entry point for parsing and risk classification. It is classification
-only: it does not execute SQL, consult grants, create confirmation challenges, or write audit rows yet.
+`SqlClassifier` is the implemented SQL policy entry point for parsing and risk classification. It does not execute SQL
+or consult grants. `TruncateConfirmationService` consumes the classifier result for the `TRUNCATE` confirmation path
+and writes confirmation lifecycle audit rows.
 
 Current classifier output:
 
@@ -470,15 +490,15 @@ authentication filter:
 
 Flyway migration `src/main/resources/db/migration/V1__create_metadata_schema.sql` creates these metadata tables:
 
-| Table                         | Purpose                                                | Sensitive-data boundary                                                                                             |
-|-------------------------------|--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
-| `dbf_users`                   | Users and administrator password hash metadata.        | Stores password hash only; no plaintext password.                                                                   |
-| `dbf_api_tokens`              | MCP token metadata.                                    | Stores `token_hash`, `token_prefix`, status, expiry, revocation, and last-used metadata; no plaintext token column. |
-| `dbf_projects`                | Project registry.                                      | No credentials.                                                                                                     |
-| `dbf_environments`            | Project environment registry.                          | No database password fields in V1.                                                                                  |
-| `dbf_user_env_grants`         | User-to-environment grants.                            | Unique `(user_id, environment_id)` grant boundary.                                                                  |
-| `dbf_confirmation_challenges` | Server-side confirmation challenges for high-risk SQL. | Stores SQL text/hash and challenge state; no result set data.                                                       |
-| `dbf_audit_events`            | Operation audit events.                                | Stores SQL text/hash, status, summary, affected rows, and error fields; does not store full result sets.            |
+| Table                         | Purpose                                                | Sensitive-data boundary                                                                                                 |
+|-------------------------------|--------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `dbf_users`                   | Users and administrator password hash metadata.        | Stores password hash only; no plaintext password.                                                                       |
+| `dbf_api_tokens`              | MCP token metadata.                                    | Stores `token_hash`, `token_prefix`, status, expiry, revocation, and last-used metadata; no plaintext token column.     |
+| `dbf_projects`                | Project registry.                                      | No credentials.                                                                                                         |
+| `dbf_environments`            | Project environment registry.                          | No database password fields in V1.                                                                                      |
+| `dbf_user_env_grants`         | User-to-environment grants.                            | Unique `(user_id, environment_id)` grant boundary.                                                                      |
+| `dbf_confirmation_challenges` | Server-side confirmation challenges for high-risk SQL. | Stores user id, token id, project/env keys, SQL text/hash, risk level, expiry, and challenge state; no result set data. |
+| `dbf_audit_events`            | Operation audit events.                                | Stores SQL text/hash, status, summary, affected rows, and error fields; does not store full result sets.                |
 
 Key constraints and indexes currently verified by tests:
 
@@ -486,6 +506,9 @@ Key constraints and indexes currently verified by tests:
 - `uk_dbf_user_env_grants_user_env` ensures a user has one grant row per environment.
 - `idx_dbf_audit_user_time`, `idx_dbf_audit_target_time`, `idx_dbf_audit_status_time`, `idx_dbf_audit_sql_hash`, and
   `idx_dbf_audit_request_id` support common audit queries.
+- `idx_dbf_confirmation_user_status`, `idx_dbf_confirmation_environment_status`, and
+  `idx_dbf_confirmation_target_status` support confirmation challenge lookup by user/token, environment, target, status,
+  and expiry.
 
 Current metadata services:
 
@@ -496,7 +519,8 @@ Current metadata services:
 - `AccessDecisionService` checks active user, active token, token ownership, token expiry, active project/environment,
   and active grant before allowing project environment access.
 - `ConfirmationService` creates pending confirmation challenges, confirms pending challenges, and queries pending
-  challenges by user.
+  challenges by user. `TruncateConfirmationService` adds the policy-level verification for same user, token,
+  project/environment, SQL hash, expiry, and one-time consumption.
 - `AuditService` records audit events and queries recent events by user.
 
 ## Target System Shape

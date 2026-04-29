@@ -111,7 +111,13 @@ class DbflowMcpServerTests {
         assertAuthenticationRequired(this.dbflowMcpTools.getEffectivePolicy("demo", "dev", null, null, "SELECT"));
         assertAuthenticationRequired(this.dbflowMcpTools.explainSql("demo", "dev", "select 1", null));
         assertAuthenticationRequired(this.dbflowMcpTools.executeSql("demo", "dev", "select 1", null, true, "test"));
-        assertAuthenticationRequired(this.dbflowMcpTools.confirmSql("challenge-1", "123456", "test"));
+        assertAuthenticationRequired(this.dbflowMcpTools.confirmSql(
+                "demo",
+                "dev",
+                "challenge-1",
+                "TRUNCATE TABLE app.orders",
+                "test"
+        ));
     }
 
     /**

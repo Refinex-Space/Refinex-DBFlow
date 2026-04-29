@@ -28,10 +28,28 @@ public class DbfConfirmationChallenge {
     private Long userId;
 
     /**
+     * MCP Token 主键。
+     */
+    @Column(name = "token_id", nullable = false)
+    private Long tokenId;
+
+    /**
      * 环境主键。
      */
     @Column(name = "environment_id", nullable = false)
     private Long environmentId;
+
+    /**
+     * 项目标识快照。
+     */
+    @Column(name = "project_key", nullable = false, length = 128)
+    private String projectKey;
+
+    /**
+     * 环境标识快照。
+     */
+    @Column(name = "environment_key", nullable = false, length = 128)
+    private String environmentKey;
 
     /**
      * 对外确认标识。
@@ -91,7 +109,10 @@ public class DbfConfirmationChallenge {
      * 创建待确认挑战。
      *
      * @param userId         用户主键
+     * @param tokenId        MCP Token 主键
      * @param environmentId  环境主键
+     * @param projectKey     项目标识
+     * @param environmentKey 环境标识
      * @param confirmationId 对外确认标识
      * @param sqlHash        SQL hash
      * @param sqlText        SQL 原文
@@ -101,7 +122,10 @@ public class DbfConfirmationChallenge {
      */
     public static DbfConfirmationChallenge pending(
             Long userId,
+            Long tokenId,
             Long environmentId,
+            String projectKey,
+            String environmentKey,
             String confirmationId,
             String sqlHash,
             String sqlText,
@@ -110,7 +134,10 @@ public class DbfConfirmationChallenge {
     ) {
         DbfConfirmationChallenge challenge = new DbfConfirmationChallenge();
         challenge.userId = userId;
+        challenge.tokenId = tokenId;
         challenge.environmentId = environmentId;
+        challenge.projectKey = projectKey;
+        challenge.environmentKey = environmentKey;
         challenge.confirmationId = confirmationId;
         challenge.sqlHash = sqlHash;
         challenge.sqlText = sqlText;
@@ -165,6 +192,51 @@ public class DbfConfirmationChallenge {
     }
 
     /**
+     * 读取用户主键。
+     *
+     * @return 用户主键
+     */
+    public Long getUserId() {
+        return userId;
+    }
+
+    /**
+     * 读取 MCP Token 主键。
+     *
+     * @return MCP Token 主键
+     */
+    public Long getTokenId() {
+        return tokenId;
+    }
+
+    /**
+     * 读取环境主键。
+     *
+     * @return 环境主键
+     */
+    public Long getEnvironmentId() {
+        return environmentId;
+    }
+
+    /**
+     * 读取项目标识。
+     *
+     * @return 项目标识
+     */
+    public String getProjectKey() {
+        return projectKey;
+    }
+
+    /**
+     * 读取环境标识。
+     *
+     * @return 环境标识
+     */
+    public String getEnvironmentKey() {
+        return environmentKey;
+    }
+
+    /**
      * 读取确认标识。
      *
      * @return 对外确认标识
@@ -174,12 +246,48 @@ public class DbfConfirmationChallenge {
     }
 
     /**
+     * 读取 SQL hash。
+     *
+     * @return SQL hash
+     */
+    public String getSqlHash() {
+        return sqlHash;
+    }
+
+    /**
+     * 读取 SQL 原文。
+     *
+     * @return SQL 原文
+     */
+    public String getSqlText() {
+        return sqlText;
+    }
+
+    /**
+     * 读取风险级别。
+     *
+     * @return 风险级别
+     */
+    public String getRiskLevel() {
+        return riskLevel;
+    }
+
+    /**
      * 读取确认状态。
      *
      * @return 确认状态
      */
     public String getStatus() {
         return status;
+    }
+
+    /**
+     * 读取过期时间。
+     *
+     * @return 过期时间
+     */
+    public Instant getExpiresAt() {
+        return expiresAt;
     }
 
     /**

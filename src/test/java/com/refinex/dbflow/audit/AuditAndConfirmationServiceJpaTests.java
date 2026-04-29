@@ -1,5 +1,6 @@
 package com.refinex.dbflow.audit;
 
+import com.refinex.dbflow.access.entity.DbfApiToken;
 import com.refinex.dbflow.access.entity.DbfEnvironment;
 import com.refinex.dbflow.access.entity.DbfProject;
 import com.refinex.dbflow.access.entity.DbfUser;
@@ -58,12 +59,21 @@ class AuditAndConfirmationServiceJpaTests {
     @Test
     void shouldConfirmPendingChallenge() {
         DbfUser user = accessService.createUser("dave", "Dave", "hash");
+        DbfApiToken token = accessService.issueActiveToken(
+                user.getId(),
+                "token-hash-confirm",
+                "dbf_confirm",
+                Instant.now().plus(1, ChronoUnit.DAYS)
+        );
         DbfEnvironment environment = createEnvironment("project-confirm", "prod");
         Instant expiresAt = Instant.now().plus(5, ChronoUnit.MINUTES);
 
         confirmationService.createPending(
                 user.getId(),
+                token.getId(),
                 environment.getId(),
+                "project-confirm",
+                "prod",
                 "confirm-1",
                 "sql-hash-1",
                 "TRUNCATE TABLE orders",

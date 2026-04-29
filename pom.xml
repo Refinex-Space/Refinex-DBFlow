@@ -21,6 +21,10 @@
     <!-- 项目级版本属性：除阶段明确锁定的 BOM 外，依赖版本优先交给 BOM 管理。 -->
     <properties>
         <java.version>21</java.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <maven.compiler.parameters>true</maven.compiler.parameters>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-ai.version>1.1.4</spring-ai.version>
         <spring-cloud.version>2025.0.2</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.0.0.0</spring-cloud-alibaba.version>
@@ -72,6 +76,25 @@
 
     <build>
         <plugins>
+            <!-- Maven 编译插件：显式锁定 Java release 21，并保留方法参数名供框架绑定和诊断使用。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <parameters>${maven.compiler.parameters}</parameters>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <!-- Maven 测试插件：沿用 JUnit Platform，并关闭模块路径以保持当前单模块 classpath 测试模型稳定。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <useModulePath>false</useModulePath>
+                    <failIfNoTests>true</failIfNoTests>
+                </configuration>
+            </plugin>
             <!-- Spring Boot 打包插件：负责生成可执行 Spring Boot jar。 -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>

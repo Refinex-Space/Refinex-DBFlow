@@ -4,9 +4,9 @@
   当前阶段只定义控制台输出，后续接入审计、traceId 和文件归档时继续扩展。
 -->
 <configuration>
-    <!-- 控制台日志格式：包含时间、级别、线程、logger 与消息，便于本地开发排查。 -->
+    <!-- 控制台日志格式：包含时间、级别、线程、request id、logger 与消息，便于本地开发排查。 -->
     <property name="CONSOLE_LOG_PATTERN"
-              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} - %msg%n"/>
+              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"/>
 
     <!-- 控制台 appender：本地开发和测试阶段的默认日志输出目标。 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

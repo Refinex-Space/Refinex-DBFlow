@@ -2,7 +2,7 @@
 
 # Observability
 
-This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture spec and a minimal single-module Spring Boot Maven scaffold. The current test suite only verifies that the Spring application context starts.
+This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture spec, a minimal single-module Spring Boot Maven scaffold, package boundaries, common model tests, and request id filter tests.
 
 ## Build & Run
 
@@ -10,7 +10,7 @@ This document records the current verification state of the repository. Refinex-
 | --- | --- | --- |
 | Install dependencies | `./mvnw dependency:go-offline` | Maven resolves project dependencies for offline use. |
 | Build | `./mvnw package` | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`. |
-| Run tests | `./mvnw test` | Current baseline: Spring Boot context smoke test passes. |
+| Run tests | `./mvnw test` | Current baseline: Spring Boot context, common model, exception model, and request id filter tests pass. |
 | Lint / format check | Not available yet; no formatter is configured. | Future scaffold must replace this row. |
 | Start dev server | `./mvnw spring-boot:run` | Starts the scaffolded Spring Boot application locally. |
 | Validate Harness | `python3 scripts/check_harness.py` | Exit 0, all manifest entries and AGENTS links valid. |
@@ -31,6 +31,7 @@ Planned baseline:
 - Spring AI 1.1.4
 - Spring Cloud 2025.0.2
 - Spring Cloud Alibaba `2025.0.0.0`
+- Maven compiler release 21, UTF-8 encoding, and compiler `-parameters`
 - MySQL 8 and MySQL 5.7 via Testcontainers after scaffold
 - Nacos for configuration and discovery after scaffold
 

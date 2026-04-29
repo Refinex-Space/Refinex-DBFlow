@@ -33,11 +33,33 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 |       +-- java-development-standards.md
 +-- src/
 |   +-- main/
-|   |   +-- java/com/refinex/dbflow/DbflowApplication.java
+|   |   +-- java/com/refinex/dbflow/
+|   |   |   +-- DbflowApplication.java
+|   |   |   +-- access/package-info.java
+|   |   |   +-- admin/package-info.java
+|   |   |   +-- audit/package-info.java
+|   |   |   +-- common/
+|   |   |   |   +-- ApiResult.java
+|   |   |   |   +-- DbflowException.java
+|   |   |   |   +-- ErrorCode.java
+|   |   |   |   +-- package-info.java
+|   |   |   +-- config/package-info.java
+|   |   |   +-- executor/package-info.java
+|   |   |   +-- mcp/package-info.java
+|   |   |   +-- observability/
+|   |   |   |   +-- RequestIdFilter.java
+|   |   |   |   +-- package-info.java
+|   |   |   +-- security/package-info.java
+|   |   |   +-- sqlpolicy/package-info.java
 |   |   +-- resources/application.yml
 |   |   +-- resources/logback-spring.xml
 |   +-- test/
-|       +-- java/com/refinex/dbflow/DbflowApplicationTests.java
+|       +-- java/com/refinex/dbflow/
+|           +-- DbflowApplicationTests.java
+|           +-- common/
+|           |   +-- ApiResultTests.java
+|           |   +-- DbflowExceptionTests.java
+|           +-- observability/RequestIdFilterTests.java
 +-- scripts/
     +-- check_harness.py
 ```
@@ -47,9 +69,43 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 - Build system: single-module Maven project with Maven wrapper 3.9.12.
 - Java runtime: JDK 21.
 - Application package root: `com.refinex.dbflow`.
-- Current test baseline: Spring Boot application context smoke test only.
+- Current test baseline: Spring Boot application context smoke test plus common model and request id filter tests.
 - Spring AI MCP dependency management is imported through the Spring AI BOM, but the MCP server starter and MCP endpoint are intentionally deferred to the MCP scaffold phase.
 - Development standard baseline: `docs/references/java-development-standards.md` requires Chinese JavaDoc, parameter-complete method comments, field comments, Maven dependency comments, and logging XML comments.
+- Maven quality baseline: Java release 21, UTF-8 source/reporting encoding, compiler `-parameters`, JUnit Platform via Surefire, and classpath-based test execution.
+
+## Current Source Package Boundaries
+
+| Package | Current contents | Responsibility |
+| --- | --- | --- |
+| `com.refinex.dbflow` | `DbflowApplication` | Spring Boot application entrypoint. |
+| `com.refinex.dbflow.common` | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java` | Shared result and exception primitives; no DBFlow business policy. |
+| `com.refinex.dbflow.config` | `package-info.java` | Reserved boundary for YAML, Nacos, datasource, and policy configuration binding. |
+| `com.refinex.dbflow.security` | `package-info.java` | Reserved boundary for admin session and MCP Bearer Token authentication. |
+| `com.refinex.dbflow.access` | `package-info.java` | Reserved boundary for users, tokens, and project-environment grants. |
+| `com.refinex.dbflow.mcp` | `package-info.java` | Reserved boundary for MCP tools, resources, prompts, and transport adapters. |
+| `com.refinex.dbflow.sqlpolicy` | `package-info.java` | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy. |
+| `com.refinex.dbflow.executor` | `package-info.java` | Reserved boundary for Hikari data sources, JDBC execution, and EXPLAIN. |
+| `com.refinex.dbflow.audit` | `package-info.java` | Reserved boundary for audit events, confirmation challenges, and execution summaries. |
+| `com.refinex.dbflow.admin` | `package-info.java` | Reserved boundary for management UI and administrator workflows. |
+| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java` | Request id propagation, logging context, and future metrics/health infrastructure. |
+
+## Current Dependency Direction
+
+The current implementation has only foundational dependencies:
+
+```text
+DbflowApplication
+        -> Spring Boot
+
+observability
+        -> Spring Web / Servlet API / SLF4J MDC
+
+common
+        -> JDK only
+```
+
+Reserved packages currently contain only `package-info.java`, so they have no implementation dependency on each other. Future code should keep the approved target dependency direction below.
 
 ## Target System Shape
 

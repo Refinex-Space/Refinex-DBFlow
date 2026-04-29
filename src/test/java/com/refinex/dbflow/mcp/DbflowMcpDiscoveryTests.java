@@ -3,6 +3,10 @@ package com.refinex.dbflow.mcp;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.refinex.dbflow.access.entity.DbfUser;
+import com.refinex.dbflow.access.repository.DbfUserRepository;
+import com.refinex.dbflow.security.McpTokenIssueResult;
+import com.refinex.dbflow.security.McpTokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,10 +15,15 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,6 +34,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class DbflowMcpDiscoveryTests {
+
+    /**
+     * 测试专用 pepper，模拟安全外部配置。
+     */
+    private static final String TEST_TOKEN_PEPPER = UUID.randomUUID().toString();
 
     /**
      * MCP Session Header 名称。
@@ -42,15 +56,44 @@ class DbflowMcpDiscoveryTests {
     private final ObjectMapper objectMapper;
 
     /**
+     * MCP Token 生命周期服务。
+     */
+    private final McpTokenService tokenService;
+
+    /**
+     * 用户 repository。
+     */
+    private final DbfUserRepository userRepository;
+
+    /**
      * 创建 DBFlow MCP discovery 测试。
      *
      * @param restTemplate HTTP 测试客户端
      * @param objectMapper JSON 序列化器
+     * @param tokenService MCP Token 生命周期服务
+     * @param userRepository 用户 repository
      */
     @Autowired
-    DbflowMcpDiscoveryTests(TestRestTemplate restTemplate, ObjectMapper objectMapper) {
+    DbflowMcpDiscoveryTests(
+            TestRestTemplate restTemplate,
+            ObjectMapper objectMapper,
+            McpTokenService tokenService,
+            DbfUserRepository userRepository
+    ) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
+        this.tokenService = tokenService;
+        this.userRepository = userRepository;
+    }
+
+    /**
+     * 注册测试专用 MCP Token pepper。
+     *
+     * @param registry 动态属性注册器
+     */
+    @DynamicPropertySource
+    static void registerTokenPepper(DynamicPropertyRegistry registry) {
+        registry.add("dbflow.security.mcp-token.pepper", () -> TEST_TOKEN_PEPPER);
     }
 
     /**
@@ -58,9 +101,10 @@ class DbflowMcpDiscoveryTests {
      */
     @Test
     void shouldDiscoverDbflowMcpSurface() {
-        String sessionId = initializeSession();
+        String bearerToken = issueBearerToken();
+        String sessionId = initializeSession(bearerToken);
 
-        JsonNode tools = request(sessionId, 2, "tools/list", Map.of()).path("result").path("tools");
+        JsonNode tools = request(bearerToken, sessionId, 2, "tools/list", Map.of()).path("result").path("tools");
         assertThat(names(tools, "name")).contains(
                 DbflowMcpNames.TOOL_LIST_TARGETS,
                 DbflowMcpNames.TOOL_INSPECT_SCHEMA,
@@ -74,10 +118,12 @@ class DbflowMcpDiscoveryTests {
         assertThat(inspectSchemaTool.path("inputSchema").path("properties").has("project")).isTrue();
         assertThat(inspectSchemaTool.path("inputSchema").path("properties").has("env")).isTrue();
 
-        JsonNode resources = request(sessionId, 3, "resources/list", Map.of()).path("result").path("resources");
+        JsonNode resources = request(bearerToken, sessionId, 3, "resources/list", Map.of())
+                .path("result")
+                .path("resources");
         assertThat(names(resources, "uri")).contains(DbflowMcpNames.RESOURCE_TARGETS);
 
-        JsonNode resourceTemplates = request(sessionId, 4, "resources/templates/list", Map.of())
+        JsonNode resourceTemplates = request(bearerToken, sessionId, 4, "resources/templates/list", Map.of())
                 .path("result")
                 .path("resourceTemplates");
         assertThat(names(resourceTemplates, "uriTemplate")).contains(
@@ -85,7 +131,7 @@ class DbflowMcpDiscoveryTests {
                 DbflowMcpNames.RESOURCE_POLICY
         );
 
-        JsonNode prompts = request(sessionId, 5, "prompts/list", Map.of()).path("result").path("prompts");
+        JsonNode prompts = request(bearerToken, sessionId, 5, "prompts/list", Map.of()).path("result").path("prompts");
         assertThat(names(prompts, "name")).contains(
                 DbflowMcpNames.PROMPT_SAFE_MYSQL_CHANGE,
                 DbflowMcpNames.PROMPT_EXPLAIN_PLAN_REVIEW
@@ -99,8 +145,8 @@ class DbflowMcpDiscoveryTests {
      *
      * @return MCP Session Id
      */
-    private String initializeSession() {
-        ResponseEntity<String> response = post(null, Map.of(
+    private String initializeSession(String bearerToken) {
+        ResponseEntity<String> response = post(bearerToken, null, Map.of(
                 "jsonrpc", "2.0",
                 "id", 1,
                 "method", "initialize",
@@ -120,14 +166,15 @@ class DbflowMcpDiscoveryTests {
     /**
      * 发送 MCP JSON-RPC 请求。
      *
+     * @param bearerToken MCP Bearer Token
      * @param sessionId MCP Session Id
      * @param id        JSON-RPC 请求 Id
      * @param method    JSON-RPC 方法名
      * @param params    JSON-RPC 参数
      * @return JSON-RPC 响应
      */
-    private JsonNode request(String sessionId, int id, String method, Map<String, Object> params) {
-        ResponseEntity<String> response = post(sessionId, Map.of(
+    private JsonNode request(String bearerToken, String sessionId, int id, String method, Map<String, Object> params) {
+        ResponseEntity<String> response = post(bearerToken, sessionId, Map.of(
                 "jsonrpc", "2.0",
                 "id", id,
                 "method", method,
@@ -140,18 +187,32 @@ class DbflowMcpDiscoveryTests {
     /**
      * 发送 MCP HTTP 请求。
      *
+     * @param bearerToken MCP Bearer Token
      * @param sessionId MCP Session Id
      * @param body      请求体
      * @return HTTP 响应
      */
-    private ResponseEntity<String> post(String sessionId, Map<String, Object> body) {
+    private ResponseEntity<String> post(String bearerToken, String sessionId, Map<String, Object> body) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
+        headers.setBearerAuth(bearerToken);
         if (sessionId != null) {
             headers.set(MCP_SESSION_HEADER, sessionId);
         }
         return restTemplate.postForEntity("/mcp", new HttpEntity<>(body, headers), String.class);
+    }
+
+    /**
+     * 颁发测试专用 MCP Bearer Token。
+     *
+     * @return MCP Bearer Token 明文，仅在本测试请求头内使用
+     */
+    private String issueBearerToken() {
+        String username = "mcp-discovery-" + UUID.randomUUID();
+        DbfUser user = userRepository.save(DbfUser.create(username, username, "password-hash"));
+        McpTokenIssueResult issueResult = tokenService.issueToken(user.getId(), Instant.now().plus(1, ChronoUnit.DAYS));
+        return issueResult.plaintextToken();
     }
 
     /**

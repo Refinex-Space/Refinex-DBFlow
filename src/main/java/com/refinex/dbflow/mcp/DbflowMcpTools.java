@@ -47,7 +47,7 @@ public class DbflowMcpTools {
     @McpTool(
             name = DbflowMcpNames.TOOL_LIST_TARGETS,
             title = "List DBFlow targets",
-            description = "List project/environment targets visible to the current MCP principal. Skeleton returns an empty list until MCP Bearer Token authentication is connected.",
+            description = "List project/environment targets visible to the current MCP principal. Skeleton returns an empty list until target catalog projection is connected.",
             annotations = @McpTool.McpAnnotations(
                     title = "List DBFlow targets",
                     readOnlyHint = true,

@@ -32,6 +32,6 @@ public record McpAuthorizationBoundary(
      * @return 授权边界结果
      */
     public static McpAuthorizationBoundary authenticationRequired() {
-        return new McpAuthorizationBoundary(true, false, "AUTHENTICATION_REQUIRED", "MCP Bearer Token 认证尚未接入");
+        return new McpAuthorizationBoundary(true, false, "AUTHENTICATION_REQUIRED", "MCP Bearer Token 缺失或无效");
     }
 }

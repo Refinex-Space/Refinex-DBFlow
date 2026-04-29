@@ -5,22 +5,23 @@
 This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture
 spec, a minimal single-module Spring Boot Maven scaffold, package boundaries, common model tests, request id filter
 tests, Flyway metadata schema migration tests, JPA service slice tests for access/audit/confirmation metadata,
-project/environment access decision tests, MCP Token lifecycle service tests, a Spring AI MCP WebMVC Streamable HTTP
-server smoke test, and MCP tools/resources/prompts discovery tests. It also includes validated `dbflow.*` YAML binding
-tests for datasource defaults, project environments, and dangerous DDL policy, plus management-side Spring Security
-tests for form login and CSRF.
+project/environment access decision tests, MCP Token lifecycle service tests, MCP Bearer endpoint security tests, a
+Spring AI MCP WebMVC Streamable HTTP server smoke test, and MCP tools/resources/prompts discovery tests. It also
+includes
+validated `dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous DDL policy, plus
+management-side Spring Security tests for form login and CSRF.
 
 ## Build & Run
 
-| Task                 | Command                                                                                          | Expected                                                                                                                                                        |
-|----------------------|--------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Install dependencies | `./mvnw dependency:go-offline`                                                                   | Maven resolves project dependencies for offline use.                                                                                                            |
-| Build                | `./mvnw package`                                                                                 | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                                          |
-| Run tests            | `./mvnw test`                                                                                    | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, security, configuration, and JPA service tests pass. |
-| Lint / format check  | Not available yet; no formatter is configured.                                                   | Future scaffold must replace this row.                                                                                                                          |
-| Start dev server     | `./mvnw spring-boot:run`                                                                         | Starts the Spring Boot application locally with MCP Streamable HTTP available at `http://localhost:8080/mcp`.                                                   |
-| MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` | The client can discover `dbflow_smoke`, six DBFlow skeleton tools, DBFlow resources/templates, and DBFlow prompts.                                              |
-| Validate Harness     | `python3 scripts/check_harness.py`                                                               | Exit 0, all manifest entries and AGENTS links valid.                                                                                                            |
+| Task                 | Command                                                                                                                                      | Expected                                                                                                                                                        |
+|----------------------|----------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Install dependencies | `./mvnw dependency:go-offline`                                                                                                               | Maven resolves project dependencies for offline use.                                                                                                            |
+| Build                | `./mvnw package`                                                                                                                             | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                                          |
+| Run tests            | `./mvnw test`                                                                                                                                | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, security, configuration, and JPA service tests pass. |
+| Lint / format check  | Not available yet; no formatter is configured.                                                                                               | Future scaffold must replace this row.                                                                                                                          |
+| Start dev server     | `./mvnw spring-boot:run`                                                                                                                     | Starts the Spring Boot application locally with MCP Streamable HTTP available at `http://localhost:8080/mcp`.                                                   |
+| MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` with `Authorization: Bearer <DBFlow Token>` | The client can discover `dbflow_smoke`, six DBFlow skeleton tools, DBFlow resources/templates, and DBFlow prompts.                                              |
+| Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                            |
 
 ## CI Configuration
 
@@ -68,8 +69,9 @@ Configuration sources and secret boundary:
   configured database passwords.
 - Future MCP SQL execution verification must include an `AccessDecisionService` allow/deny check before target database
   access.
-- MCP Bearer Token authentication is not part of the management session chain and should be verified separately when
-  implemented.
+- MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
+  `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
+  `McpTokenService`.
 
 MCP server runtime boundary:
 
@@ -78,6 +80,13 @@ MCP server runtime boundary:
 - Protocol: `STREAMABLE`
 - Type: `SYNC`
 - Streamable HTTP endpoint: `/mcp`
+- HTTP authentication: every `/mcp` request must include `Authorization: Bearer <DBFlow Token>`. The server rejects
+  missing, malformed, unknown, revoked, or expired tokens with HTTP 401 and rejects query string `token`/`access_token`.
+  `Mcp-Session-Id` does not carry authentication state.
+- Request metadata extraction: `clientInfo` currently uses optional `Mcp-Client-Info` header at the filter layer;
+  JSON-RPC `initialize.params.clientInfo` should be copied by future audit/request-context integration. `User-Agent`
+  comes from the HTTP header, source IP prefers `X-Forwarded-For`, then `X-Real-IP`, then remote address, and request id
+  comes from `X-Request-Id` or a generated UUID.
 - Enabled capabilities: `spring.ai.mcp.server.capabilities.tool=true`,
   `spring.ai.mcp.server.capabilities.resource=true`, and `spring.ai.mcp.server.capabilities.prompt=true`
 - Current tool surface: `dbflow_smoke`, `dbflow_list_targets`, `dbflow_inspect_schema`,
@@ -111,6 +120,8 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   missing JDBC URL/driver rejection, and invalid whitelist rejection.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
+- `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,
+  no-session-auth-reuse, and SecurityContext-to-MCP-context propagation paths.
 - `McpTokenServiceJpaTests` covers one-time plaintext issue, hash/prefix persistence, duplicate active-token rejection,
   invalid token rejection, revocation, reissue, successful validation, and `last_used_at` updates.
 - `AccessServiceJpaTests` covers active token uniqueness, token revocation/reissue, and grant query boundaries.
@@ -121,5 +132,5 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `DbflowMcpServerTests` covers Spring AI MCP server property binding, Streamable HTTP endpoint configuration,
   WebMVC transport auto-configuration, `dbflow_smoke` tool registration, smoke tool invocation, and authentication
   boundary behavior for all DBFlow tool skeletons.
-- `DbflowMcpDiscoveryTests` covers JSON-RPC discovery through `/mcp` for the six stable DBFlow skeleton tools,
-  `dbflow://targets`, schema/policy resource templates, and the two DBFlow prompts.
+- `DbflowMcpDiscoveryTests` covers authenticated JSON-RPC discovery through `/mcp` for the six stable DBFlow skeleton
+  tools, `dbflow://targets`, schema/policy resource templates, and the two DBFlow prompts.

@@ -8,6 +8,10 @@ package com.refinex.dbflow.mcp;
  * @param userId        元数据库用户主键
  * @param tokenId       MCP Token 元数据主键
  * @param source        认证来源
+ * @param clientInfo    MCP clientInfo 摘要
+ * @param userAgent     HTTP User-Agent
+ * @param sourceIp      来源 IP
+ * @param requestId     请求标识
  * @author refinex
  */
 public record McpAuthenticationContext(
@@ -15,7 +19,11 @@ public record McpAuthenticationContext(
         String principal,
         Long userId,
         Long tokenId,
-        String source
+        String source,
+        String clientInfo,
+        String userAgent,
+        String sourceIp,
+        String requestId
 ) {
 
     /**
@@ -24,6 +32,16 @@ public record McpAuthenticationContext(
      * @return 匿名认证上下文
      */
     public static McpAuthenticationContext anonymous() {
-        return new McpAuthenticationContext(false, "anonymous", null, null, "ANONYMOUS_SKELETON");
+        return new McpAuthenticationContext(
+                false,
+                "anonymous",
+                null,
+                null,
+                "ANONYMOUS",
+                "unknown",
+                "unknown",
+                "unknown",
+                "unknown"
+        );
     }
 }

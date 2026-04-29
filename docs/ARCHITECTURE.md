@@ -5,12 +5,11 @@
 Refinex-DBFlow is planned as an internal MySQL MCP database operation gateway. Its purpose is to let AI tools operate authorized MySQL project environments while the server enforces authentication, authorization, dangerous SQL policy, confirmation, and audit logging.
 
 The current repository contains a single-module Spring Boot Maven scaffold, metadata persistence/services, validated
-`dbflow.*` configuration binding, management-side Spring Security session login, MCP Token lifecycle services,
-project/environment access decisions, a Spring AI MCP WebMVC Streamable HTTP endpoint, stable MCP tool/resource/prompt
-skeletons, and Harness control-plane documentation. It does not yet contain real database execution MCP tools, MCP
-Bearer Token HTTP authentication, SQL policy enforcement, target database execution, full management UI, CI
-configuration, or production
-deployment configuration. The architecture
+`dbflow.*` configuration binding, management-side Spring Security session login, MCP Token lifecycle services, MCP
+Bearer Token HTTP authentication, project/environment access decisions, a Spring AI MCP WebMVC Streamable HTTP
+endpoint, stable MCP tool/resource/prompt skeletons, and Harness control-plane documentation. It does not yet contain
+real database execution MCP tools, SQL policy enforcement, target database execution, full management UI, CI
+configuration, or production deployment configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
 and must be updated as implementation packages are added.
@@ -92,7 +91,6 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- package-info.java
 |   |   |   +-- executor/package-info.java
 |   |   |   +-- mcp/
-|   |   |   |   +-- AnonymousMcpAuthenticationContextResolver.java
 |   |   |   |   +-- DbflowMcpNames.java
 |   |   |   |   +-- DbflowMcpPrompts.java
 |   |   |   |   +-- DbflowMcpResources.java
@@ -105,6 +103,7 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- McpAuthenticationContext.java
 |   |   |   |   +-- McpAuthenticationContextResolver.java
 |   |   |   |   +-- McpAuthorizationBoundary.java
+|   |   |   |   +-- SecurityContextMcpAuthenticationContextResolver.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- observability/
 |   |   |   |   +-- RequestIdFilter.java
@@ -114,6 +113,11 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- AdminSecurityProperties.java
 |   |   |   |   +-- AdminUserDetailsService.java
 |   |   |   |   +-- InitialAdminUserInitializer.java
+|   |   |   |   +-- McpAuthenticationToken.java
+|   |   |   |   +-- McpBearerTokenAuthenticationFilter.java
+|   |   |   |   +-- McpRequestMetadata.java
+|   |   |   |   +-- McpRequestMetadataExtractor.java
+|   |   |   |   +-- McpSecurityConfiguration.java
 |   |   |   |   +-- McpTokenIssueResult.java
 |   |   |   |   +-- McpTokenProperties.java
 |   |   |   |   +-- McpTokenService.java
@@ -138,6 +142,7 @@ and must be updated as implementation packages are added.
 |           +-- mcp/DbflowMcpServerTests.java
 |           +-- observability/RequestIdFilterTests.java
 |           +-- security/AdminSecurityTests.java
+|           +-- security/McpSecurityTests.java
 |           +-- security/McpTokenServiceJpaTests.java
 +-- scripts/
     +-- check_harness.py
@@ -161,6 +166,9 @@ and must be updated as implementation packages are added.
   dangerous DDL policy into `DbflowProperties` with startup validation.
 - Admin security baseline: `/admin/**`, `/login`, and `/logout` are protected by a management-side Spring Security
   form-login session chain with CSRF and BCrypt-backed users.
+- MCP Bearer security baseline: `/mcp` is protected by a separate stateless Spring Security chain that accepts only
+  `Authorization: Bearer <token>`, rejects query string tokens, validates every request through `McpTokenService`, and
+  writes a DBFlow MCP authentication token into `SecurityContext`.
 - MCP Token lifecycle baseline: `McpTokenService` can issue a unique active Token per user, store only a peppered
   HMAC hash and display prefix, revoke active tokens, reissue after revocation, validate by hash comparison, and update
   `last_used_at`.
@@ -170,19 +178,19 @@ and must be updated as implementation packages are added.
 
 ## Current Source Package Boundaries
 
-| Package                            | Current contents                                                                                                                                                                                       | Responsibility                                                                                                      |
-|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
-| `com.refinex.dbflow`               | `DbflowApplication`                                                                                                                                                                                    | Spring Boot application entrypoint.                                                                                 |
-| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                                                                                       | Shared result and exception primitives; no DBFlow business policy.                                                  |
-| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                               | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                   |
-| `com.refinex.dbflow.security`      | `AdminSecurityConfiguration`, `AdminSecurityProperties`, `AdminUserDetailsService`, `InitialAdminUserInitializer`, `McpTokenProperties`, `McpTokenService`, MCP Token DTO records, `package-info.java` | Management session login, BCrypt admin password model, initial admin bootstrap, and MCP Token lifecycle primitives. |
-| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records            | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.      |
-| `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, authentication/authorization boundary records and services, registration constants, `package-info.java`              | Spring AI MCP tools/resources/prompts skeleton and the reserved MCP authentication/authorization boundary.          |
-| `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                                                                                                                    | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.                         |
-| `com.refinex.dbflow.executor`      | `package-info.java`                                                                                                                                                                                    | Reserved boundary for Hikari data sources, JDBC execution, and EXPLAIN.                                             |
-| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                       | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                        |
-| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                             | Minimal management endpoint surface for session-security verification.                                              |
-| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                 | Request id propagation, logging context, and future metrics/health infrastructure.                                  |
+| Package                            | Current contents                                                                                                                                                                                                                             | Responsibility                                                                                                                                                             |
+|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `com.refinex.dbflow`               | `DbflowApplication`                                                                                                                                                                                                                          | Spring Boot application entrypoint.                                                                                                                                        |
+| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                                                                                                                             | Shared result and exception primitives; no DBFlow business policy.                                                                                                         |
+| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                                                                     | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                                                                          |
+| `com.refinex.dbflow.security`      | Admin session security classes, `McpSecurityConfiguration`, `McpBearerTokenAuthenticationFilter`, `McpAuthenticationToken`, `McpRequestMetadata*`, `McpTokenService`, MCP Token DTO records, `package-info.java`                             | Management session login, BCrypt admin password model, initial admin bootstrap, MCP Bearer HTTP security, request metadata extraction, and MCP Token lifecycle primitives. |
+| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records                                                  | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.                                                             |
+| `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java` | Spring AI MCP tools/resources/prompts skeleton and the MCP authentication/authorization boundary.                                                                          |
+| `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                                                                                                                                                          | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.                                                                                |
+| `com.refinex.dbflow.executor`      | `package-info.java`                                                                                                                                                                                                                          | Reserved boundary for Hikari data sources, JDBC execution, and EXPLAIN.                                                                                                    |
+| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                             | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                               |
+| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                   | Minimal management endpoint surface for session-security verification.                                                                                                     |
+| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                       | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                         |
 
 ## Current Dependency Direction
 
@@ -221,14 +229,15 @@ admin
 
 mcp
         -> Spring AI MCP Server / Spring AI ToolCallbackProvider
+        -> security authentication context
         -> access service boundary
 
 metadata migration test
         -> Flyway / JDBC / H2 MySQL mode
 ```
 
-`mcp`, `sqlpolicy`, and `executor` currently contain only package documentation and have no implementation
-dependencies. Future code should keep the approved target dependency direction below.
+`sqlpolicy` and `executor` currently contain only package documentation and have no implementation dependencies. Future
+code should keep the approved target dependency direction below.
 
 ## Current Runtime Configuration
 
@@ -257,8 +266,9 @@ Current MCP surface:
   `dbflow://projects/{project}/envs/{env}/policy`.
 - Prompts: `dbflow_safe_mysql_change` and `dbflow_explain_plan_review`.
 - The skeleton returns empty/mock structures only. Each tool passes through `McpAuthenticationContextResolver` and
-  `McpAccessBoundaryService`; before MCP Bearer Token HTTP authentication exists, the default context is anonymous and
-  protected operations return an `AUTHENTICATION_REQUIRED` boundary.
+  `McpAccessBoundaryService`. Over HTTP, `McpAuthenticationContextResolver` reads the DBFlow MCP authentication from
+  Spring SecurityContext; direct in-process calls without SecurityContext still resolve as anonymous and return
+  `AUTHENTICATION_REQUIRED`.
 
 Sensitive configuration boundary:
 
@@ -286,12 +296,41 @@ The current implemented security boundary is management-side browser/session aut
 - `InitialAdminUserInitializer` can create the first administrator when `dbflow.admin.initial-user.enabled=true` and
   external configuration supplies either a password or BCrypt password hash.
 
-MCP endpoint authentication is intentionally not implemented in this chain. Future MCP endpoints should use a separate
-Bearer Token security chain and must not depend on browser sessions, form login, or CSRF semantics.
+MCP endpoint authentication is intentionally not implemented in this chain. It is handled by the separate MCP Bearer
+Token chain below and must not depend on browser sessions, form login, or CSRF semantics.
+
+## Current MCP Bearer Token Security
+
+The MCP HTTP security boundary is implemented as a dedicated stateless Spring Security chain for `/mcp`:
+
+- `McpSecurityConfiguration` registers the `/mcp` chain before the management chain, disables form login, HTTP Basic,
+  logout, CSRF, and HTTP session creation for MCP traffic.
+- `McpBearerTokenAuthenticationFilter` requires `Authorization: Bearer <token>` on every HTTP request and also runs on
+  Streamable HTTP async dispatches so SSE responses keep a valid SecurityContext.
+- Query string tokens are rejected when `token` or `access_token` appears in the request query string.
+- Token validation delegates to `McpTokenService.validateToken(...)`, so only the peppered hash is compared and
+  plaintext
+  Token values are not logged, persisted, audited, or returned.
+- Successful validation creates `McpAuthenticationToken` with `ROLE_MCP_USER`, user id, token id, token prefix metadata,
+  and request metadata. The authentication credentials are blank after validation.
+- Authentication failures return HTTP 401 with `WWW-Authenticate: Bearer ...`; future Spring Security authorization
+  denials on the MCP chain use HTTP 403.
+- The MCP chain does not reuse authentication from `Mcp-Session-Id`; tests verify an initialized MCP session still fails
+  when a later request omits Bearer Token.
+
+MCP request metadata extraction strategy:
+
+- `clientInfo`: current filter reads optional `Mcp-Client-Info` header and records `unknown` when absent. JSON-RPC
+  `initialize.params.clientInfo` is already visible to Spring AI and should be copied into audit/request context in the
+  future audit integration phase without consuming the body in the security filter.
+- `User-Agent`: read from the HTTP `User-Agent` header.
+- `source IP`: prefer first value of `X-Forwarded-For`, then `X-Real-IP`, then `request.getRemoteAddr()`.
+- `request id`: read from `X-Request-Id` when present; otherwise generate a UUID for the 401/security context response.
 
 ## Current MCP Token Lifecycle
 
-The current implemented MCP Token lifecycle is service-level metadata behavior, not yet an HTTP authentication filter:
+The current implemented MCP Token lifecycle is used both by service-level token management and the `/mcp` HTTP
+authentication filter:
 
 - `McpTokenService.issueToken(userId, expiresAt)` generates a random `dbf_` plaintext Token, returns it once through
   `McpTokenIssueResult`, and persists only a peppered hash plus a short prefix.

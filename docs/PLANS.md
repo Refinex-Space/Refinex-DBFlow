@@ -22,6 +22,8 @@ _No active execution plans._
 
 ## Completed Plans
 
+- [2026-04-29 MCP Bearer Token Authentication](exec-plans/completed/2026-04-29-mcp-bearer-token-auth.md) -
+  Completed; added per-request Bearer Token authentication to the Spring AI MCP endpoint.
 - [2026-04-29 DBFlow MCP Surface Skeleton](exec-plans/completed/2026-04-29-dbflow-mcp-surface-skeleton.md) -
   Completed; created stable DBFlow MCP tools, resources, prompts, and discovery tests.
 - [2026-04-29 Spring AI MCP Streamable WebMVC](exec-plans/completed/2026-04-29-spring-ai-mcp-streamable-webmvc.md) -

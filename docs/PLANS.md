@@ -22,6 +22,8 @@ _No active execution plans._
 
 ## Completed Plans
 
+- [2026-04-29 Metadata JPA Services](exec-plans/completed/2026-04-29-metadata-jpa-services.md) - Completed; implemented
+  P02.2 metadata entities, repositories, and access/audit/confirmation services.
 - [2026-04-29 Metadata Flyway Schema](exec-plans/completed/2026-04-29-metadata-flyway-schema.md) - Completed; created
   the P02.1 Flyway metadata schema and migration tests.
 - [2026-04-29 Java Quality And Package Baseline](exec-plans/completed/2026-04-29-java-quality-packages.md) - Completed; established P01.2 Java package boundaries and quality infrastructure.

@@ -35,9 +35,33 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 |   +-- main/
 |   |   +-- java/com/refinex/dbflow/
 |   |   |   +-- DbflowApplication.java
-|   |   |   +-- access/package-info.java
+|   |   |   +-- access/
+|   |   |   |   +-- entity/
+|   |   |   |   |   +-- DbfApiToken.java
+|   |   |   |   |   +-- DbfEnvironment.java
+|   |   |   |   |   +-- DbfProject.java
+|   |   |   |   |   +-- DbfUser.java
+|   |   |   |   |   +-- DbfUserEnvGrant.java
+|   |   |   |   +-- repository/
+|   |   |   |   |   +-- DbfApiTokenRepository.java
+|   |   |   |   |   +-- DbfEnvironmentRepository.java
+|   |   |   |   |   +-- DbfProjectRepository.java
+|   |   |   |   |   +-- DbfUserEnvGrantRepository.java
+|   |   |   |   |   +-- DbfUserRepository.java
+|   |   |   |   +-- service/AccessService.java
+|   |   |   |   +-- package-info.java
 |   |   |   +-- admin/package-info.java
-|   |   |   +-- audit/package-info.java
+|   |   |   +-- audit/
+|   |   |   |   +-- entity/
+|   |   |   |   |   +-- DbfAuditEvent.java
+|   |   |   |   |   +-- DbfConfirmationChallenge.java
+|   |   |   |   +-- repository/
+|   |   |   |   |   +-- DbfAuditEventRepository.java
+|   |   |   |   |   +-- DbfConfirmationChallengeRepository.java
+|   |   |   |   +-- service/
+|   |   |   |   |   +-- AuditService.java
+|   |   |   |   |   +-- ConfirmationService.java
+|   |   |   |   +-- package-info.java
 |   |   |   +-- common/
 |   |   |   |   +-- ApiResult.java
 |   |   |   |   +-- DbflowException.java
@@ -60,6 +84,8 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 |           +-- common/
 |           |   +-- ApiResultTests.java
 |           |   +-- DbflowExceptionTests.java
+|           +-- access/AccessServiceJpaTests.java
+|           +-- audit/AuditAndConfirmationServiceJpaTests.java
 |           +-- config/MetadataSchemaMigrationTests.java
 |           +-- observability/RequestIdFilterTests.java
 +-- scripts/
@@ -76,24 +102,25 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 - Spring AI MCP dependency management is imported through the Spring AI BOM, but the MCP server starter and MCP endpoint are intentionally deferred to the MCP scaffold phase.
 - Development standard baseline: `docs/references/java-development-standards.md` requires Chinese JavaDoc, parameter-complete method comments, field comments, Maven dependency comments, and logging XML comments.
 - Maven quality baseline: Java release 21, UTF-8 source/reporting encoding, compiler `-parameters`, JUnit Platform via Surefire, and classpath-based test execution.
-- Metadata schema baseline: Flyway V1 creates DBFlow metadata tables and is verified against H2 MySQL mode. Spring Data
-  JPA is present for the next entity/repository phase, but no JPA entities or repositories exist yet.
+- Metadata persistence baseline: Flyway V1 creates DBFlow metadata tables, JPA entity/repository mappings exist for all
+  seven metadata tables, and access/audit/confirmation services cover the first CRUD, status transition, and query
+  boundaries.
 
 ## Current Source Package Boundaries
 
-| Package | Current contents | Responsibility |
-| --- | --- | --- |
-| `com.refinex.dbflow` | `DbflowApplication` | Spring Boot application entrypoint. |
-| `com.refinex.dbflow.common` | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java` | Shared result and exception primitives; no DBFlow business policy. |
-| `com.refinex.dbflow.config` | `package-info.java` | Reserved boundary for YAML, Nacos, datasource, and policy configuration binding. |
-| `com.refinex.dbflow.security` | `package-info.java` | Reserved boundary for admin session and MCP Bearer Token authentication. |
-| `com.refinex.dbflow.access` | `package-info.java` | Reserved boundary for users, tokens, and project-environment grants. |
-| `com.refinex.dbflow.mcp` | `package-info.java` | Reserved boundary for MCP tools, resources, prompts, and transport adapters. |
-| `com.refinex.dbflow.sqlpolicy` | `package-info.java` | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy. |
-| `com.refinex.dbflow.executor` | `package-info.java` | Reserved boundary for Hikari data sources, JDBC execution, and EXPLAIN. |
-| `com.refinex.dbflow.audit` | `package-info.java` | Reserved boundary for audit events, confirmation challenges, and execution summaries. |
-| `com.refinex.dbflow.admin` | `package-info.java` | Reserved boundary for management UI and administrator workflows. |
-| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java` | Request id propagation, logging context, and future metrics/health infrastructure. |
+| Package                            | Current contents                                                                                           | Responsibility                                                                               |
+|------------------------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `com.refinex.dbflow`               | `DbflowApplication`                                                                                        | Spring Boot application entrypoint.                                                          |
+| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                           | Shared result and exception primitives; no DBFlow business policy.                           |
+| `com.refinex.dbflow.config`        | `package-info.java`                                                                                        | Reserved boundary for YAML, Nacos, datasource, and policy configuration binding.             |
+| `com.refinex.dbflow.security`      | `package-info.java`                                                                                        | Reserved boundary for admin session and MCP Bearer Token authentication.                     |
+| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService` | Users, tokens, project/environment registry, grants, and access metadata service boundary.   |
+| `com.refinex.dbflow.mcp`           | `package-info.java`                                                                                        | Reserved boundary for MCP tools, resources, prompts, and transport adapters.                 |
+| `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                        | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.  |
+| `com.refinex.dbflow.executor`      | `package-info.java`                                                                                        | Reserved boundary for Hikari data sources, JDBC execution, and EXPLAIN.                      |
+| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`           | Audit events, confirmation challenges, audit insertion, and confirmation status transitions. |
+| `com.refinex.dbflow.admin`         | `package-info.java`                                                                                        | Reserved boundary for management UI and administrator workflows.                             |
+| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                     | Request id propagation, logging context, and future metrics/health infrastructure.           |
 
 ## Current Dependency Direction
 
@@ -109,11 +136,20 @@ observability
 common
         -> JDK only
 
+access
+        -> common
+        -> Spring Data JPA / Spring Transactions
+
+audit
+        -> common
+        -> Spring Data JPA / Spring Transactions
+
 metadata migration test
         -> Flyway / JDBC / H2 MySQL mode
 ```
 
-Reserved packages currently contain only `package-info.java`, so they have no implementation dependency on each other. Future code should keep the approved target dependency direction below.
+`config`, `security`, `mcp`, `sqlpolicy`, `executor`, and `admin` currently contain only package documentation and have
+no implementation dependencies. Future code should keep the approved target dependency direction below.
 
 ## Current Metadata Schema
 
@@ -135,6 +171,14 @@ Key constraints and indexes currently verified by tests:
 - `uk_dbf_user_env_grants_user_env` ensures a user has one grant row per environment.
 - `idx_dbf_audit_user_time`, `idx_dbf_audit_target_time`, `idx_dbf_audit_status_time`, `idx_dbf_audit_sql_hash`, and
   `idx_dbf_audit_request_id` support common audit queries.
+
+Current metadata services:
+
+- `AccessService` creates users, projects, environments, active token metadata, token revocation, grants, active token
+  lookup, active grant lookup, and grant existence checks.
+- `ConfirmationService` creates pending confirmation challenges, confirms pending challenges, and queries pending
+  challenges by user.
+- `AuditService` records audit events and queries recent events by user.
 
 ## Target System Shape
 

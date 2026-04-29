@@ -4,18 +4,18 @@
 
 This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture
 spec, a minimal single-module Spring Boot Maven scaffold, package boundaries, common model tests, request id filter
-tests, and Flyway metadata schema migration tests.
+tests, Flyway metadata schema migration tests, and JPA service slice tests for access/audit/confirmation metadata.
 
 ## Build & Run
 
-| Task                 | Command                                        | Expected                                                                                                                                  |
-|----------------------|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| Install dependencies | `./mvnw dependency:go-offline`                 | Maven resolves project dependencies for offline use.                                                                                      |
-| Build                | `./mvnw package`                               | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                    |
-| Run tests            | `./mvnw test`                                  | Current baseline: Spring Boot context, common model, exception model, request id filter, and Flyway metadata schema migration tests pass. |
-| Lint / format check  | Not available yet; no formatter is configured. | Future scaffold must replace this row.                                                                                                    |
-| Start dev server     | `./mvnw spring-boot:run`                       | Starts the scaffolded Spring Boot application locally.                                                                                    |
-| Validate Harness     | `python3 scripts/check_harness.py`             | Exit 0, all manifest entries and AGENTS links valid.                                                                                      |
+| Task                 | Command                                        | Expected                                                                                                                               |
+|----------------------|------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| Install dependencies | `./mvnw dependency:go-offline`                 | Maven resolves project dependencies for offline use.                                                                                   |
+| Build                | `./mvnw package`                               | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                 |
+| Run tests            | `./mvnw test`                                  | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, and JPA service tests pass. |
+| Lint / format check  | Not available yet; no formatter is configured. | Future scaffold must replace this row.                                                                                                 |
+| Start dev server     | `./mvnw spring-boot:run`                       | Starts the scaffolded Spring Boot application locally.                                                                                 |
+| Validate Harness     | `python3 scripts/check_harness.py`             | Exit 0, all manifest entries and AGENTS links valid.                                                                                   |
 
 ## CI Configuration
 
@@ -65,3 +65,5 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `RequestIdFilterTests` covers incoming and generated request id behavior.
 - `MetadataSchemaMigrationTests` covers all seven metadata tables, token plaintext absence, active token uniqueness,
   grant uniqueness, and key audit/schema indexes.
+- `AccessServiceJpaTests` covers active token uniqueness, token revocation/reissue, and grant query boundaries.
+- `AuditAndConfirmationServiceJpaTests` covers confirmation status transition and audit insertion/query behavior.

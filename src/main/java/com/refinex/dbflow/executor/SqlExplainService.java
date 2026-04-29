@@ -4,8 +4,8 @@ import com.refinex.dbflow.access.service.AccessDecision;
 import com.refinex.dbflow.access.service.AccessDecisionReason;
 import com.refinex.dbflow.access.service.AccessDecisionRequest;
 import com.refinex.dbflow.access.service.AccessDecisionService;
-import com.refinex.dbflow.audit.entity.DbfAuditEvent;
-import com.refinex.dbflow.audit.service.AuditService;
+import com.refinex.dbflow.audit.service.AuditEventWriteRequest;
+import com.refinex.dbflow.audit.service.AuditEventWriter;
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.common.ErrorCode;
 import com.refinex.dbflow.sqlpolicy.SqlClassification;
@@ -79,7 +79,7 @@ public class SqlExplainService {
     /**
      * 审计服务。
      */
-    private final AuditService auditService;
+    private final AuditEventWriter auditEventWriter;
 
     /**
      * 创建 SQL EXPLAIN 服务。
@@ -87,18 +87,18 @@ public class SqlExplainService {
      * @param accessDecisionService 项目环境访问判断服务
      * @param sqlClassifier         SQL 分类服务
      * @param dataSourceRegistry    目标库数据源注册表
-     * @param auditService          审计服务
+     * @param auditEventWriter      统一审计事件写入器
      */
     public SqlExplainService(
             AccessDecisionService accessDecisionService,
             SqlClassifier sqlClassifier,
             ProjectEnvironmentDataSourceRegistry dataSourceRegistry,
-            AuditService auditService
+            AuditEventWriter auditEventWriter
     ) {
         this.accessDecisionService = accessDecisionService;
         this.sqlClassifier = sqlClassifier;
         this.dataSourceRegistry = dataSourceRegistry;
-        this.auditService = auditService;
+        this.auditEventWriter = auditEventWriter;
     }
 
     /**
@@ -112,6 +112,8 @@ public class SqlExplainService {
         Objects.requireNonNull(request, "request");
         String sqlText = safeSqlText(request.sql());
         String sqlHash = StringUtils.hasText(sqlText) ? sqlHash(sqlText) : null;
+        auditEventWriter.requestReceived(auditRequest(request, SqlOperation.UNKNOWN, SqlRiskLevel.LOW, sqlHash,
+                sqlText, "EXPLAIN 请求已接收", null, null));
         AccessDecision accessDecision = authorize(request);
         if (!accessDecision.allowed()) {
             return deny(request, SqlOperation.UNKNOWN, SqlRiskLevel.REJECTED, sqlHash, accessDecision.reason().name(),
@@ -565,22 +567,58 @@ public class SqlExplainService {
             String errorCode,
             String errorMessage
     ) {
-        auditService.record(DbfAuditEvent.sqlExecution(
+        AuditEventWriteRequest eventRequest = auditRequest(request, operation, riskLevel, sqlHash, sqlText, summary,
+                errorCode, errorMessage);
+        if (STATUS_DENIED.equals(status)) {
+            auditEventWriter.policyDenied(eventRequest);
+        } else if (STATUS_FAILED.equals(status)) {
+            auditEventWriter.failed(eventRequest);
+        } else {
+            auditEventWriter.executed(eventRequest);
+        }
+    }
+
+    /**
+     * 创建审计写入请求。
+     *
+     * @param request      EXPLAIN 请求
+     * @param operation    SQL 操作
+     * @param riskLevel    风险等级
+     * @param sqlHash      SQL hash
+     * @param sqlText      SQL 原文
+     * @param summary      结果摘要
+     * @param errorCode    错误码
+     * @param errorMessage 错误摘要
+     * @return 审计写入请求
+     */
+    private AuditEventWriteRequest auditRequest(
+            SqlExplainRequest request,
+            SqlOperation operation,
+            SqlRiskLevel riskLevel,
+            String sqlHash,
+            String sqlText,
+            String summary,
+            String errorCode,
+            String errorMessage
+    ) {
+        return new AuditEventWriteRequest(
                 request.requestId(),
                 request.userId(),
+                request.tokenId(),
                 request.tokenPrefix(),
+                request.auditContext(),
                 request.projectKey(),
                 request.environmentKey(),
                 "EXPLAIN_" + operation.name(),
                 auditRiskLevel(riskLevel),
-                status,
-                sqlHash,
                 safeSqlText(sqlText),
+                sqlHash,
                 summary,
                 0L,
                 errorCode,
-                errorMessage
-        ));
+                errorMessage,
+                null
+        );
     }
 
     /**

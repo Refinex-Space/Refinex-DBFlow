@@ -17,7 +17,9 @@ a controlled SQL execution service and MySQL 8 Testcontainers coverage for bound
 P07.2 adds controlled `dbflow_explain_sql` coverage for authorization denial, syntax rejection, MySQL 8 JSON plan
 summaries, MySQL 5.7-compatible traditional rows, indexed/unindexed plans, and non-mutating DML EXPLAIN. P07.3 adds
 authorized `dbflow_inspect_schema` and schema resource coverage for `information_schema` tables, columns, indexes,
-views, procedures, functions, filtering, truncation, and denial-before-target-access behavior. The Testcontainers
+views, procedures, functions, filtering, truncation, and denial-before-target-access behavior. The audit layer now has
+`AuditEventWriter` coverage for request received, policy denied, confirmation-required, executed, failed, and
+confirmation-expired decisions with bounded summaries and token-plaintext exclusion. The Testcontainers
 classes are skipped automatically when the local machine has no Docker runtime. Spring
 Cloud
 Alibaba Nacos Config and Discovery dependencies are present, while default local startup keeps Nacos disabled unless
@@ -103,6 +105,8 @@ Configuration sources and secret boundary:
   be injected through environment variables, encrypted configuration, Nacos secret handling, or a secret manager.
 - MCP Token plaintext is valid only as the one-time issue response. Logs, audit events, tests, and metadata tables must
   never persist generated plaintext tokens; validation evidence should use hash/prefix/metadata assertions instead.
+- Audit events store token metadata id and display prefix only, plus client name/version, user agent, source IP, tool,
+  operation, risk, decision, SQL text/hash, confirmation id, error fields, and a bounded `result_summary`.
 - Configured project/environment display may include JDBC URL, driver, username, and metadata ids, but must not expose
   configured database passwords.
 - MCP SQL execution must include an `AccessDecisionService` allow/deny check before SQL parsing and target database
@@ -129,6 +133,9 @@ Configuration sources and secret boundary:
   project/environment authorization before target datasource lookup, reads only `information_schema`, supports
   schema/table filters, caps each metadata category with `maxItems`, returns `truncated`, and does not expose JDBC
   URLs, passwords, or connection strings in inspect results.
+- SQL execution, EXPLAIN, and TRUNCATE confirmation paths now write audit events through `AuditEventWriter`. The writer
+  caps `result_summary` before persistence and covers request received, policy denied, requires confirmation, executed,
+  failed, confirmation confirmed, and confirmation expired decisions.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -143,10 +150,10 @@ MCP server runtime boundary:
 - HTTP authentication: every `/mcp` request must include `Authorization: Bearer <DBFlow Token>`. The server rejects
   missing, malformed, unknown, revoked, or expired tokens with HTTP 401 and rejects query string `token`/`access_token`.
   `Mcp-Session-Id` does not carry authentication state.
-- Request metadata extraction: `clientInfo` currently uses optional `Mcp-Client-Info` header at the filter layer;
-  JSON-RPC `initialize.params.clientInfo` should be copied by future audit/request-context integration. `User-Agent`
-  comes from the HTTP header, source IP prefers `X-Forwarded-For`, then `X-Real-IP`, then remote address, and request id
-  comes from `X-Request-Id` or a generated UUID.
+- Request metadata extraction: `clientInfo` currently uses optional `Mcp-Client-Info` header at the filter layer and
+  SQL tool calls copy it into `AuditRequestContext`. `User-Agent` comes from the HTTP header, source IP prefers
+  `X-Forwarded-For`, then `X-Real-IP`, then remote address, and request id comes from `X-Request-Id` or a generated
+  UUID.
 - Enabled capabilities: `spring.ai.mcp.server.capabilities.tool=true`,
   `spring.ai.mcp.server.capabilities.resource=true`, and `spring.ai.mcp.server.capabilities.prompt=true`
 - Current tool surface: `dbflow_smoke`, `dbflow_list_targets`, `dbflow_inspect_schema`,
@@ -177,7 +184,8 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `ApiResultTests` and `DbflowExceptionTests` cover the current common result/exception primitives.
 - `RequestIdFilterTests` covers incoming and generated request id behavior.
 - `MetadataSchemaMigrationTests` covers all seven metadata tables, token plaintext absence, active token uniqueness,
-  grant uniqueness, confirmation challenge token/target/SQL hash binding, and key audit/schema indexes.
+  grant uniqueness, confirmation challenge token/target/SQL hash binding, audit client/token/tool/decision fields, and
+  key audit/schema indexes.
 - `DbflowPropertiesTests` covers `dbflow.*` binding, dangerous DDL defaults, duplicate project/environment rejection,
   missing JDBC URL/driver rejection, invalid Hikari pool settings, invalid whitelist rejection, and
   `allow-prod-dangerous-ddl` binding.
@@ -193,8 +201,8 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   `CREATE TABLE`, and `ALTER TABLE` against MySQL 8 through Testcontainers. It is annotated with
   `@Testcontainers(disabledWithoutDocker = true)`, so local runs without Docker compile the integration test and skip
   the container-backed methods.
-- `SqlExplainServiceTests` covers unauthorized environment denial and classification rejection before target datasource
-  access.
+- `SqlExplainServiceTests` covers unauthorized environment denial, classification rejection before target datasource
+  access, failed target connection audit, and core audit field persistence for denial/failure paths.
 - `SqlExplainServiceMysqlTests` covers MySQL 8 indexed select plans with JSON summary, unindexed full-scan advice,
   `UPDATE` EXPLAIN without data mutation, and MySQL 5.7 traditional plan compatibility through Testcontainers. It is
   annotated with `@Testcontainers(disabledWithoutDocker = true)`, so local runs without Docker compile the integration
@@ -215,6 +223,8 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `TruncateConfirmationServiceJpaTests` covers TRUNCATE challenge creation, same user/token/project/env/SQL
   confirmation success, different-token rejection, different-SQL rejection, expired challenge rejection, repeated-use
   rejection, and confirmation lifecycle audit statuses.
+- `AuditEventWriterTests` covers unified audit writer decisions, non-empty core audit fields, token id/prefix storage
+  without Token plaintext, and bounded `result_summary`.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,

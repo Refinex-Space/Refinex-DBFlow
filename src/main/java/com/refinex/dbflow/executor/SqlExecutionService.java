@@ -4,8 +4,8 @@ import com.refinex.dbflow.access.service.AccessDecision;
 import com.refinex.dbflow.access.service.AccessDecisionReason;
 import com.refinex.dbflow.access.service.AccessDecisionRequest;
 import com.refinex.dbflow.access.service.AccessDecisionService;
-import com.refinex.dbflow.audit.entity.DbfAuditEvent;
-import com.refinex.dbflow.audit.service.AuditService;
+import com.refinex.dbflow.audit.service.AuditEventWriteRequest;
+import com.refinex.dbflow.audit.service.AuditEventWriter;
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.common.ErrorCode;
 import com.refinex.dbflow.sqlpolicy.*;
@@ -81,7 +81,7 @@ public class SqlExecutionService {
     /**
      * 审计服务。
      */
-    private final AuditService auditService;
+    private final AuditEventWriter auditEventWriter;
 
     /**
      * 创建受控 SQL 执行服务。
@@ -91,7 +91,7 @@ public class SqlExecutionService {
      * @param dangerousDdlPolicyEngine    DROP 高危 DDL 策略引擎
      * @param truncateConfirmationService TRUNCATE 确认服务
      * @param dataSourceRegistry          目标库数据源注册表
-     * @param auditService                审计服务
+     * @param auditEventWriter            统一审计事件写入器
      */
     public SqlExecutionService(
             AccessDecisionService accessDecisionService,
@@ -99,14 +99,14 @@ public class SqlExecutionService {
             DangerousDdlPolicyEngine dangerousDdlPolicyEngine,
             TruncateConfirmationService truncateConfirmationService,
             ProjectEnvironmentDataSourceRegistry dataSourceRegistry,
-            AuditService auditService
+            AuditEventWriter auditEventWriter
     ) {
         this.accessDecisionService = accessDecisionService;
         this.sqlClassifier = sqlClassifier;
         this.dangerousDdlPolicyEngine = dangerousDdlPolicyEngine;
         this.truncateConfirmationService = truncateConfirmationService;
         this.dataSourceRegistry = dataSourceRegistry;
-        this.auditService = auditService;
+        this.auditEventWriter = auditEventWriter;
     }
 
     /**
@@ -121,6 +121,8 @@ public class SqlExecutionService {
         AccessDecision accessDecision = authorize(request);
         String sqlText = safeSqlText(request.sql());
         String sqlHash = StringUtils.hasText(sqlText) ? sqlHash(sqlText) : null;
+        auditEventWriter.requestReceived(auditRequest(request, SqlOperation.UNKNOWN, SqlRiskLevel.LOW, sqlHash,
+                sqlText, "SQL 请求已接收", 0L, null, null, null));
         if (!accessDecision.allowed()) {
             return deny(request, SqlOperation.UNKNOWN, SqlRiskLevel.REJECTED, sqlHash,
                     "授权拒绝: " + accessDecision.reason().name() + " - " + accessDecision.message());
@@ -386,22 +388,62 @@ public class SqlExecutionService {
             String errorCode,
             String errorMessage
     ) {
-        auditService.record(DbfAuditEvent.sqlExecution(
+        AuditEventWriteRequest eventRequest = auditRequest(request, operation, riskLevel, sqlHash, sqlText, summary,
+                affectedRows, errorCode, errorMessage, null);
+        if (STATUS_DENIED.equals(status)) {
+            auditEventWriter.policyDenied(eventRequest);
+        } else if (STATUS_FAILED.equals(status)) {
+            auditEventWriter.failed(eventRequest);
+        } else {
+            auditEventWriter.executed(eventRequest);
+        }
+    }
+
+    /**
+     * 创建审计写入请求。
+     *
+     * @param request        执行请求
+     * @param operation      SQL 操作
+     * @param riskLevel      风险等级
+     * @param sqlHash        SQL hash
+     * @param sqlText        SQL 原文
+     * @param summary        结果摘要
+     * @param affectedRows   影响行数
+     * @param errorCode      错误码
+     * @param errorMessage   错误摘要
+     * @param confirmationId 确认挑战标识
+     * @return 审计写入请求
+     */
+    private AuditEventWriteRequest auditRequest(
+            SqlExecutionRequest request,
+            SqlOperation operation,
+            SqlRiskLevel riskLevel,
+            String sqlHash,
+            String sqlText,
+            String summary,
+            Long affectedRows,
+            String errorCode,
+            String errorMessage,
+            String confirmationId
+    ) {
+        return new AuditEventWriteRequest(
                 request.requestId(),
                 request.userId(),
+                request.tokenId(),
                 request.tokenPrefix(),
+                request.auditContext(),
                 request.projectKey(),
                 request.environmentKey(),
                 operation.name(),
                 auditRiskLevel(riskLevel),
-                status,
-                sqlHash,
                 safeSqlText(sqlText),
+                sqlHash,
                 summary,
                 affectedRows,
                 errorCode,
-                errorMessage
-        ));
+                errorMessage,
+                confirmationId
+        );
     }
 
     /**

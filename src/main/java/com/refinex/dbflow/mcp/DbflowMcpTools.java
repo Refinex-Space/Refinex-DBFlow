@@ -1,5 +1,6 @@
 package com.refinex.dbflow.mcp;
 
+import com.refinex.dbflow.audit.service.AuditRequestContext;
 import com.refinex.dbflow.executor.*;
 import com.refinex.dbflow.sqlpolicy.TruncateConfirmationConfirmRequest;
 import com.refinex.dbflow.sqlpolicy.TruncateConfirmationDecision;
@@ -143,7 +144,7 @@ public class DbflowMcpTools {
                 context.requestId(),
                 context.userId(),
                 context.tokenId(),
-                null,
+                context.tokenPrefix(),
                 project,
                 env,
                 schema,
@@ -258,11 +259,12 @@ public class DbflowMcpTools {
                 context.requestId(),
                 context.userId(),
                 context.tokenId(),
-                null,
+                context.tokenPrefix(),
                 project,
                 env,
                 sql,
-                schema
+                schema,
+                auditContext(context, DbflowMcpNames.TOOL_EXPLAIN_SQL)
         ));
         return response(DbflowMcpNames.TOOL_EXPLAIN_SQL, context, boundary, data(
                 "project", result.projectKey(),
@@ -336,7 +338,8 @@ public class DbflowMcpTools {
                 schema,
                 Boolean.TRUE.equals(dryRun),
                 reason,
-                SqlExecutionOptions.defaults()
+                SqlExecutionOptions.defaults(),
+                auditContext(context, DbflowMcpNames.TOOL_EXECUTE_SQL)
         ));
         return response(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
                 "project", result.projectKey(),
@@ -406,12 +409,13 @@ public class DbflowMcpTools {
                             context.requestId(),
                             context.userId(),
                             context.tokenId(),
-                            null,
+                            context.tokenPrefix(),
                             project,
                             env,
                             confirmationId,
                             sql,
-                            Instant.now()
+                            Instant.now(),
+                            auditContext(context, DbflowMcpNames.TOOL_CONFIRM_SQL)
                     )
             );
             return response(DbflowMcpNames.TOOL_CONFIRM_SQL, context, boundary, data(
@@ -452,6 +456,22 @@ public class DbflowMcpTools {
             Map<String, Object> data
     ) {
         return DbflowMcpSkeletonResponse.of(surface, context, boundary, data);
+    }
+
+    /**
+     * 创建审计请求来源上下文。
+     *
+     * @param context MCP 认证上下文
+     * @param tool    工具名称
+     * @return 审计请求来源上下文
+     */
+    private AuditRequestContext auditContext(McpAuthenticationContext context, String tool) {
+        return AuditRequestContext.fromClientInfo(
+                context.clientInfo(),
+                context.userAgent(),
+                context.sourceIp(),
+                tool
+        );
     }
 
     /**

@@ -116,15 +116,19 @@ CREATE TABLE dbf_audit_events
     id              BIGINT       NOT NULL AUTO_INCREMENT,
     request_id      VARCHAR(64)  NOT NULL,
     user_id         BIGINT,
+    token_id   BIGINT,
     token_prefix    VARCHAR(32),
     project_key     VARCHAR(128) NOT NULL,
     environment_key VARCHAR(128) NOT NULL,
     client_name     VARCHAR(128),
     client_version  VARCHAR(64),
+    user_agent VARCHAR(255),
     source_ip       VARCHAR(64),
+    tool       VARCHAR(128),
     operation_type  VARCHAR(64)  NOT NULL,
     risk_level      VARCHAR(32)  NOT NULL,
     status          VARCHAR(64)  NOT NULL,
+    decision   VARCHAR(64),
     sql_hash        VARCHAR(128),
     sql_text        TEXT,
     result_summary  TEXT,
@@ -135,10 +139,11 @@ CREATE TABLE dbf_audit_events
     created_at      TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT pk_dbf_audit_events PRIMARY KEY (id),
     CONSTRAINT fk_dbf_audit_events_user FOREIGN KEY (user_id) REFERENCES dbf_users (id),
+    CONSTRAINT fk_dbf_audit_events_token FOREIGN KEY (token_id) REFERENCES dbf_api_tokens (id),
     CONSTRAINT ck_dbf_audit_events_risk CHECK (risk_level IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL', 'FORBIDDEN')),
     CONSTRAINT ck_dbf_audit_events_status CHECK (
-        status IN ('ALLOWED_EXECUTED', 'DENIED', 'FAILED', 'REQUIRES_CONFIRMATION', 'CONFIRMATION_CONFIRMED',
-                   'CONFIRMATION_EXPIRED')
+        status IN ('REQUEST_RECEIVED', 'ALLOWED_EXECUTED', 'DENIED', 'FAILED', 'REQUIRES_CONFIRMATION',
+                   'CONFIRMATION_CONFIRMED', 'CONFIRMATION_EXPIRED')
         )
 );
 

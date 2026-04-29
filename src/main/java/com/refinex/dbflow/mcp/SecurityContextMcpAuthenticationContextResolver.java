@@ -33,6 +33,7 @@ public class SecurityContextMcpAuthenticationContextResolver implements McpAuthe
                 mcpAuthentication.getName(),
                 validationResult.userId(),
                 validationResult.tokenId(),
+                validationResult.tokenPrefix(),
                 "MCP_BEARER_TOKEN",
                 metadata.clientInfo(),
                 metadata.userAgent(),

@@ -5,6 +5,8 @@ import com.refinex.dbflow.access.entity.DbfUser;
 import com.refinex.dbflow.access.service.AccessDecisionService;
 import com.refinex.dbflow.access.service.AccessService;
 import com.refinex.dbflow.access.service.ProjectEnvironmentCatalogService;
+import com.refinex.dbflow.audit.entity.DbfAuditEvent;
+import com.refinex.dbflow.audit.service.AuditEventWriter;
 import com.refinex.dbflow.audit.service.AuditService;
 import com.refinex.dbflow.config.DbflowProperties;
 import com.refinex.dbflow.sqlpolicy.DangerousDdlPolicyEngine;
@@ -18,10 +20,13 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.datasource.AbstractDataSource;
 
-import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,6 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         AccessService.class,
         AccessDecisionService.class,
         AuditService.class,
+        AuditEventWriter.class,
         ProjectEnvironmentCatalogService.class,
         SqlClassifier.class,
         DangerousDdlPolicyEngine.class,
@@ -67,6 +73,12 @@ class SqlExplainServiceTests {
      */
     @Autowired
     private AccessService accessService;
+
+    /**
+     * 审计服务。
+     */
+    @Autowired
+    private AuditService auditService;
 
     /**
      * 项目环境目录服务。
@@ -110,6 +122,8 @@ class SqlExplainServiceTests {
         assertThat(result.allowed()).isFalse();
         assertThat(result.errorCode()).isEqualTo("GRANT_NOT_FOUND");
         assertThat(result.planRows()).isEmpty();
+        assertThat(auditEvents()).extracting(DbfAuditEvent::getDecision)
+                .contains("REQUEST_RECEIVED", "POLICY_DENIED");
     }
 
     /**
@@ -125,6 +139,31 @@ class SqlExplainServiceTests {
         assertThat(result.allowed()).isFalse();
         assertThat(result.errorCode()).isEqualTo("CLASSIFICATION_REJECTED");
         assertThat(result.planRows()).isEmpty();
+        assertThat(auditEvents()).allSatisfy(event -> {
+            assertThat(event.getTokenId()).isEqualTo(token.getId());
+            assertThat(event.getClientName()).isNotBlank();
+            assertThat(event.getClientVersion()).isNotBlank();
+            assertThat(event.getUserAgent()).isNotBlank();
+            assertThat(event.getSourceIp()).isNotBlank();
+            assertThat(event.getTool()).isEqualTo("dbflow_explain_sql");
+        });
+        assertThat(auditEvents()).extracting(DbfAuditEvent::getDecision)
+                .contains("REQUEST_RECEIVED", "POLICY_DENIED");
+    }
+
+    /**
+     * 验证目标库异常路径会写入失败审计。
+     */
+    @Test
+    void shouldAuditFailureWhenTargetConnectionFails() {
+        accessService.grantEnvironment(user.getId(), "demo", "dev", "WRITE");
+
+        SqlExplainResult result = sqlExplainService.explain(request("SELECT * FROM p07_orders"));
+
+        assertThat(result.status()).isEqualTo("FAILED");
+        assertThat(result.allowed()).isFalse();
+        assertThat(auditEvents()).extracting(DbfAuditEvent::getDecision)
+                .contains("REQUEST_RECEIVED", "FAILED");
     }
 
     /**
@@ -147,6 +186,15 @@ class SqlExplainServiceTests {
     }
 
     /**
+     * 查询当前测试用户审计事件。
+     *
+     * @return 审计事件列表
+     */
+    private List<DbfAuditEvent> auditEvents() {
+        return auditService.findRecentByUser(user.getId());
+    }
+
+    /**
      * 测试专用 Bean。
      *
      * @author refinex
@@ -161,10 +209,15 @@ class SqlExplainServiceTests {
          */
         @Bean
         ProjectEnvironmentDataSourceRegistry projectEnvironmentDataSourceRegistry() {
-            return new ProjectEnvironmentDataSourceRegistry() {
+            return (projectKey, environmentKey) -> new AbstractDataSource() {
                 @Override
-                public DataSource getDataSource(String projectKey, String environmentKey) {
-                    throw new AssertionError("拒绝路径不应访问目标数据源");
+                public Connection getConnection() throws SQLException {
+                    throw new SQLException("目标库连接失败", "08001");
+                }
+
+                @Override
+                public Connection getConnection(String username, String password) throws SQLException {
+                    throw new SQLException("目标库连接失败", "08001");
                 }
             };
         }

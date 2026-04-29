@@ -15,7 +15,9 @@ authorized target environments. `dbflow_explain_sql` now uses a controlled non-m
 plan rows, optional MySQL 8 JSON plan summaries, MySQL 5.7-compatible traditional output, and deterministic basic
 index advice. `dbflow_inspect_schema` and the schema resource now use an authorized read-only `information_schema`
 inspection service for schemas, tables, columns, indexes, views, procedures, and functions with bounded results. It
-does not yet contain a full management UI, CI configuration, or production deployment configuration. The architecture
+now has a unified `AuditEventWriter` for request received, policy denied, confirmation-required, executed, failed, and
+confirmation-expired audit events with token id, client metadata, tool name, decision, SQL hash, and bounded summaries.
+It does not yet contain a full management UI, CI configuration, or production deployment configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
 and must be updated as implementation packages are added.
@@ -82,6 +84,9 @@ and must be updated as implementation packages are added.
 |   |   |   |   |   +-- DbfAuditEventRepository.java
 |   |   |   |   |   +-- DbfConfirmationChallengeRepository.java
 |   |   |   |   +-- service/
+|   |   |   |   |   +-- AuditEventWriteRequest.java
+|   |   |   |   |   +-- AuditEventWriter.java
+|   |   |   |   |   +-- AuditRequestContext.java
 |   |   |   |   |   +-- AuditService.java
 |   |   |   |   |   +-- ConfirmationService.java
 |   |   |   |   +-- package-info.java
@@ -181,6 +186,7 @@ and must be updated as implementation packages are added.
 |           +-- access/AccessServiceJpaTests.java
 |           +-- access/AccessDecisionServiceJpaTests.java
 |           +-- audit/AuditAndConfirmationServiceJpaTests.java
+|           +-- audit/AuditEventWriterTests.java
 |           +-- config/DbflowPropertiesTests.java
 |           +-- config/MetadataSchemaMigrationTests.java
 |           +-- config/NacosProfileConfigurationTests.java
@@ -261,6 +267,12 @@ and must be updated as implementation packages are added.
   `information_schema` metadata for schemas, tables, columns, indexes, views, procedures, and functions, applies
   optional schema/table filters, caps each metadata category, returns `truncated`, and keeps JDBC URL/password
   configuration out of tool/resource payloads.
+- Unified audit baseline: `AuditEventWriter` is the service-level audit entry point for SQL execution, EXPLAIN, and
+  TRUNCATE confirmation flows. It records request received, policy denied, confirmation required, executed, failed,
+  confirmation confirmed, and confirmation expired decisions with request id, user id, token id, token display prefix,
+  client name/version, user agent, source IP, project/environment, tool, operation, risk, SQL text/hash, confirmation
+  id, error fields, and a bounded `result_summary`. It does not accept or persist Token plaintext and caps summaries
+  before persistence.
 
 ## Current Source Package Boundaries
 
@@ -274,7 +286,7 @@ and must be updated as implementation packages are added.
 | `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java`                                | Spring AI MCP tools/resources/prompts, service delegation, and the MCP authentication/authorization boundary.                                                                                                                                                 |
 | `com.refinex.dbflow.sqlpolicy`     | `SqlClassifier`, `SqlClassification`, SQL operation/status/risk/type enums, `DangerousDdlPolicyEngine`, dangerous DDL decision/reason records, `TruncateConfirmationService`, TRUNCATE confirmation request/decision records, `package-info.java`                           | SQL parsing, auditable risk classification, DROP DATABASE / DROP TABLE YAML whitelist decisions, and TRUNCATE server-side confirmation lifecycle.                                                                                                             |
 | `com.refinex.dbflow.executor`      | `DataSourceConfigReloader`, `DataSourceReloadResult`, `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `SqlExecutionService`, `SqlExplainService`, `SchemaInspectService`, SQL execution/explain/schema inspect request/result DTOs, `package-info.java` | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement, controlled bounded JDBC SQL execution, non-mutating EXPLAIN, and authorized `information_schema` inspection. |
-| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                                                            | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                                                                                                                  |
+| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditEventWriter`, audit write/context records, `AuditService`, `ConfirmationService`                                                                                                                           | Unified audit event writing, bounded result summaries, confirmation challenges, audit insertion/query, and confirmation status transitions.                                                                                                                   |
 | `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                                                  | Minimal management endpoint surface for session-security verification.                                                                                                                                                                                        |
 | `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                                                      | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                                                                                                            |
 
@@ -554,9 +566,9 @@ The MCP HTTP security boundary is implemented as a dedicated stateless Spring Se
 
 MCP request metadata extraction strategy:
 
-- `clientInfo`: current filter reads optional `Mcp-Client-Info` header and records `unknown` when absent. JSON-RPC
-  `initialize.params.clientInfo` is already visible to Spring AI and should be copied into audit/request context in the
-  future audit integration phase without consuming the body in the security filter.
+- `clientInfo`: current filter reads optional `Mcp-Client-Info` header and records `unknown` when absent. SQL tool
+  calls copy this value into `AuditRequestContext`; JSON-RPC `initialize.params.clientInfo` can still be added later
+  without consuming the body in the security filter.
 - `User-Agent`: read from the HTTP `User-Agent` header.
 - `source IP`: prefer first value of `X-Forwarded-For`, then `X-Real-IP`, then `request.getRemoteAddr()`.
 - `request id`: read from `X-Request-Id` when present; otherwise generate a UUID for the 401/security context response.
@@ -580,15 +592,15 @@ authentication filter:
 
 Flyway migration `src/main/resources/db/migration/V1__create_metadata_schema.sql` creates these metadata tables:
 
-| Table                         | Purpose                                                | Sensitive-data boundary                                                                                                 |
-|-------------------------------|--------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `dbf_users`                   | Users and administrator password hash metadata.        | Stores password hash only; no plaintext password.                                                                       |
-| `dbf_api_tokens`              | MCP token metadata.                                    | Stores `token_hash`, `token_prefix`, status, expiry, revocation, and last-used metadata; no plaintext token column.     |
-| `dbf_projects`                | Project registry.                                      | No credentials.                                                                                                         |
-| `dbf_environments`            | Project environment registry.                          | No database password fields in V1.                                                                                      |
-| `dbf_user_env_grants`         | User-to-environment grants.                            | Unique `(user_id, environment_id)` grant boundary.                                                                      |
-| `dbf_confirmation_challenges` | Server-side confirmation challenges for high-risk SQL. | Stores user id, token id, project/env keys, SQL text/hash, risk level, expiry, and challenge state; no result set data. |
-| `dbf_audit_events`            | Operation audit events.                                | Stores SQL text/hash, status, summary, affected rows, and error fields; does not store full result sets.                |
+| Table                         | Purpose                                                | Sensitive-data boundary                                                                                                                                                            |
+|-------------------------------|--------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `dbf_users`                   | Users and administrator password hash metadata.        | Stores password hash only; no plaintext password.                                                                                                                                  |
+| `dbf_api_tokens`              | MCP token metadata.                                    | Stores `token_hash`, `token_prefix`, status, expiry, revocation, and last-used metadata; no plaintext token column.                                                                |
+| `dbf_projects`                | Project registry.                                      | No credentials.                                                                                                                                                                    |
+| `dbf_environments`            | Project environment registry.                          | No database password fields in V1.                                                                                                                                                 |
+| `dbf_user_env_grants`         | User-to-environment grants.                            | Unique `(user_id, environment_id)` grant boundary.                                                                                                                                 |
+| `dbf_confirmation_challenges` | Server-side confirmation challenges for high-risk SQL. | Stores user id, token id, project/env keys, SQL text/hash, risk level, expiry, and challenge state; no result set data.                                                            |
+| `dbf_audit_events`            | Operation audit events.                                | Stores user/token ids, client/tool metadata, SQL text/hash, decision/status, bounded summary, affected rows, and error fields; does not store Token plaintext or full result sets. |
 
 Key constraints and indexes currently verified by tests:
 
@@ -611,6 +623,8 @@ Current metadata services:
 - `ConfirmationService` creates pending confirmation challenges, confirms pending challenges, and queries pending
   challenges by user. `TruncateConfirmationService` adds the policy-level verification for same user, token,
   project/environment, SQL hash, expiry, and one-time consumption.
+- `AuditEventWriter` writes bounded audit events for request received, denial, confirmation, execution, failure, and
+  expiration decisions.
 - `AuditService` records audit events and queries recent events by user.
 
 ## Target System Shape

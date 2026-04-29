@@ -7,6 +7,7 @@ package com.refinex.dbflow.mcp;
  * @param principal     认证主体标识
  * @param userId        元数据库用户主键
  * @param tokenId       MCP Token 元数据主键
+ * @param tokenPrefix   MCP Token 展示前缀
  * @param source        认证来源
  * @param clientInfo    MCP clientInfo 摘要
  * @param userAgent     HTTP User-Agent
@@ -19,6 +20,7 @@ public record McpAuthenticationContext(
         String principal,
         Long userId,
         Long tokenId,
+        String tokenPrefix,
         String source,
         String clientInfo,
         String userAgent,
@@ -35,6 +37,7 @@ public record McpAuthenticationContext(
         return new McpAuthenticationContext(
                 false,
                 "anonymous",
+                null,
                 null,
                 null,
                 "ANONYMOUS",

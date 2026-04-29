@@ -8,6 +8,7 @@ import com.refinex.dbflow.access.service.AccessService;
 import com.refinex.dbflow.audit.entity.DbfAuditEvent;
 import com.refinex.dbflow.audit.entity.DbfConfirmationChallenge;
 import com.refinex.dbflow.audit.repository.DbfConfirmationChallengeRepository;
+import com.refinex.dbflow.audit.service.AuditEventWriter;
 import com.refinex.dbflow.audit.service.AuditService;
 import com.refinex.dbflow.audit.service.ConfirmationService;
 import com.refinex.dbflow.common.DbflowException;
@@ -36,7 +37,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.flyway.locations=classpath:db/migration"
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({AccessService.class, AuditService.class, ConfirmationService.class, SqlClassifier.class, TruncateConfirmationService.class})
+@Import({AccessService.class, AuditService.class, AuditEventWriter.class, ConfirmationService.class,
+        SqlClassifier.class, TruncateConfirmationService.class})
 class TruncateConfirmationServiceJpaTests {
 
     /**

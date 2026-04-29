@@ -22,6 +22,9 @@ No active execution plans.
 
 ## Completed Plans
 
+- [2026-04-29 Unified Audit Event Writer](exec-plans/completed/2026-04-29-unified-audit-event-writer.md) -
+  Completed; implemented unified audit writing for request, denial, confirmation, execution, failure, and expiration
+  events with token-safe metadata and bounded result summaries.
 - [2026-04-29 Schema Inspect Resource](exec-plans/completed/2026-04-29-schema-inspect-resource.md) -
   Completed; implemented `dbflow_inspect_schema` and schema resource with authorized `information_schema` metadata,
   filters, bounded results, and MySQL 8/5.7 coverage.

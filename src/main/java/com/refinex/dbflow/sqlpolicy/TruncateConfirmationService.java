@@ -4,10 +4,10 @@ import com.refinex.dbflow.access.entity.DbfEnvironment;
 import com.refinex.dbflow.access.entity.DbfProject;
 import com.refinex.dbflow.access.repository.DbfEnvironmentRepository;
 import com.refinex.dbflow.access.repository.DbfProjectRepository;
-import com.refinex.dbflow.audit.entity.DbfAuditEvent;
 import com.refinex.dbflow.audit.entity.DbfConfirmationChallenge;
 import com.refinex.dbflow.audit.repository.DbfConfirmationChallengeRepository;
-import com.refinex.dbflow.audit.service.AuditService;
+import com.refinex.dbflow.audit.service.AuditEventWriteRequest;
+import com.refinex.dbflow.audit.service.AuditEventWriter;
 import com.refinex.dbflow.audit.service.ConfirmationService;
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.common.ErrorCode;
@@ -65,7 +65,7 @@ public class TruncateConfirmationService {
     /**
      * 审计服务。
      */
-    private final AuditService auditService;
+    private final AuditEventWriter auditEventWriter;
 
     /**
      * 创建 TRUNCATE 确认服务。
@@ -75,7 +75,7 @@ public class TruncateConfirmationService {
      * @param environmentRepository           环境 repository
      * @param confirmationService             确认挑战基础服务
      * @param confirmationChallengeRepository 确认挑战 repository
-     * @param auditService                    审计服务
+     * @param auditEventWriter                统一审计事件写入器
      */
     public TruncateConfirmationService(
             SqlClassifier sqlClassifier,
@@ -83,14 +83,14 @@ public class TruncateConfirmationService {
             DbfEnvironmentRepository environmentRepository,
             ConfirmationService confirmationService,
             DbfConfirmationChallengeRepository confirmationChallengeRepository,
-            AuditService auditService
+            AuditEventWriter auditEventWriter
     ) {
         this.sqlClassifier = sqlClassifier;
         this.projectRepository = projectRepository;
         this.environmentRepository = environmentRepository;
         this.confirmationService = confirmationService;
         this.confirmationChallengeRepository = confirmationChallengeRepository;
-        this.auditService = auditService;
+        this.auditEventWriter = auditEventWriter;
     }
 
     /**
@@ -102,6 +102,8 @@ public class TruncateConfirmationService {
     @Transactional
     public TruncateConfirmationDecision createChallenge(TruncateConfirmationRequest request) {
         Objects.requireNonNull(request, "request");
+        auditEventWriter.requestReceived(auditRequest(request, "TRUNCATE 确认挑战创建请求已接收", null, request.sql(),
+                null, null, null));
         SqlClassification classification = classifyTruncate(request.sql());
         DbfEnvironment environment = resolveEnvironment(request.projectKey(), request.environmentKey());
         String sqlText = normalizeSql(request.sql());
@@ -143,6 +145,8 @@ public class TruncateConfirmationService {
     @Transactional(noRollbackFor = DbflowException.class)
     public TruncateConfirmationDecision confirm(TruncateConfirmationConfirmRequest request) {
         Objects.requireNonNull(request, "request");
+        auditEventWriter.requestReceived(auditRequest(request, "TRUNCATE 确认消费请求已接收", null, request.sql(),
+                request.confirmationId(), null, null));
         String sqlText = normalizeSql(request.sql());
         String sqlHash = sqlHash(sqlText);
         DbfConfirmationChallenge challenge = confirmationChallengeRepository
@@ -261,19 +265,8 @@ public class TruncateConfirmationService {
             String errorCode,
             String errorMessage
     ) {
-        auditService.record(DbfAuditEvent.confirmation(
-                request.requestId(),
-                request.userId(),
-                request.tokenPrefix(),
-                request.projectKey(),
-                request.environmentKey(),
-                status,
-                sqlHash,
-                sqlText,
-                confirmationId,
-                errorCode,
-                errorMessage
-        ));
+        writeConfirmationAudit(auditRequest(request, "TRUNCATE 确认挑战状态变化", sqlHash, sqlText, confirmationId,
+                errorCode, errorMessage), status);
     }
 
     /**
@@ -296,19 +289,110 @@ public class TruncateConfirmationService {
             String errorCode,
             String errorMessage
     ) {
-        auditService.record(DbfAuditEvent.confirmation(
+        writeConfirmationAudit(auditRequest(request, "TRUNCATE 确认挑战状态变化", sqlHash, sqlText, confirmationId,
+                errorCode, errorMessage), status);
+    }
+
+    /**
+     * 按确认状态写入审计事件。
+     *
+     * @param request 审计写入请求
+     * @param status  确认状态
+     */
+    private void writeConfirmationAudit(AuditEventWriteRequest request, String status) {
+        if ("REQUIRES_CONFIRMATION".equals(status)) {
+            auditEventWriter.requiresConfirmation(request);
+        } else if ("CONFIRMATION_CONFIRMED".equals(status)) {
+            auditEventWriter.confirmationConfirmed(request);
+        } else if ("CONFIRMATION_EXPIRED".equals(status)) {
+            auditEventWriter.confirmationExpired(request);
+        } else if ("FAILED".equals(status)) {
+            auditEventWriter.failed(request);
+        } else {
+            auditEventWriter.policyDenied(request);
+        }
+    }
+
+    /**
+     * 创建确认挑战审计写入请求。
+     *
+     * @param request        确认挑战创建请求
+     * @param summary        结果摘要
+     * @param sqlHash        SQL hash
+     * @param sqlText        SQL 原文
+     * @param confirmationId 确认挑战标识
+     * @param errorCode      错误码
+     * @param errorMessage   错误摘要
+     * @return 审计写入请求
+     */
+    private AuditEventWriteRequest auditRequest(
+            TruncateConfirmationRequest request,
+            String summary,
+            String sqlHash,
+            String sqlText,
+            String confirmationId,
+            String errorCode,
+            String errorMessage
+    ) {
+        return new AuditEventWriteRequest(
                 request.requestId(),
                 request.userId(),
+                request.tokenId(),
                 request.tokenPrefix(),
+                request.auditContext(),
                 request.projectKey(),
                 request.environmentKey(),
-                status,
-                sqlHash,
+                "TRUNCATE",
+                "CRITICAL",
                 sqlText,
-                confirmationId,
+                sqlHash,
+                summary,
+                0L,
                 errorCode,
-                errorMessage
-        ));
+                errorMessage,
+                confirmationId
+        );
+    }
+
+    /**
+     * 创建确认消费审计写入请求。
+     *
+     * @param request        确认消费请求
+     * @param summary        结果摘要
+     * @param sqlHash        SQL hash
+     * @param sqlText        SQL 原文
+     * @param confirmationId 确认挑战标识
+     * @param errorCode      错误码
+     * @param errorMessage   错误摘要
+     * @return 审计写入请求
+     */
+    private AuditEventWriteRequest auditRequest(
+            TruncateConfirmationConfirmRequest request,
+            String summary,
+            String sqlHash,
+            String sqlText,
+            String confirmationId,
+            String errorCode,
+            String errorMessage
+    ) {
+        return new AuditEventWriteRequest(
+                request.requestId(),
+                request.userId(),
+                request.tokenId(),
+                request.tokenPrefix(),
+                request.auditContext(),
+                request.projectKey(),
+                request.environmentKey(),
+                "TRUNCATE",
+                "CRITICAL",
+                sqlText,
+                sqlHash,
+                summary,
+                0L,
+                errorCode,
+                errorMessage,
+                confirmationId
+        );
     }
 
     /**

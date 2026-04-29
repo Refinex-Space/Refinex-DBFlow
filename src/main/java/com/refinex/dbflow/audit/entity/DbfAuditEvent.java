@@ -34,6 +34,12 @@ public class DbfAuditEvent {
     private Long userId;
 
     /**
+     * Token 元数据主键。
+     */
+    @Column(name = "token_id")
+    private Long tokenId;
+
+    /**
      * Token 前缀。
      */
     @Column(name = "token_prefix", length = 32)
@@ -64,10 +70,22 @@ public class DbfAuditEvent {
     private String clientVersion;
 
     /**
+     * HTTP User-Agent。
+     */
+    @Column(name = "user_agent", length = 255)
+    private String userAgent;
+
+    /**
      * 来源 IP。
      */
     @Column(name = "source_ip", length = 64)
     private String sourceIp;
+
+    /**
+     * MCP 工具名称。
+     */
+    @Column(name = "tool", length = 128)
+    private String tool;
 
     /**
      * 操作类型。
@@ -86,6 +104,12 @@ public class DbfAuditEvent {
      */
     @Column(name = "status", nullable = false, length = 64)
     private String status;
+
+    /**
+     * 审计决策。
+     */
+    @Column(name = "decision", length = 64)
+    private String decision;
 
     /**
      * SQL hash。
@@ -234,6 +258,83 @@ public class DbfAuditEvent {
     }
 
     /**
+     * 创建统一审计事件。
+     *
+     * @param requestId      请求标识
+     * @param userId         用户主键
+     * @param tokenId        Token 元数据主键
+     * @param tokenPrefix    Token 展示前缀
+     * @param projectKey     项目标识
+     * @param environmentKey 环境标识
+     * @param clientName     客户端名称
+     * @param clientVersion  客户端版本
+     * @param userAgent      HTTP User-Agent
+     * @param sourceIp       来源 IP
+     * @param tool           MCP 工具名称
+     * @param operationType  操作类型
+     * @param riskLevel      风险级别
+     * @param status         审计状态
+     * @param decision       审计决策
+     * @param sqlHash        SQL hash
+     * @param sqlText        SQL 原文
+     * @param resultSummary  结果摘要
+     * @param affectedRows   影响行数
+     * @param errorCode      错误码
+     * @param errorMessage   错误摘要
+     * @param confirmationId 确认挑战标识
+     * @return 审计事件实体
+     */
+    public static DbfAuditEvent auditEvent(
+            String requestId,
+            Long userId,
+            Long tokenId,
+            String tokenPrefix,
+            String projectKey,
+            String environmentKey,
+            String clientName,
+            String clientVersion,
+            String userAgent,
+            String sourceIp,
+            String tool,
+            String operationType,
+            String riskLevel,
+            String status,
+            String decision,
+            String sqlHash,
+            String sqlText,
+            String resultSummary,
+            Long affectedRows,
+            String errorCode,
+            String errorMessage,
+            String confirmationId
+    ) {
+        DbfAuditEvent event = new DbfAuditEvent();
+        event.requestId = requestId;
+        event.userId = userId;
+        event.tokenId = tokenId;
+        event.tokenPrefix = tokenPrefix;
+        event.projectKey = projectKey;
+        event.environmentKey = environmentKey;
+        event.clientName = clientName;
+        event.clientVersion = clientVersion;
+        event.userAgent = userAgent;
+        event.sourceIp = sourceIp;
+        event.tool = tool;
+        event.operationType = operationType;
+        event.riskLevel = riskLevel;
+        event.status = status;
+        event.decision = decision;
+        event.sqlHash = sqlHash;
+        event.sqlText = sqlText;
+        event.resultSummary = resultSummary;
+        event.affectedRows = affectedRows;
+        event.errorCode = errorCode;
+        event.errorMessage = errorMessage;
+        event.confirmationId = confirmationId;
+        return event;
+    }
+
+    /**
      * 创建确认挑战审计事件。
      *
      * @param requestId      请求标识
@@ -308,12 +409,156 @@ public class DbfAuditEvent {
     }
 
     /**
+     * 读取用户主键。
+     *
+     * @return 用户主键
+     */
+    public Long getUserId() {
+        return userId;
+    }
+
+    /**
+     * 读取 Token 元数据主键。
+     *
+     * @return Token 元数据主键
+     */
+    public Long getTokenId() {
+        return tokenId;
+    }
+
+    /**
+     * 读取 Token 前缀。
+     *
+     * @return Token 前缀
+     */
+    public String getTokenPrefix() {
+        return tokenPrefix;
+    }
+
+    /**
+     * 读取项目标识。
+     *
+     * @return 项目标识
+     */
+    public String getProjectKey() {
+        return projectKey;
+    }
+
+    /**
+     * 读取环境标识。
+     *
+     * @return 环境标识
+     */
+    public String getEnvironmentKey() {
+        return environmentKey;
+    }
+
+    /**
+     * 读取客户端名称。
+     *
+     * @return 客户端名称
+     */
+    public String getClientName() {
+        return clientName;
+    }
+
+    /**
+     * 读取客户端版本。
+     *
+     * @return 客户端版本
+     */
+    public String getClientVersion() {
+        return clientVersion;
+    }
+
+    /**
+     * 读取 HTTP User-Agent。
+     *
+     * @return HTTP User-Agent
+     */
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    /**
+     * 读取来源 IP。
+     *
+     * @return 来源 IP
+     */
+    public String getSourceIp() {
+        return sourceIp;
+    }
+
+    /**
+     * 读取 MCP 工具名称。
+     *
+     * @return MCP 工具名称
+     */
+    public String getTool() {
+        return tool;
+    }
+
+    /**
+     * 读取操作类型。
+     *
+     * @return 操作类型
+     */
+    public String getOperationType() {
+        return operationType;
+    }
+
+    /**
+     * 读取风险级别。
+     *
+     * @return 风险级别
+     */
+    public String getRiskLevel() {
+        return riskLevel;
+    }
+
+    /**
      * 读取执行状态。
      *
      * @return 执行状态
      */
     public String getStatus() {
         return status;
+    }
+
+    /**
+     * 读取审计决策。
+     *
+     * @return 审计决策
+     */
+    public String getDecision() {
+        return decision;
+    }
+
+    /**
+     * 读取 SQL hash。
+     *
+     * @return SQL hash
+     */
+    public String getSqlHash() {
+        return sqlHash;
+    }
+
+    /**
+     * 读取 SQL 原文。
+     *
+     * @return SQL 原文
+     */
+    public String getSqlText() {
+        return sqlText;
+    }
+
+    /**
+     * 读取结果摘要。
+     *
+     * @return 结果摘要
+     */
+    public String getResultSummary() {
+        return resultSummary;
     }
 
     /**

@@ -22,6 +22,9 @@ No active execution plans.
 
 ## Completed Plans
 
+- [2026-04-29 Schema Inspect Resource](exec-plans/completed/2026-04-29-schema-inspect-resource.md) -
+  Completed; implemented `dbflow_inspect_schema` and schema resource with authorized `information_schema` metadata,
+  filters, bounded results, and MySQL 8/5.7 coverage.
 - [2026-04-29 SQL Explain Plan](exec-plans/completed/2026-04-29-sql-explain-plan.md) -
   Completed; implemented P07.2 `dbflow_explain_sql` with controlled non-mutating EXPLAIN, stable plan fields, MySQL
   8/5.7 coverage, and basic index advice.

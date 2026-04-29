@@ -107,7 +107,7 @@ class DbflowMcpServerTests {
     @Test
     void shouldApplyAuthenticationAndAuthorizationBoundaryForSkeletonTools() {
         assertAuthenticationRequired(this.dbflowMcpTools.listTargets());
-        assertAuthenticationRequired(this.dbflowMcpTools.inspectSchema("demo", "dev", "app", null));
+        assertAuthenticationRequired(this.dbflowMcpTools.inspectSchema("demo", "dev", "app", null, null));
         assertAuthenticationRequired(this.dbflowMcpTools.getEffectivePolicy("demo", "dev", null, null, "SELECT"));
         assertAuthenticationRequired(this.dbflowMcpTools.explainSql("demo", "dev", "select 1", null));
         assertAuthenticationRequired(this.dbflowMcpTools.executeSql("demo", "dev", "select 1", null, true, "test"));

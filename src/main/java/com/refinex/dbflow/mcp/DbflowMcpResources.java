@@ -2,6 +2,7 @@ package com.refinex.dbflow.mcp;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.refinex.dbflow.executor.*;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springaicommunity.mcp.annotation.McpResource;
 import org.springframework.stereotype.Component;
@@ -34,20 +35,28 @@ public class DbflowMcpResources {
     private final McpAccessBoundaryService accessBoundaryService;
 
     /**
+     * schema inspect 服务。
+     */
+    private final SchemaInspectService schemaInspectService;
+
+    /**
      * 创建 DBFlow MCP resource skeleton。
      *
      * @param objectMapper                  JSON 序列化器
      * @param authenticationContextResolver MCP 认证上下文解析器
      * @param accessBoundaryService         MCP 访问授权边界服务
+     * @param schemaInspectService          schema inspect 服务
      */
     public DbflowMcpResources(
             ObjectMapper objectMapper,
             McpAuthenticationContextResolver authenticationContextResolver,
-            McpAccessBoundaryService accessBoundaryService
+            McpAccessBoundaryService accessBoundaryService,
+            SchemaInspectService schemaInspectService
     ) {
         this.objectMapper = objectMapper;
         this.authenticationContextResolver = authenticationContextResolver;
         this.accessBoundaryService = accessBoundaryService;
+        this.schemaInspectService = schemaInspectService;
     }
 
     /**
@@ -87,21 +96,45 @@ public class DbflowMcpResources {
             uri = DbflowMcpNames.RESOURCE_SCHEMA,
             name = "dbflow_schema",
             title = "DBFlow schema",
-            description = "Schema metadata for a DBFlow project environment. Skeleton returns empty tables and columns.",
+            description = "Bounded information_schema metadata for a DBFlow project environment.",
             mimeType = "application/json"
     )
     public McpSchema.ReadResourceResult schema(McpSchema.ReadResourceRequest request, String project, String env) {
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
         McpAuthorizationBoundary boundary = accessBoundaryService.targetBoundary(context, project, env,
                 "resource:schema");
+        SchemaInspectResult result = schemaInspectService.inspect(new SchemaInspectRequest(
+                context.requestId(),
+                context.userId(),
+                context.tokenId(),
+                null,
+                project,
+                env,
+                null,
+                null,
+                0
+        ));
         return jsonResource(request.uri(), data(
-                "status", "SKELETON",
+                "status", result.status(),
                 "uri", request.uri(),
-                "project", project,
-                "env", env,
+                "project", result.projectKey(),
+                "env", result.environmentKey(),
+                "schema", result.schemaFilter(),
+                "table", result.tableFilter(),
+                "allowed", result.allowed(),
+                "maxItems", result.maxItems(),
+                "truncated", result.truncated(),
                 "authentication", context,
                 "authorization", boundary,
-                "schemas", List.of()
+                "schemas", schemaData(result.schemas()),
+                "tables", tableData(result.tables()),
+                "columns", columnData(result.columns()),
+                "indexes", indexData(result.indexes()),
+                "views", viewData(result.views()),
+                "routines", routineData(result.routines()),
+                "durationMillis", result.durationMillis(),
+                "errorCode", result.errorCode(),
+                "errorMessage", result.errorMessage()
         ));
     }
 
@@ -165,5 +198,125 @@ public class DbflowMcpResources {
             values.put(String.valueOf(entries[index]), entries[index + 1]);
         }
         return values;
+    }
+
+    /**
+     * 转换 schema 输出数据。
+     *
+     * @param schemas schema 元数据
+     * @return resource 响应数据
+     */
+    private List<Map<String, Object>> schemaData(List<SchemaDatabaseMetadata> schemas) {
+        return schemas.stream()
+                .map(schema -> data(
+                        "name", schema.name(),
+                        "defaultCharacterSetName", schema.defaultCharacterSetName(),
+                        "defaultCollationName", schema.defaultCollationName()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换表输出数据。
+     *
+     * @param tables 表元数据
+     * @return resource 响应数据
+     */
+    private List<Map<String, Object>> tableData(List<SchemaTableMetadata> tables) {
+        return tables.stream()
+                .map(table -> data(
+                        "schemaName", table.schemaName(),
+                        "name", table.name(),
+                        "type", table.type(),
+                        "engine", table.engine(),
+                        "rows", table.rows(),
+                        "comment", table.comment()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换字段输出数据。
+     *
+     * @param columns 字段元数据
+     * @return resource 响应数据
+     */
+    private List<Map<String, Object>> columnData(List<SchemaColumnMetadata> columns) {
+        return columns.stream()
+                .map(column -> data(
+                        "schemaName", column.schemaName(),
+                        "tableName", column.tableName(),
+                        "name", column.name(),
+                        "ordinalPosition", column.ordinalPosition(),
+                        "dataType", column.dataType(),
+                        "columnType", column.columnType(),
+                        "nullable", column.nullable(),
+                        "defaultValue", column.defaultValue(),
+                        "comment", column.comment(),
+                        "columnKey", column.columnKey(),
+                        "extra", column.extra()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换索引输出数据。
+     *
+     * @param indexes 索引元数据
+     * @return resource 响应数据
+     */
+    private List<Map<String, Object>> indexData(List<SchemaIndexMetadata> indexes) {
+        return indexes.stream()
+                .map(index -> data(
+                        "schemaName", index.schemaName(),
+                        "tableName", index.tableName(),
+                        "name", index.name(),
+                        "unique", index.unique(),
+                        "seqInIndex", index.seqInIndex(),
+                        "columnName", index.columnName(),
+                        "indexType", index.indexType(),
+                        "cardinality", index.cardinality(),
+                        "nullable", index.nullable()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换视图输出数据。
+     *
+     * @param views 视图元数据
+     * @return resource 响应数据
+     */
+    private List<Map<String, Object>> viewData(List<SchemaViewMetadata> views) {
+        return views.stream()
+                .map(view -> data(
+                        "schemaName", view.schemaName(),
+                        "name", view.name(),
+                        "checkOption", view.checkOption(),
+                        "updatable", view.updatable(),
+                        "securityType", view.securityType(),
+                        "definition", view.definition()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换 routine 输出数据。
+     *
+     * @param routines routine 元数据
+     * @return resource 响应数据
+     */
+    private List<Map<String, Object>> routineData(List<SchemaRoutineMetadata> routines) {
+        return routines.stream()
+                .map(routine -> data(
+                        "schemaName", routine.schemaName(),
+                        "name", routine.name(),
+                        "type", routine.type(),
+                        "dataType", routine.dataType(),
+                        "comment", routine.comment(),
+                        "sqlDataAccess", routine.sqlDataAccess(),
+                        "securityType", routine.securityType()
+                ))
+                .toList();
     }
 }

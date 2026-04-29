@@ -15,24 +15,26 @@ Spring Security tests for form login and CSRF. It now also covers the TRUNCATE s
 challenge creation, successful confirmation, mismatched token, mismatched SQL, expiry, and replay rejection. P07 adds
 a controlled SQL execution service and MySQL 8 Testcontainers coverage for bounded query results and DML/DDL summaries;
 P07.2 adds controlled `dbflow_explain_sql` coverage for authorization denial, syntax rejection, MySQL 8 JSON plan
-summaries, MySQL 5.7-compatible traditional rows, indexed/unindexed plans, and non-mutating DML EXPLAIN. The
-Testcontainers classes are skipped automatically when the local machine has no Docker runtime. Spring
+summaries, MySQL 5.7-compatible traditional rows, indexed/unindexed plans, and non-mutating DML EXPLAIN. P07.3 adds
+authorized `dbflow_inspect_schema` and schema resource coverage for `information_schema` tables, columns, indexes,
+views, procedures, functions, filtering, truncation, and denial-before-target-access behavior. The Testcontainers
+classes are skipped automatically when the local machine has no Docker runtime. Spring
 Cloud
 Alibaba Nacos Config and Discovery dependencies are present, while default local startup keeps Nacos disabled unless
 the `nacos` profile is explicitly activated.
 
 ## Build & Run
 
-| Task                 | Command                                                                                                                                      | Expected                                                                                                                                                                                                       |
-|----------------------|----------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Install dependencies | `./mvnw dependency:go-offline`                                                                                                               | Maven resolves project dependencies for offline use.                                                                                                                                                           |
-| Build                | `./mvnw package`                                                                                                                             | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                                                                                         |
-| Run tests            | `./mvnw test`                                                                                                                                | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, security, configuration, JPA service tests, and Docker-optional MySQL execution/explain tests pass. |
-| Lint / format check  | Not available yet; no formatter is configured.                                                                                               | Future scaffold must replace this row.                                                                                                                                                                         |
-| Start dev server     | `./mvnw spring-boot:run`                                                                                                                     | Starts the Spring Boot application locally with MCP Streamable HTTP available at `http://localhost:8080/mcp`.                                                                                                  |
-| Start with Nacos     | `SPRING_PROFILES_ACTIVE=nacos DBFLOW_NACOS_SERVER_ADDR=127.0.0.1:8848 ./mvnw spring-boot:run`                                                | Starts with `application-nacos.yml`, optional Nacos config imports, and Nacos Discovery enabled when a server is available.                                                                                    |
-| MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` with `Authorization: Bearer <DBFlow Token>` | The client can discover `dbflow_smoke`, six DBFlow skeleton tools, DBFlow resources/templates, and DBFlow prompts.                                                                                             |
-| Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                                                                           |
+| Task                 | Command                                                                                                                                      | Expected                                                                                                                                                                                                                      |
+|----------------------|----------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Install dependencies | `./mvnw dependency:go-offline`                                                                                                               | Maven resolves project dependencies for offline use.                                                                                                                                                                          |
+| Build                | `./mvnw package`                                                                                                                             | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                                                                                                        |
+| Run tests            | `./mvnw test`                                                                                                                                | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, security, configuration, JPA service tests, and Docker-optional MySQL execution/explain/schema inspect tests pass. |
+| Lint / format check  | Not available yet; no formatter is configured.                                                                                               | Future scaffold must replace this row.                                                                                                                                                                                        |
+| Start dev server     | `./mvnw spring-boot:run`                                                                                                                     | Starts the Spring Boot application locally with MCP Streamable HTTP available at `http://localhost:8080/mcp`.                                                                                                                 |
+| Start with Nacos     | `SPRING_PROFILES_ACTIVE=nacos DBFLOW_NACOS_SERVER_ADDR=127.0.0.1:8848 ./mvnw spring-boot:run`                                                | Starts with `application-nacos.yml`, optional Nacos config imports, and Nacos Discovery enabled when a server is available.                                                                                                   |
+| MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` with `Authorization: Bearer <DBFlow Token>` | The client can discover `dbflow_smoke`, DBFlow tools, DBFlow resources/templates, and DBFlow prompts.                                                                                                                         |
+| Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                                                                                          |
 
 ## CI Configuration
 
@@ -123,6 +125,10 @@ Configuration sources and secret boundary:
   explainable-operation policy, target datasource lookup, JDBC timeout/max rows/fetch size, MySQL 8
   `EXPLAIN FORMAT=JSON` summary where available, MySQL 5.7-compatible traditional rows, stable plan fields, basic
   index advice, and audit. It never executes the target DML body.
+- `dbflow_inspect_schema` and the schema resource now delegate to `SchemaInspectService`, which applies
+  project/environment authorization before target datasource lookup, reads only `information_schema`, supports
+  schema/table filters, caps each metadata category with `maxItems`, returns `truncated`, and does not expose JDBC
+  URLs, passwords, or connection strings in inspect results.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -148,9 +154,8 @@ MCP server runtime boundary:
 - Current resources: `dbflow://targets`, `dbflow://projects/{project}/envs/{env}/schema`, and
   `dbflow://projects/{project}/envs/{env}/policy`.
 - Current prompts: `dbflow_safe_mysql_change` and `dbflow_explain_plan_review`.
-- DBFlow metadata skeleton tools do not access target databases, execute SQL, or expose token plaintext.
-  `dbflow_explain_sql`
-  and `dbflow_execute_sql` now use controlled service boundaries; the TRUNCATE path in
+- DBFlow metadata skeleton tools do not expose token plaintext. `dbflow_inspect_schema`, `dbflow_explain_sql`, and
+  `dbflow_execute_sql` now use controlled service boundaries; the TRUNCATE path in
   `dbflow_execute_sql`/`dbflow_confirm_sql` persists confirmation challenge and audit metadata. Each tool response
   includes authentication and authorization boundary state.
 
@@ -194,6 +199,12 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   `UPDATE` EXPLAIN without data mutation, and MySQL 5.7 traditional plan compatibility through Testcontainers. It is
   annotated with `@Testcontainers(disabledWithoutDocker = true)`, so local runs without Docker compile the integration
   test and skip the container-backed methods.
+- `SchemaInspectServiceTests` covers authorization denial before target datasource access and verifies denied inspect
+  results do not leak JDBC URLs, schema names from connection strings, or passwords.
+- `SchemaInspectServiceMysqlTests` covers MySQL 8 schema/table/column/index/view/procedure/function metadata, schema
+  and table filters, max-items truncation, and MySQL 5.7 table/column/index/procedure/function compatibility through
+  Testcontainers. It is annotated with `@Testcontainers(disabledWithoutDocker = true)`, so local runs without Docker
+  compile the integration test and skip the container-backed methods.
 - `SqlClassifierTests` covers MySQL 8 `SELECT`, MySQL 5.7 `SHOW`/`DESCRIBE`/`EXPLAIN`, DML operations
   `INSERT`/`UPDATE`/`DELETE`/`LOAD DATA`, DDL operations `CREATE`/`ALTER`/`DROP`/`TRUNCATE`, `GRANT`, multi-statement
   rejection, and fail-closed parsing behavior for unsafe statements.
@@ -217,6 +228,6 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `AuditAndConfirmationServiceJpaTests` covers confirmation status transition and audit insertion/query behavior.
 - `DbflowMcpServerTests` covers Spring AI MCP server property binding, Streamable HTTP endpoint configuration,
   WebMVC transport auto-configuration, `dbflow_smoke` tool registration, smoke tool invocation, and authentication
-  boundary behavior for all DBFlow tool skeletons.
-- `DbflowMcpDiscoveryTests` covers authenticated JSON-RPC discovery through `/mcp` for the six stable DBFlow skeleton
-  tools, `dbflow://targets`, schema/policy resource templates, and the two DBFlow prompts.
+  boundary behavior for DBFlow tools.
+- `DbflowMcpDiscoveryTests` covers authenticated JSON-RPC discovery through `/mcp` for the stable DBFlow tools,
+  `dbflow://targets`, schema/policy resource templates, and the two DBFlow prompts.

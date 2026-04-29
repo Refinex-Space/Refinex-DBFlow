@@ -46,6 +46,11 @@ public class DbflowMcpTools {
     private final SqlExplainService sqlExplainService;
 
     /**
+     * schema inspect 服务。
+     */
+    private final SchemaInspectService schemaInspectService;
+
+    /**
      * 创建 DBFlow MCP 工具 skeleton。
      *
      * @param authenticationContextResolver MCP 认证上下文解析器
@@ -53,19 +58,22 @@ public class DbflowMcpTools {
      * @param truncateConfirmationService   TRUNCATE 服务端二次确认服务
      * @param sqlExecutionService           受控 SQL 执行服务
      * @param sqlExplainService             受控 SQL EXPLAIN 服务
+     * @param schemaInspectService          schema inspect 服务
      */
     public DbflowMcpTools(
             McpAuthenticationContextResolver authenticationContextResolver,
             McpAccessBoundaryService accessBoundaryService,
             TruncateConfirmationService truncateConfirmationService,
             SqlExecutionService sqlExecutionService,
-            SqlExplainService sqlExplainService
+            SqlExplainService sqlExplainService,
+            SchemaInspectService schemaInspectService
     ) {
         this.authenticationContextResolver = authenticationContextResolver;
         this.accessBoundaryService = accessBoundaryService;
         this.truncateConfirmationService = truncateConfirmationService;
         this.sqlExecutionService = sqlExecutionService;
         this.sqlExplainService = sqlExplainService;
+        this.schemaInspectService = schemaInspectService;
     }
 
     /**
@@ -107,7 +115,7 @@ public class DbflowMcpTools {
     @McpTool(
             name = DbflowMcpNames.TOOL_INSPECT_SCHEMA,
             title = "Inspect DBFlow schema",
-            description = "Inspect schema/table metadata for a project environment after authentication and authorization checks. Skeleton returns empty schema metadata.",
+            description = "Inspect schema/table metadata for a project environment after authentication and authorization checks. Returns bounded information_schema metadata without datasource secrets.",
             annotations = @McpTool.McpAnnotations(
                     title = "Inspect DBFlow schema",
                     readOnlyHint = true,
@@ -120,8 +128,9 @@ public class DbflowMcpTools {
     public DbflowMcpSkeletonResponse inspectSchema(
             @McpToolParam(description = "Project key configured in dbflow.projects[].key.") String project,
             @McpToolParam(description = "Environment key configured under the project.") String env,
-            @McpToolParam(description = "Database schema name to inspect.") String schema,
-            @McpToolParam(required = false, description = "Optional table name. Omit it to inspect schema-level metadata.") String table
+            @McpToolParam(required = false, description = "Database schema name to inspect. Omit it to use the target connection catalog.") String schema,
+            @McpToolParam(required = false, description = "Optional table name. Omit it to inspect schema-level metadata.") String table,
+            @McpToolParam(required = false, description = "Maximum rows returned per metadata category. Defaults to 100 and is capped server-side.") Integer maxItems
     ) {
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
         McpAuthorizationBoundary boundary = accessBoundaryService.targetBoundary(
@@ -130,13 +139,35 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_INSPECT_SCHEMA
         );
+        SchemaInspectResult result = schemaInspectService.inspect(new SchemaInspectRequest(
+                context.requestId(),
+                context.userId(),
+                context.tokenId(),
+                null,
+                project,
+                env,
+                schema,
+                table,
+                maxItems == null ? 0 : maxItems
+        ));
         return response(DbflowMcpNames.TOOL_INSPECT_SCHEMA, context, boundary, data(
-                "project", project,
-                "env", env,
-                "schema", schema,
-                "table", table,
-                "columns", java.util.List.of(),
-                "indexes", java.util.List.of()
+                "project", result.projectKey(),
+                "env", result.environmentKey(),
+                "schema", result.schemaFilter(),
+                "table", result.tableFilter(),
+                "allowed", result.allowed(),
+                "status", result.status(),
+                "maxItems", result.maxItems(),
+                "truncated", result.truncated(),
+                "schemas", schemaData(result.schemas()),
+                "tables", tableData(result.tables()),
+                "columns", columnData(result.columns()),
+                "indexes", indexData(result.indexes()),
+                "views", viewData(result.views()),
+                "routines", routineData(result.routines()),
+                "durationMillis", result.durationMillis(),
+                "errorCode", result.errorCode(),
+                "errorMessage", result.errorMessage()
         ));
     }
 
@@ -449,6 +480,132 @@ public class DbflowMcpTools {
                         "level", warning.level(),
                         "code", warning.code(),
                         "message", warning.message()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换 schema 输出数据。
+     *
+     * @param schemas schema 元数据
+     * @return MCP 响应数据
+     */
+    private java.util.List<Map<String, Object>> schemaData(java.util.List<SchemaDatabaseMetadata> schemas) {
+        return schemas.stream()
+                .map(schema -> data(
+                        "name", schema.name(),
+                        "defaultCharacterSetName", schema.defaultCharacterSetName(),
+                        "defaultCollationName", schema.defaultCollationName()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换表输出数据。
+     *
+     * @param tables 表元数据
+     * @return MCP 响应数据
+     */
+    private java.util.List<Map<String, Object>> tableData(java.util.List<SchemaTableMetadata> tables) {
+        return tables.stream()
+                .map(table -> data(
+                        "schemaName", table.schemaName(),
+                        "name", table.name(),
+                        "type", table.type(),
+                        "engine", table.engine(),
+                        "rows", table.rows(),
+                        "comment", table.comment()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换字段输出数据。
+     *
+     * @param columns 字段元数据
+     * @return MCP 响应数据
+     */
+    private java.util.List<Map<String, Object>> columnData(java.util.List<SchemaColumnMetadata> columns) {
+        return columns.stream()
+                .map(column -> data(
+                        "schemaName", column.schemaName(),
+                        "tableName", column.tableName(),
+                        "name", column.name(),
+                        "ordinalPosition", column.ordinalPosition(),
+                        "dataType", column.dataType(),
+                        "columnType", column.columnType(),
+                        "nullable", column.nullable(),
+                        "defaultValue", column.defaultValue(),
+                        "comment", column.comment(),
+                        "columnKey", column.columnKey(),
+                        "extra", column.extra(),
+                        "characterMaximumLength", column.characterMaximumLength(),
+                        "numericPrecision", column.numericPrecision(),
+                        "numericScale", column.numericScale()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换索引输出数据。
+     *
+     * @param indexes 索引元数据
+     * @return MCP 响应数据
+     */
+    private java.util.List<Map<String, Object>> indexData(java.util.List<SchemaIndexMetadata> indexes) {
+        return indexes.stream()
+                .map(index -> data(
+                        "schemaName", index.schemaName(),
+                        "tableName", index.tableName(),
+                        "name", index.name(),
+                        "nonUnique", index.nonUnique(),
+                        "unique", index.unique(),
+                        "seqInIndex", index.seqInIndex(),
+                        "columnName", index.columnName(),
+                        "indexType", index.indexType(),
+                        "cardinality", index.cardinality(),
+                        "nullable", index.nullable(),
+                        "comment", index.comment(),
+                        "indexComment", index.indexComment()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换视图输出数据。
+     *
+     * @param views 视图元数据
+     * @return MCP 响应数据
+     */
+    private java.util.List<Map<String, Object>> viewData(java.util.List<SchemaViewMetadata> views) {
+        return views.stream()
+                .map(view -> data(
+                        "schemaName", view.schemaName(),
+                        "name", view.name(),
+                        "checkOption", view.checkOption(),
+                        "updatable", view.updatable(),
+                        "securityType", view.securityType(),
+                        "definition", view.definition()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换 routine 输出数据。
+     *
+     * @param routines routine 元数据
+     * @return MCP 响应数据
+     */
+    private java.util.List<Map<String, Object>> routineData(java.util.List<SchemaRoutineMetadata> routines) {
+        return routines.stream()
+                .map(routine -> data(
+                        "schemaName", routine.schemaName(),
+                        "name", routine.name(),
+                        "type", routine.type(),
+                        "dataType", routine.dataType(),
+                        "comment", routine.comment(),
+                        "sqlDataAccess", routine.sqlDataAccess(),
+                        "securityType", routine.securityType()
                 ))
                 .toList();
     }

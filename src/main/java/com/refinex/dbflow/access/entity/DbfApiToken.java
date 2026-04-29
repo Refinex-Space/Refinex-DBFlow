@@ -113,6 +113,15 @@ public class DbfApiToken {
     }
 
     /**
+     * 标记 Token 最近使用时间。
+     *
+     * @param lastUsedAt 最近使用时间
+     */
+    public void markUsed(Instant lastUsedAt) {
+        this.lastUsedAt = lastUsedAt;
+    }
+
+    /**
      * 持久化前补齐时间字段。
      */
     @PrePersist
@@ -149,11 +158,56 @@ public class DbfApiToken {
     }
 
     /**
+     * 读取 Token hash。
+     *
+     * @return Token hash
+     */
+    public String getTokenHash() {
+        return tokenHash;
+    }
+
+    /**
+     * 读取 Token 前缀。
+     *
+     * @return Token 前缀
+     */
+    public String getTokenPrefix() {
+        return tokenPrefix;
+    }
+
+    /**
      * 读取 Token 状态。
      *
      * @return Token 状态
      */
     public String getStatus() {
         return status;
+    }
+
+    /**
+     * 读取过期时间。
+     *
+     * @return 过期时间
+     */
+    public Instant getExpiresAt() {
+        return expiresAt;
+    }
+
+    /**
+     * 读取最近使用时间。
+     *
+     * @return 最近使用时间
+     */
+    public Instant getLastUsedAt() {
+        return lastUsedAt;
+    }
+
+    /**
+     * 读取吊销时间。
+     *
+     * @return 吊销时间
+     */
+    public Instant getRevokedAt() {
+        return revokedAt;
     }
 }

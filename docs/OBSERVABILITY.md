@@ -4,20 +4,20 @@
 
 This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture
 spec, a minimal single-module Spring Boot Maven scaffold, package boundaries, common model tests, request id filter
-tests, Flyway metadata schema migration tests, and JPA service slice tests for access/audit/confirmation metadata.
-It also includes validated `dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous
-DDL policy, plus management-side Spring Security tests for form login and CSRF.
+tests, Flyway metadata schema migration tests, JPA service slice tests for access/audit/confirmation metadata, and MCP
+Token lifecycle service tests. It also includes validated `dbflow.*` YAML binding tests for datasource defaults,
+project environments, and dangerous DDL policy, plus management-side Spring Security tests for form login and CSRF.
 
 ## Build & Run
 
-| Task                 | Command                                        | Expected                                                                                                                               |
-|----------------------|------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| Install dependencies | `./mvnw dependency:go-offline`                 | Maven resolves project dependencies for offline use.                                                                                   |
-| Build                | `./mvnw package`                               | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                 |
-| Run tests            | `./mvnw test`                                  | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, and JPA service tests pass. |
-| Lint / format check  | Not available yet; no formatter is configured. | Future scaffold must replace this row.                                                                                                 |
-| Start dev server     | `./mvnw spring-boot:run`                       | Starts the scaffolded Spring Boot application locally.                                                                                 |
-| Validate Harness     | `python3 scripts/check_harness.py`             | Exit 0, all manifest entries and AGENTS links valid.                                                                                   |
+| Task                 | Command                                        | Expected                                                                                                                                                        |
+|----------------------|------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Install dependencies | `./mvnw dependency:go-offline`                 | Maven resolves project dependencies for offline use.                                                                                                            |
+| Build                | `./mvnw package`                               | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                                          |
+| Run tests            | `./mvnw test`                                  | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, security, configuration, and JPA service tests pass. |
+| Lint / format check  | Not available yet; no formatter is configured. | Future scaffold must replace this row.                                                                                                                          |
+| Start dev server     | `./mvnw spring-boot:run`                       | Starts the scaffolded Spring Boot application locally.                                                                                                          |
+| Validate Harness     | `python3 scripts/check_harness.py`             | Exit 0, all manifest entries and AGENTS links valid.                                                                                                            |
 
 ## CI Configuration
 
@@ -54,8 +54,12 @@ Configuration sources and secret boundary:
   `${DBFLOW_DEMO_ENV_PASSWORD:}`.
 - Initial administrator credentials should come from environment variables, local development profile files excluded
   from source control, or a secret-managed BCrypt hash under `dbflow.admin.initial-user.password-hash`.
+- MCP Token pepper is read from `dbflow.security.mcp-token.pepper`; use an environment variable such as
+  `DBFLOW_MCP_TOKEN_PEPPER` or a secret-managed external configuration source. No default pepper value is committed.
 - Secrets and credentials must not be committed. Database passwords, token pepper values, and Nacos credentials should
   be injected through environment variables, encrypted configuration, Nacos secret handling, or a secret manager.
+- MCP Token plaintext is valid only as the one-time issue response. Logs, audit events, tests, and metadata tables must
+  never persist generated plaintext tokens; validation evidence should use hash/prefix/metadata assertions instead.
 - MCP Bearer Token authentication is not part of the management session chain and should be verified separately when
   implemented.
 
@@ -82,5 +86,7 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   missing JDBC URL/driver rejection, and invalid whitelist rejection.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
+- `McpTokenServiceJpaTests` covers one-time plaintext issue, hash/prefix persistence, duplicate active-token rejection,
+  invalid token rejection, revocation, reissue, successful validation, and `last_used_at` updates.
 - `AccessServiceJpaTests` covers active token uniqueness, token revocation/reissue, and grant query boundaries.
 - `AuditAndConfirmationServiceJpaTests` covers confirmation status transition and audit insertion/query behavior.

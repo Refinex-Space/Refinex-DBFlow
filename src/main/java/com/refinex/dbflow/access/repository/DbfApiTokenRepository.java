@@ -20,4 +20,12 @@ public interface DbfApiTokenRepository extends JpaRepository<DbfApiToken, Long> 
      * @return API Token 元数据
      */
     Optional<DbfApiToken> findByUserIdAndStatus(Long userId, String status);
+
+    /**
+     * 按 Token hash 查询 Token 元数据。
+     *
+     * @param tokenHash Token hash
+     * @return API Token 元数据
+     */
+    Optional<DbfApiToken> findByTokenHash(String tokenHash);
 }

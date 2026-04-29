@@ -5,9 +5,10 @@
 Refinex-DBFlow is planned as an internal MySQL MCP database operation gateway. Its purpose is to let AI tools operate authorized MySQL project environments while the server enforces authentication, authorization, dangerous SQL policy, confirmation, and audit logging.
 
 The current repository contains a single-module Spring Boot Maven scaffold, metadata persistence/services, validated
-`dbflow.*` configuration binding, management-side Spring Security session login, and Harness control-plane
-documentation. It does not yet contain MCP tools, MCP Bearer Token authentication, SQL policy enforcement, target
-database execution, full management UI, CI configuration, or production deployment configuration. The architecture
+`dbflow.*` configuration binding, management-side Spring Security session login, MCP Token lifecycle services, and
+Harness control-plane documentation. It does not yet contain MCP tools, MCP Bearer Token HTTP authentication, SQL
+policy enforcement, target database execution, full management UI, CI configuration, or production deployment
+configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
 and must be updated as implementation packages are added.
@@ -90,6 +91,10 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- AdminSecurityProperties.java
 |   |   |   |   +-- AdminUserDetailsService.java
 |   |   |   |   +-- InitialAdminUserInitializer.java
+|   |   |   |   +-- McpTokenIssueResult.java
+|   |   |   |   +-- McpTokenProperties.java
+|   |   |   |   +-- McpTokenService.java
+|   |   |   |   +-- McpTokenValidationResult.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- sqlpolicy/package-info.java
 |   |   +-- resources/application.yml
@@ -107,6 +112,7 @@ and must be updated as implementation packages are added.
 |           +-- config/MetadataSchemaMigrationTests.java
 |           +-- observability/RequestIdFilterTests.java
 |           +-- security/AdminSecurityTests.java
+|           +-- security/McpTokenServiceJpaTests.java
 +-- scripts/
     +-- check_harness.py
 ```
@@ -128,22 +134,25 @@ and must be updated as implementation packages are added.
   dangerous DDL policy into `DbflowProperties` with startup validation.
 - Admin security baseline: `/admin/**`, `/login`, and `/logout` are protected by a management-side Spring Security
   form-login session chain with CSRF and BCrypt-backed users.
+- MCP Token lifecycle baseline: `McpTokenService` can issue a unique active Token per user, store only a peppered
+  HMAC hash and display prefix, revoke active tokens, reissue after revocation, validate by hash comparison, and update
+  `last_used_at`.
 
 ## Current Source Package Boundaries
 
-| Package                            | Current contents                                                                                                                       | Responsibility                                                                               |
-|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
-| `com.refinex.dbflow`               | `DbflowApplication`                                                                                                                    | Spring Boot application entrypoint.                                                          |
-| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                       | Shared result and exception primitives; no DBFlow business policy.                           |
-| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                               | YAML datasource defaults, project environments, and dangerous DDL policy binding.            |
-| `com.refinex.dbflow.security`      | `AdminSecurityConfiguration`, `AdminSecurityProperties`, `AdminUserDetailsService`, `InitialAdminUserInitializer`, `package-info.java` | Management session login, BCrypt admin password model, and initial admin bootstrap.          |
-| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`                             | Users, tokens, project/environment registry, grants, and access metadata service boundary.   |
-| `com.refinex.dbflow.mcp`           | `package-info.java`                                                                                                                    | Reserved boundary for MCP tools, resources, prompts, and transport adapters.                 |
-| `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                                                    | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.  |
-| `com.refinex.dbflow.executor`      | `package-info.java`                                                                                                                    | Reserved boundary for Hikari data sources, JDBC execution, and EXPLAIN.                      |
-| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                       | Audit events, confirmation challenges, audit insertion, and confirmation status transitions. |
-| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                             | Minimal management endpoint surface for session-security verification.                       |
-| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                 | Request id propagation, logging context, and future metrics/health infrastructure.           |
+| Package                            | Current contents                                                                                                                                                                                       | Responsibility                                                                                                      |
+|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `com.refinex.dbflow`               | `DbflowApplication`                                                                                                                                                                                    | Spring Boot application entrypoint.                                                                                 |
+| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                                                                                       | Shared result and exception primitives; no DBFlow business policy.                                                  |
+| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                               | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                   |
+| `com.refinex.dbflow.security`      | `AdminSecurityConfiguration`, `AdminSecurityProperties`, `AdminUserDetailsService`, `InitialAdminUserInitializer`, `McpTokenProperties`, `McpTokenService`, MCP Token DTO records, `package-info.java` | Management session login, BCrypt admin password model, initial admin bootstrap, and MCP Token lifecycle primitives. |
+| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`                                                                                             | Users, tokens, project/environment registry, grants, and access metadata service boundary.                          |
+| `com.refinex.dbflow.mcp`           | `package-info.java`                                                                                                                                                                                    | Reserved boundary for MCP tools, resources, prompts, and transport adapters.                                        |
+| `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                                                                                                                    | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.                         |
+| `com.refinex.dbflow.executor`      | `package-info.java`                                                                                                                                                                                    | Reserved boundary for Hikari data sources, JDBC execution, and EXPLAIN.                                             |
+| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                       | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                        |
+| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                             | Minimal management endpoint surface for session-security verification.                                              |
+| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                 | Request id propagation, logging context, and future metrics/health infrastructure.                                  |
 
 ## Current Dependency Direction
 
@@ -172,6 +181,7 @@ config
 
 security
         -> access
+        -> common
         -> Spring Security / Spring Transactions
 
 admin
@@ -199,12 +209,18 @@ Current typed configuration model:
   default to `DENY`; `TRUNCATE` defaults to `REQUIRE_CONFIRMATION`.
 - `dbflow.policies.dangerous-ddl.whitelist[]`: project/environment/schema/table/operation granularity whitelist model
   for later `sqlpolicy` enforcement.
+- `dbflow.security.mcp-token.pepper`: MCP Token hash pepper. It has no committed default and should be supplied by
+  `DBFLOW_MCP_TOKEN_PEPPER`, encrypted configuration, Nacos secret handling, or a secret manager.
 
 Sensitive configuration boundary:
 
 - Database passwords may be empty or environment-variable placeholders such as `${DBFLOW_DEFAULT_PASSWORD:}`.
 - Initial administrator password may be supplied through `DBFLOW_ADMIN_INITIAL_PASSWORD` or a secret-managed BCrypt hash
   through `dbflow.admin.initial-user.password-hash`; no default administrator password is committed.
+- MCP Token plaintext is returned only by `McpTokenIssueResult` at issue time. `dbf_api_tokens` stores only
+  `token_hash`, `token_prefix`, status, expiry, revocation time, and last-used metadata.
+- MCP Token hash uses HMAC-SHA-256 with the configured pepper. Token validation must compare hashes and must not log,
+  persist, or audit plaintext tokens.
 - Real database passwords, token peppers, Nacos credentials, and connection-string secrets must not be committed.
 - The configuration layer only binds and validates values; it does not open target database connections yet.
 
@@ -222,6 +238,20 @@ The current implemented security boundary is management-side browser/session aut
 
 MCP endpoint authentication is intentionally not implemented in this chain. Future MCP endpoints should use a separate
 Bearer Token security chain and must not depend on browser sessions, form login, or CSRF semantics.
+
+## Current MCP Token Lifecycle
+
+The current implemented MCP Token lifecycle is service-level metadata behavior, not yet an HTTP authentication filter:
+
+- `McpTokenService.issueToken(userId, expiresAt)` generates a random `dbf_` plaintext Token, returns it once through
+  `McpTokenIssueResult`, and persists only a peppered hash plus a short prefix.
+- `McpTokenService.revokeActiveToken(userId, revokedAt)` revokes the user's current active Token by clearing the
+  nullable `active_flag` marker and setting status to `REVOKED`.
+- `McpTokenService.issueToken(...)` may be called again after revocation to reissue a new active Token.
+- `McpTokenService.validateToken(plaintextToken, usedAt)` computes the peppered hash, looks up token metadata by hash,
+  performs hash comparison, rejects revoked or expired tokens, and updates `last_used_at` on success.
+- The one-active-token rule is protected both by service checks and by the Flyway-managed
+  `uk_dbf_api_tokens_user_active` constraint.
 
 ## Current Metadata Schema
 

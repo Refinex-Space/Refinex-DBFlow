@@ -30,3 +30,6 @@ spring:
 #       enabled: ${DBFLOW_ADMIN_INITIAL_USER_ENABLED:false}
 #       username: ${DBFLOW_ADMIN_INITIAL_USERNAME:}
 #       password: ${DBFLOW_ADMIN_INITIAL_PASSWORD:}
+#   security:
+#     mcp-token:
+#       pepper: ${DBFLOW_MCP_TOKEN_PEPPER:}

@@ -8,8 +8,8 @@ The current repository contains a single-module Spring Boot Maven scaffold, meta
 `dbflow.*` configuration binding, project/environment scoped Hikari target `DataSource` registry, management-side
 Spring Security session login, MCP Token lifecycle services, MCP Bearer Token HTTP authentication, project/environment
 access decisions, a Spring AI MCP WebMVC Streamable HTTP endpoint, stable MCP tool/resource/prompt skeletons, and
-Harness control-plane documentation. It does not yet contain real database execution MCP tools, SQL policy enforcement,
-target database SQL execution, full management UI, CI
+Spring Cloud Alibaba Nacos Config/Discovery baseline wiring. It does not yet contain real database execution MCP tools,
+SQL policy enforcement, target database SQL execution, full management UI, CI
 configuration, or production deployment configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -129,6 +129,7 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- package-info.java
 |   |   |   +-- sqlpolicy/package-info.java
 |   |   +-- resources/application.yml
+|   |   +-- resources/application-nacos.yml
 |   |   +-- resources/db/migration/V1__create_metadata_schema.sql
 |   |   +-- resources/logback-spring.xml
 |   +-- test/
@@ -142,6 +143,7 @@ and must be updated as implementation packages are added.
 |           +-- audit/AuditAndConfirmationServiceJpaTests.java
 |           +-- config/DbflowPropertiesTests.java
 |           +-- config/MetadataSchemaMigrationTests.java
+|           +-- config/NacosProfileConfigurationTests.java
 |           +-- executor/HikariDataSourceRegistryTests.java
 |           +-- mcp/DbflowMcpDiscoveryTests.java
 |           +-- mcp/DbflowMcpServerTests.java
@@ -169,6 +171,9 @@ and must be updated as implementation packages are added.
   boundaries.
 - Configuration binding baseline: `dbflow.*` YAML properties bind datasource defaults, project environments, and
   dangerous DDL policy into `DbflowProperties` with startup validation.
+- Nacos configuration baseline: Spring Cloud Alibaba Nacos Config and Discovery starters are declared, default local
+  profile disables Nacos, and `application-nacos.yml` provides opt-in Config Data imports and Discovery registration
+  placeholders without committed credentials.
 - Target datasource baseline: `HikariDataSourceRegistry` creates isolated Hikari pools for each configured
   `projectKey/environmentKey`, applies shared `dbflow.datasource-defaults.hikari` settings, supports optional startup
   connection validation, and closes all managed pools on shutdown.
@@ -225,6 +230,7 @@ audit
 
 config
         -> Spring Boot ConfigurationProperties / Jakarta Validation
+        -> optional Spring Cloud Alibaba Nacos Config profile
 
 security
         -> access

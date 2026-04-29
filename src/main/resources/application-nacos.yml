@@ -1,0 +1,31 @@
+# Nacos profile 配置：仅在显式启用 `nacos` profile 时加载。
+spring:
+  config:
+    # 使用 optional 前缀保证本地未启动 Nacos 时仍可启动；生产环境应通过部署健康检查保证 Nacos 可用。
+    import:
+      - optional:nacos:refinex-dbflow.yml?group=DBFLOW_GROUP&refreshEnabled=true
+      - optional:nacos:refinex-dbflow-${spring.profiles.active}.yml?group=DBFLOW_GROUP&refreshEnabled=true
+  cloud:
+    service-registry:
+      auto-registration:
+        enabled: true
+    nacos:
+      # Nacos 地址、用户名、密码全部来自环境变量或外部安全配置，仓库不提供真实默认凭据。
+      server-addr: ${DBFLOW_NACOS_SERVER_ADDR:127.0.0.1:8848}
+      username: ${DBFLOW_NACOS_USERNAME:}
+      password: ${DBFLOW_NACOS_PASSWORD:}
+      config:
+        enabled: true
+        namespace: ${DBFLOW_NACOS_NAMESPACE:}
+        group: DBFLOW_GROUP
+        prefix: refinex-dbflow
+        file-extension: yml
+        refresh-enabled: true
+      discovery:
+        enabled: true
+        namespace: ${DBFLOW_NACOS_NAMESPACE:}
+        group: DBFLOW_GROUP
+        service: refinex-dbflow
+
+# 配置刷新安全边界：Nacos 刷新只允许更新 Spring Environment 中的候选配置。
+# 目标库连接池热替换必须在后续阶段先校验候选配置和候选连接池，再原子替换当前可用连接池。

@@ -22,6 +22,8 @@ _No active execution plans._
 
 ## Completed Plans
 
+- [2026-04-29 Nacos Config Discovery Baseline](exec-plans/completed/2026-04-29-nacos-config-discovery-baseline.md) -
+  Completed; added Spring Cloud Alibaba Nacos Config and Discovery baseline wiring with opt-in profile tests.
 - [2026-04-29 Hikari DataSource Registry](exec-plans/completed/2026-04-29-hikari-datasource-registry.md) -
   Completed; implemented project/environment scoped target database Hikari pools and lifecycle tests.
 - [2026-04-29 MCP Bearer Token Authentication](exec-plans/completed/2026-04-29-mcp-bearer-token-auth.md) -

@@ -93,6 +93,18 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Nacos Config 集成依赖：仅在 nacos profile 中启用外部配置导入，版本由 Spring Cloud Alibaba BOM 管理。 -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+        </dependency>
+
+        <!-- Nacos Discovery 集成依赖：仅在 nacos profile 中启用服务发现注册，版本由 Spring Cloud Alibaba BOM 管理。 -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+
         <!-- Flyway 核心依赖：负责版本化管理 DBFlow 元数据库 schema。 -->
         <dependency>
             <groupId>org.flywaydb</groupId>

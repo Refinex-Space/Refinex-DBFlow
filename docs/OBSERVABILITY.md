@@ -10,7 +10,8 @@ Spring AI MCP WebMVC Streamable HTTP server smoke test, and MCP tools/resources/
 includes
 validated `dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous DDL policy, plus
 project/environment scoped Hikari target `DataSource` registry lifecycle tests and management-side Spring Security
-tests for form login and CSRF.
+tests for form login and CSRF. Spring Cloud Alibaba Nacos Config and Discovery dependencies are present, while default
+local startup keeps Nacos disabled unless the `nacos` profile is explicitly activated.
 
 ## Build & Run
 
@@ -21,6 +22,7 @@ tests for form login and CSRF.
 | Run tests            | `./mvnw test`                                                                                                                                | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, security, configuration, and JPA service tests pass. |
 | Lint / format check  | Not available yet; no formatter is configured.                                                                                               | Future scaffold must replace this row.                                                                                                                          |
 | Start dev server     | `./mvnw spring-boot:run`                                                                                                                     | Starts the Spring Boot application locally with MCP Streamable HTTP available at `http://localhost:8080/mcp`.                                                   |
+| Start with Nacos     | `SPRING_PROFILES_ACTIVE=nacos DBFLOW_NACOS_SERVER_ADDR=127.0.0.1:8848 ./mvnw spring-boot:run`                                                | Starts with `application-nacos.yml`, optional Nacos config imports, and Nacos Discovery enabled when a server is available.                                     |
 | MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` with `Authorization: Bearer <DBFlow Token>` | The client can discover `dbflow_smoke`, six DBFlow skeleton tools, DBFlow resources/templates, and DBFlow prompts.                                              |
 | Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                            |
 
@@ -45,7 +47,7 @@ Planned baseline:
 - Spring Security management session login for `/admin/**`, `/login`, and `/logout`
 - Spring AI MCP WebMVC Server starter with Streamable HTTP endpoint `/mcp`
 - MySQL 8 and MySQL 5.7 via Testcontainers after scaffold
-- Nacos for configuration and discovery after scaffold
+- Nacos Config and Discovery dependencies with opt-in `nacos` profile
 
 Local reference checkouts:
 
@@ -56,6 +58,17 @@ When Spring AI MCP APIs, auto-configuration, annotations, starter behavior, or t
 Configuration sources and secret boundary:
 
 - DBFlow target database and dangerous DDL policy settings bind from Spring external configuration under `dbflow.*`.
+- Default local profile disables `spring.cloud.nacos.config.enabled`, `spring.cloud.nacos.discovery.enabled`, and
+  `spring.cloud.service-registry.auto-registration.enabled`; local tests and `./mvnw spring-boot:run` do not require a
+  real Nacos server.
+- Nacos is opt-in through `application-nacos.yml` and `SPRING_PROFILES_ACTIVE=nacos`. The profile imports
+  `optional:nacos:refinex-dbflow.yml?group=DBFLOW_GROUP&refreshEnabled=true` and
+  `optional:nacos:refinex-dbflow-${spring.profiles.active}.yml?group=DBFLOW_GROUP&refreshEnabled=true`.
+- Nacos namespace, address, username, and password use `DBFLOW_NACOS_*` environment placeholders. No Nacos credentials
+  are committed.
+- Nacos refresh is currently a configuration-source capability only. It must not directly close or replace the active
+  Hikari target pools; future hot replacement must validate candidate configuration and candidate pools before any
+  atomic swap.
 - Target database pools are created only from `dbflow.projects[*].environments[*]`; the executor registry never falls
   back to the Spring Boot metadata `DataSource`.
 - Database passwords may use environment placeholders such as `${DBFLOW_DEFAULT_PASSWORD:}` and
@@ -128,6 +141,8 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   grant uniqueness, and key audit/schema indexes.
 - `DbflowPropertiesTests` covers `dbflow.*` binding, dangerous DDL defaults, duplicate project/environment rejection,
   missing JDBC URL/driver rejection, invalid Hikari pool settings, and invalid whitelist rejection.
+- `NacosProfileConfigurationTests` covers default local Nacos disablement, `nacos` profile Config Data imports,
+  namespace/group placeholders, Discovery group, and absence of committed Nacos credential defaults.
 - `HikariDataSourceRegistryTests` covers one isolated Hikari pool per configured project/environment, shared Hikari
   default application, missing environment rejection without fallback, configurable startup connection validation,
   sanitized failure messages, and pool shutdown.

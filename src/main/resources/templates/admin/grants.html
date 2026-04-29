@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN"
+      th:replace="~{admin/fragments/layout :: layout('项目环境授权', 'grants', ${routeHint}, ~{::section})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<section>
+    <div class="page-head">
+        <div><h1>项目环境授权</h1>
+            <p class="muted">授权用户访问指定 project/env，作为 SQL 执行前置边界。</p></div>
+    </div>
+    <div class="notice ok" th:if="${successMessage}" th:text="${successMessage}">操作成功</div>
+    <div class="notice bad" th:if="${errorMessage}" th:text="${errorMessage}">操作失败</div>
+    <div class="panel">
+        <div class="panel-head"><h2>授权环境</h2><span class="muted">授权只写入元数据库，不展示目标库连接串或密码。</span>
+        </div>
+        <form class="filter-bar compact" method="post" th:action="@{/admin/grants}">
+            <div class="field">
+                <label>用户</label>
+                <select class="select" name="userId" required>
+                    <option value="">请选择</option>
+                    <option th:each="user : ${userOptions}" th:text="${user.username + ' / ' + user.displayName}"
+                            th:value="${user.id}">ops.alice
+                    </option>
+                </select>
+            </div>
+            <div class="field">
+                <label>项目环境</label>
+                <select class="select" name="target"
+                        onchange="const [p,e]=this.value.split('/'); this.form.projectKey.value=p || ''; this.form.environmentKey.value=e || '';"
+                        required>
+                    <option value="">请选择</option>
+                    <option th:each="env : ${environmentOptions}"
+                            th:text="${env.projectKey + ' / ' + env.environmentKey}"
+                            th:value="${env.projectKey + '/' + env.environmentKey}">billing-core / staging
+                    </option>
+                </select>
+                <input name="projectKey" type="hidden">
+                <input name="environmentKey" type="hidden">
+            </div>
+            <div class="field"><label>授权类型</label><select class="select" name="grantType">
+                <option>READ</option>
+                <option selected>WRITE</option>
+                <option>ADMIN</option>
+            </select></div>
+            <div class="field"><label>状态</label><input class="control" disabled value="ACTIVE"></div>
+            <button class="btn primary" type="submit">授权环境</button>
+        </form>
+    </div>
+    <div class="panel">
+        <form class="filter-bar compact" method="get">
+            <div class="field"><label>用户</label><input class="control" name="username" placeholder="lin.chen"
+                                                         th:value="${param.username}"></div>
+            <div class="field"><label>项目</label><input class="control" name="projectKey" placeholder="billing-core"
+                                                         th:value="${param.projectKey}"></div>
+            <div class="field"><label>环境</label><input class="control" name="environmentKey" placeholder="staging"
+                                                         th:value="${param.environmentKey}"></div>
+            <div class="field"><label>状态</label><select class="select" name="status">
+                <option>全部</option>
+                <option>ACTIVE</option>
+                <option>REVOKED</option>
+            </select></div>
+            <button class="btn primary" type="submit">筛选</button>
+        </form>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>授权 ID</th>
+                    <th>用户</th>
+                    <th>项目</th>
+                    <th>环境</th>
+                    <th>类型</th>
+                    <th>状态</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${grants}">
+                    <td class="mono" th:text="${row.id}">9101</td>
+                    <td th:text="${row.username}">admin.refinex</td>
+                    <td th:text="${row.projectKey}">billing-core</td>
+                    <td th:text="${row.environmentKey}">prod</td>
+                    <td th:text="${row.grantType}">WRITE</td>
+                    <td><span th:class="'status ' + (${row.status == 'ACTIVE'} ? 'ok' : 'bad')" th:text="${row.status}">ACTIVE</span>
+                    </td>
+                    <td>
+                        <div class="actions">
+                            <a class="btn text"
+                               th:href="@{/admin/audit(username=${row.username}, project=${row.projectKey}, env=${row.environmentKey})}">审计</a>
+                            <form class="inline-form" method="post"
+                                  th:action="@{/admin/grants/{grantId}/revoke(grantId=${row.id})}">
+                                <button class="btn text danger-text" type="submit">撤销</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(grants)}">
+                    <td class="muted" colspan="7">当前筛选条件下没有项目环境授权。</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>

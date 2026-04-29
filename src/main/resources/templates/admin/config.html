@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN" th:replace="~{admin/fragments/layout :: layout('配置查看', 'config', ${routeHint}, ~{::section})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<section>
+    <div class="page-head">
+        <div><h1>配置查看</h1>
+            <p class="muted">展示脱敏后的项目、环境、数据源和执行限制配置。</p></div>
+        <button class="btn" type="button">刷新配置</button>
+    </div>
+    <div class="panel">
+        <div class="panel-head"><h2>生效配置</h2><span class="mono muted">source=nacos:dbflow-targets-prod.yml</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>项目</th>
+                    <th>环境</th>
+                    <th>数据源</th>
+                    <th>类型</th>
+                    <th>主机</th>
+                    <th>端口</th>
+                    <th>库名</th>
+                    <th>用户名</th>
+                    <th>执行限制</th>
+                    <th>加载时间</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${configs}">
+                    <td th:text="${row.project}">billing-core</td>
+                    <td th:text="${row.env}">prod</td>
+                    <td th:text="${row.datasource}">mysql8-primary</td>
+                    <td th:text="${row.type}">mysql</td>
+                    <td class="mono" th:text="${row.host}">10.22.8.17</td>
+                    <td th:text="${row.port}">3306</td>
+                    <td th:text="${row.schema}">billing</td>
+                    <td th:text="${row.username}">dbflow_runner</td>
+                    <td class="mono" th:text="${row.limits}">maxRows=1000 timeout=8s fetchSize=200</td>
+                    <td th:text="${row.loadedAt}">2026-04-29 15:30</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="notice">配置查看页不展示数据库密码、完整 JDBC URL 或 secret。</div>
+</section>
+</body>
+</html>

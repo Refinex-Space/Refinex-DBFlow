@@ -32,13 +32,13 @@ public class AdminSecurityConfiguration {
     @Bean
     @Order(ADMIN_SECURITY_ORDER)
     public SecurityFilterChain adminSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.securityMatcher("/admin/**", "/login", "/logout")
+        http.securityMatcher("/admin/**", "/login", "/logout", "/admin-assets/**")
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/login").permitAll()
+                        .requestMatchers("/login", "/admin-assets/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
-                .formLogin(form -> form.defaultSuccessUrl("/admin", true).permitAll())
+                .formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/admin", true).permitAll())
                 .logout(logout -> logout.logoutUrl("/logout").logoutSuccessUrl("/login?logout"))
                 .csrf(Customizer.withDefaults());
         return http.build();

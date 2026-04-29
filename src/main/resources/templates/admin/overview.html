@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN" th:replace="~{admin/fragments/layout :: layout('总览', 'overview', ${routeHint}, ~{::section})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<section>
+    <div class="page-head">
+        <div><h1>总览</h1>
+            <p class="muted">近 24 小时网关安全、执行和健康摘要。</p></div>
+        <div class="actions">
+            <select class="select">
+                <option>全部环境</option>
+                <option>billing-core / prod</option>
+                <option>risk-lab / staging</option>
+            </select>
+            <button class="btn" type="button">刷新</button>
+        </div>
+    </div>
+    <div class="metric-grid">
+        <div class="metric" th:each="metric : ${metrics}">
+            <div class="label" th:text="${metric.label}">SQL 请求</div>
+            <div class="value"
+                 th:classappend="${metric.tone == 'bad'} ? ' danger-text' : (${metric.tone == 'warn'} ? ' warn-text' : '')"
+                 th:text="${metric.value}">128
+            </div>
+            <div class="hint" th:text="${metric.hint}">含 explain / inspect</div>
+        </div>
+    </div>
+    <div class="split">
+        <div class="panel">
+            <div class="panel-head"><h2>最近审计事件</h2><a class="btn text" th:href="@{/admin/audit}">查看全部</a>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>用户</th>
+                        <th>项目/环境</th>
+                        <th>Risk</th>
+                        <th>Decision</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row : ${auditRows}">
+                        <td class="mono" th:text="${#strings.substring(row.time, 11)}">15:45:12</td>
+                        <td th:text="${row.user}">admin.refinex</td>
+                        <td th:text="${row.project + '/' + row.env}">billing-core/prod</td>
+                        <td><span
+                                th:class="'status ' + (${row.risk == 'CRITICAL'} ? 'bad' : (${row.risk == 'HIGH'} ? 'warn' : (${row.risk == 'LOW'} ? 'ok' : 'neutral')))"
+                                th:text="${row.risk}">LOW</span></td>
+                        <td><span
+                                th:class="'status ' + (${row.decision == 'EXECUTED'} ? 'ok' : (${row.decision == 'POLICY_DENIED'} ? 'bad' : 'warn'))"
+                                th:text="${row.decision}">EXECUTED</span></td>
+                        <td><a class="btn text" th:href="@{/admin/audit/{id}(id=${row.id})}">详情</a></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-head"><h2>需要关注</h2><a class="btn text"
+                                                        th:href="@{/admin/policies/dangerous}">危险策略</a></div>
+            <div class="panel-body small-list">
+                <div class="small-row" th:each="item : ${attentionItems}">
+                    <span th:text="${item.label}">DROP TABLE 被拒绝</span>
+                    <a th:href="${item.href}"><span th:class="'decision ' + ${item.tone}" th:text="${item.status}">POLICY_DENIED</span></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

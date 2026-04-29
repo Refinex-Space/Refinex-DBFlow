@@ -188,3 +188,109 @@
 - [x] 每个页面包含主任务、关键字段、主要交互、空状态、错误状态、加载状态。
 - [x] 明确设计边界：只做设计资产，不做生产代码。
 - [x] 明确风格边界：企业内网管理后台，高密度、可扫描、可重复操作。
+
+## 原型使用说明
+
+当前高保真原型入口为 `docs/prototypes/admin/index.html`，可直接用浏览器打开，不需要启动后端服务。
+
+推荐走查路径：
+
+1. 登录页点击“登录后台”，进入总览。
+2. 左侧导航切换用户、项目环境授权、Token、危险策略、审计、健康状态。
+3. 在审计列表中设置 `Risk=CRITICAL` 后点击“筛选”，再进入审计详情。
+4. 在 Token 管理中点击“颁发 Token”，查看一次性明文展示；关闭弹窗后点击“吊销”并确认。
+5. 在项目环境授权中点击“授权环境”，确认后查看新增授权行。
+6. 在危险策略中点击“查看拒绝原因”，检查策略拒绝抽屉。
+7. 在系统健康中切换“仅异常”，检查异常健康项。
+8. 点击顶部“状态样例”，检查加载、空、错误、无权限状态样例。
+
+注意事项：
+
+- 原型数据为基于 DBFlow 业务字段构造的演示数据，不连接真实数据库。
+- Token 明文只在签发弹窗中以演示值出现，列表和详情仅展示前缀。
+- 配置页只展示脱敏字段，不展示密码、完整 JDBC URL 或 secret。
+- URL hash 用于原型内导航，例如 `index.html#audit`；后续 Thymeleaf 阶段应替换为真实服务端路由。
+
+## 页面路由映射
+
+| 原型 Hash         | 后端路由建议                      | Thymeleaf 模板建议                  | 主要片段                                                          |
+|-----------------|-----------------------------|---------------------------------|---------------------------------------------------------------|
+| `#login`        | `/login`                    | `admin/login.html`              | `loginForm`                                                   |
+| `#overview`     | `/admin`                    | `admin/overview.html`           | `dashboardSummary`、`recentAuditTable`、`attentionList`         |
+| `#users`        | `/admin/users`              | `admin/users.html`              | `filterBar`、`userTable`                                       |
+| `#grants`       | `/admin/grants`             | `admin/grants.html`             | `grantFilterBar`、`grantTable`、`grantModal`                    |
+| `#tokens`       | `/admin/tokens`             | `admin/tokens.html`             | `tokenFilterBar`、`tokenTable`、`tokenIssueModal`、`revokeModal` |
+| `#config`       | `/admin/config`             | `admin/config.html`             | `configTable`、`sanitizedConfigCell`                           |
+| `#policies`     | `/admin/policies/dangerous` | `admin/policies-dangerous.html` | `policyFilterBar`、`policyTable`、`reasonDrawer`                |
+| `#audit`        | `/admin/audit`              | `admin/audit-list.html`         | `auditFilterBar`、`auditTable`、`pagination`                    |
+| `#audit-detail` | `/admin/audit/{eventId}`    | `admin/audit-detail.html`       | `auditIdentityPanel`、`sqlPanel`、`timeline`                    |
+| `#health`       | `/admin/health`             | `admin/health.html`             | `healthSummary`、`healthGrid`                                  |
+
+## Thymeleaf 组件清单
+
+### Shell 组件
+
+| 组件            | 用途                          | 复用页面       |
+|---------------|-----------------------------|------------|
+| `AdminLayout` | 左侧导航、顶部状态栏、内容区容器            | 除登录外全部后台页面 |
+| `SidebarNav`  | 分组导航、当前页面高亮                 | 除登录外全部后台页面 |
+| `Topbar`      | 全局搜索、健康状态、配置源、管理员身份、退出      | 除登录外全部后台页面 |
+| `RouteHint`   | 原型期展示路由和模板映射；生产可移除或改为开发模式可见 | 原型和开发环境    |
+
+### 数据组件
+
+| 组件             | 用途       | 关键字段                                                  |
+|----------------|----------|-------------------------------------------------------|
+| `MetricGrid`   | 总览指标     | SQL 请求数、拒绝数、待确认数、Token 数、授权环境数、异常数据源                  |
+| `FilterBar`    | 查询条件区    | 用户、项目、环境、risk、decision、tool、SQL hash                  |
+| `DataTable`    | 高密度表格    | 表头、行、行级操作、分页                                          |
+| `StatusBadge`  | 状态与风险表达  | `ACTIVE`、`REVOKED`、`LOW`、`HIGH`、`POLICY_DENIED`       |
+| `KeyValueGrid` | 详情字段布局   | 审计详情、策略详情、配置详情                                        |
+| `SqlTextPanel` | SQL 文本展示 | SQL 文本、脱敏提示、SQL Hash                                  |
+| `Timeline`     | 审计链路     | request received、auth、classifier、policy、execute、audit |
+
+### 交互组件
+
+| 组件                   | 用途       | 关键行为                            |
+|----------------------|----------|---------------------------------|
+| `TokenIssueModal`    | 签发 Token | 成功后单次展示明文，关闭后不可恢复               |
+| `TokenRevokeModal`   | 吊销 Token | 二次确认，成功后刷新 Token 表              |
+| `GrantEnvModal`      | 授权项目环境   | 选择用户、项目、环境并提交                   |
+| `PolicyReasonDrawer` | 查看拒绝原因   | 展示 reason code、匹配范围、审计字段、示例 SQL |
+| `StateSampleDrawer`  | 状态样例     | 加载、空、错误、无权限状态                   |
+| `Toast`              | 操作反馈     | 筛选、刷新、复制、授权、吊销                  |
+
+### 状态组件
+
+| 组件               | 用途               | 设计要求                       |
+|------------------|------------------|----------------------------|
+| `SkeletonRows`   | 表格和详情加载          | 5 到 8 行，占位高度稳定             |
+| `EmptyState`     | 无数据或筛选无结果        | 展示当前条件和下一步操作，不使用插画         |
+| `ErrorState`     | 查询失败、连接失败、策略解析失败 | 展示错误码、request_id、重试和复制入口   |
+| `ForbiddenState` | 权限不足             | 不展示敏感字段，保留返回入口             |
+| `RedactedValue`  | 脱敏字段             | Token、密码、完整连接串、secret 默认隐藏 |
+
+## 专家评审记录
+
+评审日期：2026-04-29
+评审范围：`docs/prototypes/admin/index.html` 与本 README
+评审原则：评审设计，不评审生产实现。
+
+| 维度    | 分数     | 判断                                                                    |
+|-------|--------|-----------------------------------------------------------------------|
+| 信息架构  | 8.8/10 | 页面覆盖完整，导航分组符合“工作台 / 身份与访问 / 配置与策略 / 审计 / 运维”的运维心智；修订前缺少显式路由到模板映射，已补齐。 |
+| 视觉层级  | 8.2/10 | 克制、密度高、状态色稳定，避开紫色渐变和装饰性 hero；局部页面空白较大，健康页已补健康摘要以保持上下文。                |
+| 操作效率  | 8.5/10 | 常用动作均在首层：筛选、详情、签发、吊销、授权、拒绝原因、健康筛选；后续实现可加入批量操作，但 MVP 原型不强加。            |
+| 状态完整性 | 8.4/10 | README 已定义状态；修订前 HTML 缺少可视化状态样例，已新增“状态样例”抽屉覆盖加载、空、错误、无权限。             |
+| 企业可信度 | 8.6/10 | 信息围绕授权、Token、策略、审计、健康和脱敏，符合内网管理后台；已补 ADMIN 身份标识和路由提示，减少 demo 感。       |
+
+综合评分：8.5/10。
+
+## 修复记录
+
+| 严重程度 | 问题                                                | 修复                                                                                        |
+|------|---------------------------------------------------|-------------------------------------------------------------------------------------------|
+| 重要   | 原型页面和后续 Thymeleaf 模板缺少一对一映射，管理端实现阶段容易按页面重写而不是拆组件。 | 在 HTML 顶部加入当前 route/template/fragment 提示，并在 README 增加页面路由映射和组件清单。                         |
+| 重要   | 状态完整性只存在于文字说明，HTML 原型没有可复用的空、错、加载、无权限样例。          | 新增顶部“状态样例”入口和状态样例抽屉，作为后续 `SkeletonRows`、`EmptyState`、`ErrorState`、`ForbiddenState` 的视觉依据。 |
+| 优化   | 系统健康切到“仅异常”后页面上下文过弱，容易被误解为健康检查项过少。                | 新增健康摘要说明，保留异常数和查看全部的上下文。                                                                  |
+| 优化   | 管理端企业可信度需要更明确的权限身份感。                              | 顶部加入 `ADMIN` 身份 chip，强化管理端会话语义。                                                           |

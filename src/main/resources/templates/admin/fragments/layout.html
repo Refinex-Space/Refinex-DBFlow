@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN" th:fragment="layout(pageTitle, activeNav, routeHint, content)" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title th:text="${pageTitle} + ' · Refinex-DBFlow Admin'">Refinex-DBFlow Admin</title>
+    <link href="data:," rel="icon">
+    <link rel="stylesheet" th:href="@{/admin-assets/css/admin.css}">
+    <script defer th:src="@{/admin-assets/js/admin.js}"></script>
+</head>
+<body>
+<section class="app">
+    <aside class="sidebar">
+        <div class="side-brand">
+            <span class="brand-mark">DB</span>
+            <div>
+                <div class="side-title">DBFlow Admin</div>
+                <div class="side-sub">MCP SQL Gateway</div>
+            </div>
+        </div>
+        <div class="nav-group">
+            <div class="nav-label">工作台</div>
+            <a class="nav-item" th:classappend="${activeNav == 'overview'} ? ' active'" th:href="@{/admin}">总览</a>
+        </div>
+        <div class="nav-group">
+            <div class="nav-label">身份与访问</div>
+            <a class="nav-item" th:classappend="${activeNav == 'users'} ? ' active'"
+               th:href="@{/admin/users}">用户管理</a>
+            <a class="nav-item" th:classappend="${activeNav == 'grants'} ? ' active'"
+               th:href="@{/admin/grants}">项目环境授权</a>
+            <a class="nav-item" th:classappend="${activeNav == 'tokens'} ? ' active'" th:href="@{/admin/tokens}">Token
+                管理</a>
+        </div>
+        <div class="nav-group">
+            <div class="nav-label">配置与策略</div>
+            <a class="nav-item" th:classappend="${activeNav == 'config'} ? ' active'"
+               th:href="@{/admin/config}">配置查看</a>
+            <a class="nav-item" th:classappend="${activeNav == 'policies'} ? ' active'"
+               th:href="@{/admin/policies/dangerous}">危险策略</a>
+        </div>
+        <div class="nav-group">
+            <div class="nav-label">审计</div>
+            <a class="nav-item" th:classappend="${activeNav == 'audit'} ? ' active'"
+               th:href="@{/admin/audit}">审计列表</a>
+            <a class="nav-item" th:classappend="${activeNav == 'audit-detail'} ? ' active'" th:href="@{/admin/audit}">审计详情</a>
+        </div>
+        <div class="nav-group">
+            <div class="nav-label">运维</div>
+            <a class="nav-item" th:classappend="${activeNav == 'health'} ? ' active'"
+               th:href="@{/admin/health}">系统健康</a>
+        </div>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <form class="top-search" method="get" th:action="@{/admin/audit}">
+                <input class="control" name="q" placeholder="搜索 request_id / sql_hash / 用户名">
+                <button class="btn" type="submit">搜索</button>
+            </form>
+            <div class="top-meta">
+                <span class="status ok" th:text="${mcpStatus}">MCP 正常</span>
+                <span class="status neutral">ADMIN</span>
+                <span th:text="'配置源：' + ${configSource}">配置源：Nacos prod</span>
+                <span th:text="'管理员：' + ${adminName}">管理员：admin.refinex</span>
+                <button class="btn" data-drawer-open="#stateDrawer" type="button">状态样例</button>
+                <form method="post" th:action="@{/logout}">
+                    <button class="btn" type="submit">退出</button>
+                </form>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="route-hint">
+                <span class="mono" th:text="${routeHint}">route=/admin</span>
+                <span>原型路由已转为 Spring MVC + Thymeleaf 模板映射。</span>
+            </div>
+            <th:block th:replace="${content}"></th:block>
+        </div>
+    </main>
+</section>
+
+<aside class="drawer" id="stateDrawer">
+    <div class="drawer-head">
+        <h2>状态样例</h2>
+        <button class="btn" data-drawer-close type="button">关闭</button>
+    </div>
+    <div class="drawer-body">
+        <div class="state-sample">
+            <h3>加载</h3>
+            <p class="muted" style="margin:6px 0">用于表格、详情页、健康检查局部刷新。</p>
+            <div class="skeleton-line" style="width:92%"></div>
+            <div class="skeleton-line" style="width:78%"></div>
+            <div class="skeleton-line" style="width:84%"></div>
+        </div>
+        <div class="state-sample">
+            <h3>空结果</h3>
+            <p style="margin-top:6px">当前筛选条件下没有审计事件。</p>
+            <p class="muted" style="margin-top:6px">建议清除 risk / decision / sql_hash 条件后重试。</p>
+        </div>
+        <div class="state-sample">
+            <h3>错误</h3>
+            <p class="danger-text" style="margin-top:6px">审计查询超时。</p>
+            <p class="muted" style="margin-top:6px">error_code=AUDIT_QUERY_TIMEOUT，request_id=REQ-9F20C1。</p>
+        </div>
+        <div class="state-sample">
+            <h3>无权限</h3>
+            <p style="margin-top:6px">当前管理员无权查看全量审计。</p>
+            <p class="muted" style="margin-top:6px">普通用户后续仅可查看自己的记录；页面不展示 Token
+                明文或数据库密码。</p>
+        </div>
+    </div>
+</aside>
+</body>
+</html>

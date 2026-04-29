@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN" th:replace="~{admin/fragments/layout :: layout('系统健康', 'health', ${routeHint}, ~{::section})}"
+      xmlns:th="http://www.thymeleaf.org">
+<body>
+<section>
+    <div class="page-head">
+        <div><h1>系统健康</h1>
+            <p class="muted">检查管理端、MCP、元数据库、配置源和目标数据源池。</p></div>
+        <div class="actions"><span th:class="'status ' + ${healthPage.tone}"
+                                   th:text="${healthPage.overall}">HEALTHY</span><a class="btn primary"
+                                                                                    th:href="@{/admin/health}">刷新健康</a>
+        </div>
+    </div>
+    <div class="notice" style="margin-bottom:12px"
+         th:text="'共 ' + ${healthPage.totalCount} + ' 个健康检查项，异常 ' + ${healthPage.unhealthyCount} + ' 项；页面不展示数据库密码、完整连接串或 Token。'">
+        共 0 个健康检查项
+    </div>
+    <div class="health-grid">
+        <div class="health-item" th:each="item : ${healthPage.items}">
+            <div class="health-title">
+                <h3 th:text="${item.name}">应用进程</h3>
+                <span th:class="'status ' + ${item.tone}" th:text="${item.status}">HEALTHY</span>
+            </div>
+            <p th:text="${item.description}">v0.1.0-SNAPSHOT，uptime 6h 12m</p>
+            <p class="muted mono" style="margin-top:8px" th:text="${item.component + ' · ' + item.detail}">runtime · JVM
+                412MB / 1024MB</p>
+        </div>
+    </div>
+</section>
+</body>
+</html>

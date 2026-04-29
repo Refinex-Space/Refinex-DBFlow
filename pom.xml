@@ -82,6 +82,12 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!-- Thymeleaf 服务端模板依赖：用于管理端 Spring MVC 页面，不引入独立前端构建链。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
         <!-- JPA 基础依赖：为后续元数据 entity/repository 阶段提供持久化底座。 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -18,8 +18,15 @@ inspection service for schemas, tables, columns, indexes, views, procedures, and
 now has a unified `AuditEventWriter` for request received, policy denied, confirmation-required, executed, failed, and
 confirmation-expired audit events with token id, client metadata, tool name, decision, SQL hash, and bounded summaries.
 It also exposes a management-side audit list/detail API with filtering, pagination, sorting, administrator-only access,
-and sanitized DTOs that exclude Token metadata and redact password-like text. It does not yet contain a full management
-UI, CI configuration, or production deployment configuration. The architecture below records the approved target design
+and sanitized DTOs that exclude Token metadata and redact password-like text. It now includes a Thymeleaf-based
+management UI foundation converted from the P09 admin prototype: custom form-login page, shared admin shell, navigation,
+top status bar, dense table/filter/detail layouts, static CSS/JS, and real management flows for users, MCP Tokens, and
+project/environment grants. Token plaintext is shown only through a one-time flash result after issue/reissue, while
+lists omit Token hash, password hash, database passwords, and full Token plaintext. The audit, dangerous policy, and
+system health pages now render real server-side views for audit filtering/pagination/details, YAML/Nacos dangerous
+DDL policy state, metadata database status, target Hikari pools, Nacos enablement, and MCP endpoint state. It does not
+yet contain CI configuration or production deployment configuration. The architecture below records the approved target
+design
 from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
 and must be updated as implementation packages are added.
@@ -76,8 +83,10 @@ and must be updated as implementation packages are added.
 |   |   |   |   |   +-- ProjectEnvironmentCatalogService.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- admin/
+|   |   |   |   +-- AdminAccessManagementService.java
 |   |   |   |   +-- AdminAuditEventController.java
 |   |   |   |   +-- AdminHomeController.java
+|   |   |   |   +-- AdminOperationsViewService.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- audit/
 |   |   |   |   +-- entity/
@@ -185,11 +194,30 @@ and must be updated as implementation packages are added.
 |   |   +-- resources/application.yml
 |   |   +-- resources/application-nacos.yml
 |   |   +-- resources/db/migration/V1__create_metadata_schema.sql
+|   |   +-- resources/static/admin-assets/
+|   |   |   +-- css/admin.css
+|   |   |   +-- js/admin.js
+|   |   +-- resources/templates/admin/
+|   |   |   +-- fragments/layout.html
+|   |   |   +-- login.html
+|   |   |   +-- overview.html
+|   |   |   +-- users.html
+|   |   |   +-- grants.html
+|   |   |   +-- tokens.html
+|   |   |   +-- config.html
+|   |   |   +-- policies-dangerous.html
+|   |   |   +-- audit-list.html
+|   |   |   +-- audit-detail.html
+|   |   |   +-- health.html
 |   |   +-- resources/logback-spring.xml
 |   +-- test/
 |       +-- java/com/refinex/dbflow/
 |           +-- DbflowApplicationTests.java
+|           +-- admin/AdminAccessManagementControllerTests.java
+|           +-- admin/AdminAccessManagementServiceTests.java
 |           +-- admin/AdminAuditEventControllerTests.java
+|           +-- admin/AdminOperationsPageControllerTests.java
+|           +-- admin/AdminUiControllerTests.java
 |           +-- common/
 |           |   +-- ApiResultTests.java
 |           |   +-- DbflowExceptionTests.java
@@ -243,8 +271,16 @@ and must be updated as implementation packages are added.
   `projectKey/environmentKey`, applies shared `dbflow.datasource-defaults.hikari` settings, supports optional startup
   connection validation, supports candidate-first atomic replacement through `DataSourceConfigReloader`, and closes all
   managed pools on shutdown.
-- Admin security baseline: `/admin/**`, `/login`, and `/logout` are protected by a management-side Spring Security
-  form-login session chain with CSRF and BCrypt-backed users.
+- Admin UI baseline: `/login` renders a custom Thymeleaf form-login page; `/admin` and the base admin routes render
+  Thymeleaf templates that preserve the P09 prototype shell, navigation, top status, dense tables, filters, details,
+  and state samples. `/admin/audit` and `/admin/audit/{eventId}` now reuse `AuditQueryService` for real filtered,
+  paginated, sanitized audit views; `/admin/policies/dangerous` renders read-only dangerous DDL defaults, DROP
+  whitelist entries, TRUNCATE confirmation policy, and prod strengthening rules from effective configuration; and
+  `/admin/health` renders metadata database, target Hikari pool, Nacos, and MCP endpoint state without exposing
+  credentials or full JDBC URLs. Static admin assets are served from `/admin-assets/**` without a Node/Vite build chain.
+- Admin security baseline: `/admin/**`, `/login`, `/logout`, and `/admin-assets/**` are handled by a management-side
+  Spring Security form-login session chain with CSRF, BCrypt-backed users, custom login page, admin-only page access,
+  and anonymous static asset access.
 - MCP Bearer security baseline: `/mcp` is protected by a separate stateless Spring Security chain that accepts only
   `Authorization: Bearer <token>`, rejects query string tokens, validates every request through `McpTokenService`, and
   writes a DBFlow MCP authentication token into `SecurityContext`.
@@ -303,7 +339,7 @@ and must be updated as implementation packages are added.
 | `com.refinex.dbflow.sqlpolicy`     | `SqlClassifier`, `SqlClassification`, SQL operation/status/risk/type enums, `DangerousDdlPolicyEngine`, dangerous DDL decision/reason records, `TruncateConfirmationService`, TRUNCATE confirmation request/decision records, `package-info.java`                           | SQL parsing, auditable risk classification, DROP DATABASE / DROP TABLE YAML whitelist decisions, and TRUNCATE server-side confirmation lifecycle.                                                                                                             |
 | `com.refinex.dbflow.executor`      | `DataSourceConfigReloader`, `DataSourceReloadResult`, `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `SqlExecutionService`, `SqlExplainService`, `SchemaInspectService`, SQL execution/explain/schema inspect request/result DTOs, `package-info.java` | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement, controlled bounded JDBC SQL execution, non-mutating EXPLAIN, and authorized `information_schema` inspection. |
 | `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditEventWriter`, audit write/query DTOs, `AuditQueryService`, `AuditService`, `ConfirmationService`                                                                                                           | Unified audit event writing, bounded result summaries, sanitized admin audit queries, confirmation challenges, audit insertion/query, and confirmation status transitions.                                                                                    |
-| `com.refinex.dbflow.admin`         | `AdminHomeController`, `AdminAuditEventController`, `package-info.java`                                                                                                                                                                                                     | Management endpoint surface for session-security verification and administrator audit list/detail APIs.                                                                                                                                                       |
+| `com.refinex.dbflow.admin`         | `AdminAccessManagementService`, `AdminOperationsViewService`, `AdminHomeController`, `AdminAuditEventController`, `package-info.java`                                                                                                                                       | Management endpoint surface for session-security verification, users, MCP Tokens, project/environment grants, administrator audit APIs, read-only dangerous policy views, and operations health pages.                                                        |
 | `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                                                      | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                                                                                                            |
 
 ## Current Dependency Direction

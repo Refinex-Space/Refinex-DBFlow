@@ -20,7 +20,13 @@ authorized `dbflow_inspect_schema` and schema resource coverage for `information
 views, procedures, functions, filtering, truncation, and denial-before-target-access behavior. The audit layer now has
 `AuditEventWriter` coverage for request received, policy denied, confirmation-required, executed, failed, and
 confirmation-expired decisions with bounded summaries and token-plaintext exclusion. The management backend now has
-audit query service/API coverage for filters, pagination, sanitized details, and admin-only access. The Testcontainers
+audit query service/API coverage for filters, pagination, sanitized details, and admin-only access. The management UI
+now has Thymeleaf controller coverage for the custom login page, anonymous redirect, static admin assets, admin-only
+page access, and the base admin pages converted from the P09 prototype. It also has management access smoke coverage
+for creating/disabling users, granting/revoking project environments, issuing/revoking/reissuing MCP Tokens, one-time
+Token plaintext display, and admin-only CSRF-protected POST boundaries. Management operations pages now have smoke
+coverage for audit filtering, pagination, denied-reason detail rendering, dangerous policy read-only rendering,
+system health rendering, non-admin rejection, and page-level secret redaction. The Testcontainers
 classes are skipped automatically when the local machine has no Docker runtime. Spring
 Cloud
 Alibaba Nacos Config and Discovery dependencies are present, while default local startup keeps Nacos disabled unless
@@ -58,6 +64,7 @@ Planned baseline:
 - Maven compiler release 21, UTF-8 encoding, and compiler `-parameters`
 - Flyway V1 metadata migration with H2 MySQL mode verification
 - Spring Security management session login for `/admin/**`, `/login`, and `/logout`
+- Thymeleaf management templates under `templates/admin/` and static assets under `/admin-assets/**`
 - Spring AI MCP WebMVC Server starter with Streamable HTTP endpoint `/mcp`
 - JSQLParser 5.3 for SQL parsing and first-stage risk classification
 - MySQL 8 and MySQL 5.7 via Testcontainers after scaffold
@@ -140,6 +147,16 @@ Configuration sources and secret boundary:
 - `/admin/api/audit-events` exposes administrator-only audit list/detail queries with time, user, project,
   environment, risk, decision, SQL hash, and tool filters, bounded pagination, sort-field whitelisting, and sanitized
   DTOs that omit token id/prefix and redact password-like text or JDBC URLs.
+- `/login` exposes the custom Thymeleaf management login page and submits to Spring Security form login. `/admin`,
+  `/admin/config`, `/admin/policies/dangerous`, `/admin/audit`, `/admin/audit/{eventId}`, and `/admin/health` expose
+  the server-rendered management UI shell. The audit pages delegate to `AuditQueryService` for filtered, paginated,
+  sanitized list/detail views. The dangerous policy page is read-only and renders effective YAML/Nacos policy state.
+  The health page renders metadata database, configured target Hikari pool, Nacos, and MCP endpoint status without
+  active target business SQL. `/admin/users`, `/admin/grants`, and `/admin/tokens` now execute real metadata
+  operations for user creation/disable, project/environment grant/revoke, and MCP Token issue/revoke/reissue.
+  Token plaintext is carried by one-time flash state after issue/reissue; list pages only show prefixes and never show
+  Token hash, password hash, JDBC URLs, or database passwords. `/admin-assets/**` is anonymous-readable for CSS/JS while
+  `/admin/**` remains admin-only.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -233,6 +250,16 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   sorting, and sanitized detail results.
 - `AdminAuditEventControllerTests` covers administrator audit list/detail API access, JSON response shape, sensitive
   field omission/redaction, and non-admin rejection.
+- `AdminUiControllerTests` covers the custom Thymeleaf login page, anonymous redirect to login, anonymous static asset
+  access, administrator access to all base admin pages, and non-admin page rejection.
+- `AdminOperationsPageControllerTests` covers audit page filtering and pagination, denied-reason detail rendering,
+  page-level secret redaction, read-only dangerous policy rendering, system health rendering, and non-admin rejection
+  for operations pages.
+- `AdminAccessManagementServiceTests` covers the service-level user, environment grant, Token issue, revoke, reissue,
+  disable flow and verifies Token hash is not exposed in service list views.
+- `AdminAccessManagementControllerTests` covers management smoke for creating users, granting environments, issuing
+  one-time plaintext Tokens, hiding plaintext on later GET, revoking Tokens, reissuing Tokens, non-admin POST rejection,
+  and missing-CSRF rejection.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,

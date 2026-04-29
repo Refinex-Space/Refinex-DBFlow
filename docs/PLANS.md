@@ -18,10 +18,19 @@ Harness Powers lifecycle:
 
 ## Active Plans
 
-No active execution plans.
+No active plans.
 
 ## Completed Plans
 
+- [2026-04-29 Admin Operations Pages](exec-plans/completed/2026-04-29-admin-operations-pages.md) -
+  Completed; implemented management-side audit list/detail pages, read-only dangerous policy page, and system health
+  page with filtering, pagination, denied-reason detail rendering, secret redaction, and admin-only smoke coverage.
+- [2026-04-29 Admin Access Management Pages](exec-plans/completed/2026-04-29-admin-access-management-pages.md) -
+  Completed; implemented real management-side user, MCP Token, and project/environment grant pages with form actions,
+  one-time Token plaintext display, CSRF-protected admin writes, and smoke tests.
+- [2026-04-29 Admin Thymeleaf Layout](exec-plans/completed/2026-04-29-admin-thymeleaf-layout.md) -
+  Completed; converted the P09 admin prototype into Spring MVC + Thymeleaf management layout, static assets, and
+  Spring Security form login integration.
 - [2026-04-29 Admin Audit Query API](exec-plans/completed/2026-04-29-admin-audit-query-api.md) -
   Completed; implemented management-side audit list/detail API with filtering, pagination, sorting, admin-only access,
   and sanitized DTOs.

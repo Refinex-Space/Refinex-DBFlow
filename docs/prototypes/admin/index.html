@@ -1,0 +1,1483 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Refinex-DBFlow Admin Prototype</title>
+    <style>
+        :root {
+            --bg: #f4f6f9;
+            --panel: #ffffff;
+            --line: #d9dee7;
+            --line-soft: #e8ebf0;
+            --ink: #17202a;
+            --muted: #5f6b7a;
+            --weak: #8b95a3;
+            --primary: #146a9f;
+            --primary-weak: #e8f3fa;
+            --green: #1f7a4d;
+            --green-weak: #e9f6ef;
+            --red: #b42318;
+            --red-weak: #fbe9e7;
+            --amber: #9a6700;
+            --amber-weak: #fff5d6;
+            --code: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: var(--sans);
+            font-size: 13px;
+            letter-spacing: 0;
+        }
+
+        button, input, select, textarea {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .mono {
+            font-family: var(--code);
+            font-size: 12px;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .danger-text {
+            color: var(--red);
+        }
+
+        .ok-text {
+            color: var(--green);
+        }
+
+        .warn-text {
+            color: var(--amber);
+        }
+
+        .login-view {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 32px;
+            background: #eef2f6;
+        }
+
+        .login-box {
+            width: 420px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            box-shadow: 0 12px 34px rgba(23, 32, 42, 0.08);
+        }
+
+        .login-head {
+            padding: 22px 24px 14px;
+            border-bottom: 1px solid var(--line-soft);
+        }
+
+        .brand-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .brand-mark {
+            width: 28px;
+            height: 28px;
+            display: grid;
+            place-items: center;
+            background: #17324d;
+            color: white;
+            font-family: var(--code);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .login-body {
+            padding: 20px 24px 24px;
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .field label {
+            color: #344054;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .control, .select, textarea {
+            height: 34px;
+            border: 1px solid #cbd3df;
+            background: white;
+            color: var(--ink);
+            padding: 0 10px;
+            outline: none;
+        }
+
+        textarea {
+            height: auto;
+            padding: 9px 10px;
+            resize: vertical;
+        }
+
+        .control:focus, .select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(20, 106, 159, 0.12);
+        }
+
+        .password-line {
+            display: grid;
+            grid-template-columns: 1fr 74px;
+            gap: 8px;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 224px 1fr;
+        }
+
+        .sidebar {
+            background: #1d2733;
+            color: #dbe2ea;
+            border-right: 1px solid #111922;
+            min-height: 100vh;
+        }
+
+        .side-brand {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .side-title {
+            font-weight: 700;
+        }
+
+        .side-sub {
+            font-size: 11px;
+            color: #9aa7b6;
+            margin-top: 2px;
+        }
+
+        .nav-group {
+            padding: 14px 10px 4px;
+        }
+
+        .nav-label {
+            padding: 0 8px 7px;
+            font-size: 11px;
+            color: #8d99a8;
+        }
+
+        .nav-item {
+            width: 100%;
+            height: 32px;
+            border: 0;
+            background: transparent;
+            color: #dbe2ea;
+            text-align: left;
+            padding: 0 10px;
+            margin: 1px 0;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .nav-item.active {
+            background: #146a9f;
+            color: white;
+        }
+
+        .main {
+            min-width: 0;
+            display: grid;
+            grid-template-rows: 56px 1fr;
+        }
+
+        .topbar {
+            background: var(--panel);
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            gap: 16px;
+        }
+
+        .top-search {
+            width: min(480px, 44vw);
+            display: grid;
+            grid-template-columns: 1fr 74px;
+            gap: 8px;
+        }
+
+        .top-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .content {
+            padding: 16px 18px 28px;
+            overflow: auto;
+        }
+
+        .route-hint {
+            min-height: 34px;
+            margin-bottom: 12px;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
+            background: #fbfcfe;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            color: var(--muted);
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .page-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0 0 5px;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 15px;
+            margin: 0;
+        }
+
+        h3 {
+            font-size: 13px;
+            margin: 0;
+        }
+
+        p {
+            margin: 0;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            height: 32px;
+            border: 1px solid #cbd3df;
+            background: white;
+            color: #243244;
+            padding: 0 11px;
+        }
+
+        .btn:hover {
+            border-color: #9aa8b9;
+            background: #f8fafc;
+        }
+
+        .btn.primary {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn.danger {
+            border-color: #f0b7b0;
+            color: var(--red);
+            background: #fff;
+        }
+
+        .btn.text {
+            border: 0;
+            background: transparent;
+            color: var(--primary);
+            padding: 0 4px;
+        }
+
+        .btn[disabled] {
+            cursor: not-allowed;
+            opacity: .55;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            margin-bottom: 12px;
+        }
+
+        .panel-head {
+            min-height: 42px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--line-soft);
+            gap: 12px;
+        }
+
+        .panel-body {
+            padding: 12px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .metric {
+            background: white;
+            border: 1px solid var(--line);
+            padding: 10px 11px;
+            min-height: 72px;
+        }
+
+        .metric .label {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .metric .value {
+            margin-top: 7px;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .metric .hint {
+            margin-top: 4px;
+            color: var(--weak);
+            font-size: 11px;
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: 1.2fr .8fr;
+            gap: 12px;
+        }
+
+        .filter-bar {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
+            gap: 8px;
+            align-items: end;
+            padding: 10px 12px;
+            background: #fbfcfe;
+            border-bottom: 1px solid var(--line-soft);
+        }
+
+        .filter-bar.compact {
+            grid-template-columns: repeat(4, minmax(130px, 1fr)) auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            height: 38px;
+            padding: 0 10px;
+            border-bottom: 1px solid var(--line-soft);
+            text-align: left;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        th {
+            color: #4d5a6b;
+            font-size: 12px;
+            background: #f7f9fb;
+            font-weight: 700;
+        }
+
+        tr:hover td {
+            background: #fbfdff;
+        }
+
+        .table-wrap {
+            overflow: auto;
+        }
+
+        .status, .risk, .decision {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 22px;
+            padding: 0 8px;
+            border: 1px solid transparent;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .status::before, .risk::before, .decision::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .ok {
+            color: var(--green);
+            background: var(--green-weak);
+            border-color: #b8e4cb;
+        }
+
+        .warn {
+            color: var(--amber);
+            background: var(--amber-weak);
+            border-color: #f2d479;
+        }
+
+        .bad {
+            color: var(--red);
+            background: var(--red-weak);
+            border-color: #efb5ae;
+        }
+
+        .neutral {
+            color: #475467;
+            background: #f1f4f8;
+            border-color: #d7dde6;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(160px, 1fr));
+            gap: 10px;
+        }
+
+        .kv {
+            border-bottom: 1px solid var(--line-soft);
+            padding: 8px 0;
+            min-width: 0;
+        }
+
+        .kv .k {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .kv .v {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sql-box {
+            margin-top: 10px;
+            border: 1px solid #cbd3df;
+            background: #f8fafc;
+            padding: 10px;
+            color: #1e293b;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            font-family: var(--code);
+            font-size: 12px;
+        }
+
+        .timeline {
+            display: grid;
+            gap: 8px;
+        }
+
+        .timeline-row {
+            display: grid;
+            grid-template-columns: 152px 1fr;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--line-soft);
+        }
+
+        .notice {
+            border: 1px solid var(--line);
+            background: #fbfcfe;
+            padding: 10px 12px;
+            color: #334155;
+        }
+
+        .drawer, .modal-backdrop, .toast {
+            position: fixed;
+            z-index: 40;
+        }
+
+        .modal-backdrop {
+            inset: 0;
+            background: rgba(17, 24, 39, 0.42);
+            display: grid;
+            place-items: center;
+        }
+
+        .modal {
+            width: 560px;
+            max-width: calc(100vw - 40px);
+            background: white;
+            border: 1px solid #b7c0cd;
+            box-shadow: 0 22px 60px rgba(17, 24, 39, 0.28);
+        }
+
+        .modal-head, .modal-foot {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line-soft);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .modal-foot {
+            border-bottom: 0;
+            border-top: 1px solid var(--line-soft);
+            justify-content: flex-end;
+        }
+
+        .modal-body {
+            padding: 14px;
+        }
+
+        .drawer {
+            right: 0;
+            top: 0;
+            height: 100vh;
+            width: 520px;
+            background: white;
+            border-left: 1px solid var(--line);
+            box-shadow: -18px 0 46px rgba(17, 24, 39, 0.16);
+            display: grid;
+            grid-template-rows: 52px 1fr;
+        }
+
+        .drawer-head {
+            border-bottom: 1px solid var(--line-soft);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 14px;
+        }
+
+        .drawer-body {
+            padding: 14px;
+            overflow: auto;
+        }
+
+        .toast {
+            right: 18px;
+            bottom: 18px;
+            background: #17202a;
+            color: white;
+            padding: 10px 12px;
+            box-shadow: 0 12px 34px rgba(17, 24, 39, .22);
+        }
+
+        .secret {
+            border: 1px dashed #98a2b3;
+            background: #f8fafc;
+            padding: 10px;
+            font-family: var(--code);
+            overflow-wrap: anywhere;
+            line-height: 1.5;
+        }
+
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .health-item {
+            border: 1px solid var(--line);
+            padding: 10px;
+            background: white;
+            min-height: 96px;
+        }
+
+        .health-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .small-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .small-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--line-soft);
+        }
+
+        .state-sample {
+            border: 1px solid var(--line);
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #fbfcfe;
+        }
+
+        .skeleton-line {
+            height: 12px;
+            margin: 8px 0;
+            background: linear-gradient(90deg, #eef2f6 0%, #f8fafc 42%, #eef2f6 100%);
+        }
+
+        @media (max-width: 1180px) {
+            .metric-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .split, .health-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-bar, .filter-bar.compact {
+                grid-template-columns: repeat(2, minmax(130px, 1fr)) auto;
+            }
+
+            .detail-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+<section class="login-view" id="loginView">
+    <div class="login-box">
+        <div class="login-head">
+            <div class="brand-line"><span class="brand-mark">DB</span><span>Refinex-DBFlow Admin</span></div>
+            <p class="muted" style="margin-top:8px">内部 MySQL MCP 操作网关管理端</p>
+        </div>
+        <div class="login-body">
+            <div class="notice" style="margin-bottom:14px">会话已过期或首次进入，请使用管理端账号登录。</div>
+            <div class="field">
+                <label for="loginUser">用户名</label>
+                <input class="control" id="loginUser" value="admin.refinex">
+            </div>
+            <div class="field">
+                <label for="loginPass">密码</label>
+                <div class="password-line">
+                    <input class="control" id="loginPass" type="password" value="dbflow-admin-demo">
+                    <button class="btn" id="togglePassword">显示</button>
+                </div>
+            </div>
+            <button class="btn primary" id="loginButton" style="width:100%">登录后台</button>
+        </div>
+    </div>
+</section>
+
+<section class="app hidden" id="adminApp">
+    <aside class="sidebar">
+        <div class="side-brand">
+            <span class="brand-mark">DB</span>
+            <div>
+                <div class="side-title">DBFlow Admin</div>
+                <div class="side-sub">MCP SQL Gateway</div>
+            </div>
+        </div>
+        <div class="nav-group">
+            <div class="nav-label">工作台</div>
+            <button class="nav-item active" data-page="overview">总览</button>
+        </div>
+        <div class="nav-group">
+            <div class="nav-label">身份与访问</div>
+            <button class="nav-item" data-page="users">用户管理</button>
+            <button class="nav-item" data-page="grants">项目环境授权</button>
+            <button class="nav-item" data-page="tokens">Token 管理</button>
+        </div>
+        <div class="nav-group">
+            <div class="nav-label">配置与策略</div>
+            <button class="nav-item" data-page="config">配置查看</button>
+            <button class="nav-item" data-page="policies">危险策略</button>
+        </div>
+        <div class="nav-group">
+            <div class="nav-label">审计</div>
+            <button class="nav-item" data-page="audit">审计列表</button>
+            <button class="nav-item" data-page="audit-detail">审计详情</button>
+        </div>
+        <div class="nav-group">
+            <div class="nav-label">运维</div>
+            <button class="nav-item" data-page="health">系统健康</button>
+        </div>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <div class="top-search">
+                <input class="control" id="globalSearch" placeholder="搜索 request_id / sql_hash / 用户名">
+                <button class="btn" id="globalSearchButton">搜索</button>
+            </div>
+            <div class="top-meta">
+                <span class="status ok">MCP 正常</span>
+                <span class="status neutral">ADMIN</span>
+                <span>配置源：Nacos prod</span>
+                <span>管理员：admin.refinex</span>
+                <button class="btn" id="openStateSamples">状态样例</button>
+                <button class="btn" id="logoutButton">退出</button>
+            </div>
+        </header>
+
+        <div class="content">
+            <div class="route-hint">
+                <span class="mono"
+                      id="routeText">route=/admin · template=admin/overview.html · fragment=pageContent</span>
+                <span>原型路由使用 URL hash，Thymeleaf 阶段按右侧模板映射拆分。</span>
+            </div>
+            <section class="page active" id="page-overview">
+                <div class="page-head">
+                    <div><h1>总览</h1>
+                        <p class="muted">近 24 小时网关安全、执行和健康摘要。</p></div>
+                    <div class="actions">
+                        <select class="select" id="overviewEnv">
+                            <option>全部环境</option>
+                            <option>billing-core / prod</option>
+                            <option>risk-lab / staging</option>
+                        </select>
+                        <button class="btn" id="overviewRefresh">刷新</button>
+                    </div>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric">
+                        <div class="label">SQL 请求</div>
+                        <div class="value">128</div>
+                        <div class="hint">含 explain / inspect</div>
+                    </div>
+                    <div class="metric">
+                        <div class="label">策略拒绝</div>
+                        <div class="value danger-text">9</div>
+                        <div class="hint">7 条 DROP，2 条 GRANT</div>
+                    </div>
+                    <div class="metric">
+                        <div class="label">待确认</div>
+                        <div class="value warn-text">2</div>
+                        <div class="hint">TRUNCATE TTL 内</div>
+                    </div>
+                    <div class="metric">
+                        <div class="label">有效 Token</div>
+                        <div class="value">17</div>
+                        <div class="hint">3 个 7 天内过期</div>
+                    </div>
+                    <div class="metric">
+                        <div class="label">已授权环境</div>
+                        <div class="value">12</div>
+                        <div class="hint">5 项目 / 4 生产</div>
+                    </div>
+                    <div class="metric">
+                        <div class="label">异常数据源</div>
+                        <div class="value warn-text">1</div>
+                        <div class="hint">risk-lab / dev</div>
+                    </div>
+                </div>
+                <div class="split">
+                    <div class="panel">
+                        <div class="panel-head"><h2>最近审计事件</h2>
+                            <button class="btn text" data-go="audit">查看全部</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table id="overviewAuditTable"></table>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-head"><h2>需要关注</h2>
+                            <button class="btn text" data-go="policies">危险策略</button>
+                        </div>
+                        <div class="panel-body small-list">
+                            <div class="small-row"><span>DROP TABLE 被拒绝</span><span class="decision bad">POLICY_DENIED</span>
+                            </div>
+                            <div class="small-row"><span>TRUNCATE 等待确认</span><span class="decision warn">REQUIRES_CONFIRMATION</span>
+                            </div>
+                            <div class="small-row"><span>risk-lab / dev 数据源连接失败</span>
+                                <button class="btn text" data-go="health">查看健康</button>
+                            </div>
+                            <div class="small-row"><span>3 个 Token 7 天内过期</span>
+                                <button class="btn text" data-go="tokens">查看 Token</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="page" id="page-users">
+                <div class="page-head">
+                    <div><h1>用户管理</h1>
+                        <p class="muted">管理后台用户及其 Token、环境授权关系。</p></div>
+                    <button class="btn primary">创建用户</button>
+                </div>
+                <div class="panel">
+                    <div class="filter-bar compact">
+                        <div class="field"><label>用户名</label><input class="control" id="userKeyword"
+                                                                       placeholder="zhang / chen"></div>
+                        <div class="field"><label>状态</label><select class="select" id="userStatus">
+                            <option value="">全部</option>
+                            <option>ACTIVE</option>
+                            <option>DISABLED</option>
+                        </select></div>
+                        <div class="field"><label>角色</label><select class="select">
+                            <option>全部</option>
+                            <option>ADMIN</option>
+                            <option>OPERATOR</option>
+                        </select></div>
+                        <div class="field"><label>最近使用</label><select class="select">
+                            <option>全部</option>
+                            <option>7 天内</option>
+                            <option>30 天未使用</option>
+                        </select></div>
+                        <button class="btn primary" id="applyUserFilter">筛选</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="usersTable"></table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="page" id="page-grants">
+                <div class="page-head">
+                    <div><h1>项目环境授权</h1>
+                        <p class="muted">授权用户访问指定 project/env，作为 SQL 执行前置边界。</p></div>
+                    <button class="btn primary" id="openGrantModal">授权环境</button>
+                </div>
+                <div class="panel">
+                    <div class="filter-bar compact">
+                        <div class="field"><label>用户</label><input class="control" placeholder="lin.chen"></div>
+                        <div class="field"><label>项目</label><select class="select">
+                            <option>全部</option>
+                            <option>billing-core</option>
+                            <option>risk-lab</option>
+                        </select></div>
+                        <div class="field"><label>环境</label><select class="select">
+                            <option>全部</option>
+                            <option>prod</option>
+                            <option>staging</option>
+                            <option>dev</option>
+                        </select></div>
+                        <div class="field"><label>状态</label><select class="select">
+                            <option>全部</option>
+                            <option>ACTIVE</option>
+                            <option>REVOKED</option>
+                        </select></div>
+                        <button class="btn primary">筛选</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="grantsTable"></table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="page" id="page-tokens">
+                <div class="page-head">
+                    <div><h1>Token 管理</h1>
+                        <p class="muted">签发、吊销 MCP Bearer Token；明文只在签发成功后显示一次。</p></div>
+                    <button class="btn primary" id="openTokenModal">颁发 Token</button>
+                </div>
+                <div class="panel">
+                    <div class="filter-bar compact">
+                        <div class="field"><label>用户</label><input class="control" placeholder="admin.refinex"></div>
+                        <div class="field"><label>状态</label><select class="select" id="tokenStatus">
+                            <option value="">全部</option>
+                            <option>ACTIVE</option>
+                            <option>REVOKED</option>
+                            <option>EXPIRED</option>
+                        </select></div>
+                        <div class="field"><label>客户端</label><select class="select">
+                            <option>全部</option>
+                            <option>Codex</option>
+                            <option>Claude Desktop</option>
+                        </select></div>
+                        <div class="field"><label>过期</label><select class="select">
+                            <option>全部</option>
+                            <option>7 天内</option>
+                            <option>30 天内</option>
+                        </select></div>
+                        <button class="btn primary" id="applyTokenFilter">筛选</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="tokensTable"></table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="page" id="page-config">
+                <div class="page-head">
+                    <div><h1>配置查看</h1>
+                        <p class="muted">展示脱敏后的项目、环境、数据源和执行限制配置。</p></div>
+                    <button class="btn">刷新配置</button>
+                </div>
+                <div class="panel">
+                    <div class="panel-head"><h2>生效配置</h2><span class="mono muted">source=nacos:dbflow-targets-prod.yml</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="configTable"></table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="page" id="page-policies">
+                <div class="page-head">
+                    <div><h1>危险策略</h1>
+                        <p class="muted">查看高风险 SQL 的白名单、确认要求和拒绝原因。</p></div>
+                    <button class="btn" data-go="audit">查看被拒绝审计</button>
+                </div>
+                <div class="panel">
+                    <div class="filter-bar compact">
+                        <div class="field"><label>操作</label><select class="select">
+                            <option>全部</option>
+                            <option>DROP_TABLE</option>
+                            <option>DROP_DATABASE</option>
+                            <option>TRUNCATE</option>
+                        </select></div>
+                        <div class="field"><label>项目</label><select class="select">
+                            <option>全部</option>
+                            <option>billing-core</option>
+                            <option>risk-lab</option>
+                        </select></div>
+                        <div class="field"><label>环境</label><select class="select">
+                            <option>全部</option>
+                            <option>prod</option>
+                            <option>staging</option>
+                        </select></div>
+                        <div class="field"><label>风险</label><select class="select">
+                            <option>全部</option>
+                            <option>HIGH</option>
+                            <option>CRITICAL</option>
+                        </select></div>
+                        <button class="btn primary">筛选</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="policiesTable"></table>
+                    </div>
+                </div>
+            </section>
+
+            <section class="page" id="page-audit">
+                <div class="page-head">
+                    <div><h1>审计列表</h1>
+                        <p class="muted">按时间、用户、项目、环境、risk、decision、SQL hash、tool 查询。</p></div>
+                </div>
+                <div class="panel">
+                    <div class="filter-bar">
+                        <div class="field"><label>用户</label><input class="control" id="auditUser"
+                                                                     placeholder="lin.chen"></div>
+                        <div class="field"><label>项目</label><select class="select" id="auditProject">
+                            <option value="">全部</option>
+                            <option>billing-core</option>
+                            <option>risk-lab</option>
+                        </select></div>
+                        <div class="field"><label>Risk</label><select class="select" id="auditRisk">
+                            <option value="">全部</option>
+                            <option>LOW</option>
+                            <option>MEDIUM</option>
+                            <option>HIGH</option>
+                            <option>CRITICAL</option>
+                        </select></div>
+                        <div class="field"><label>Decision</label><select class="select" id="auditDecision">
+                            <option value="">全部</option>
+                            <option>EXECUTED</option>
+                            <option>POLICY_DENIED</option>
+                            <option>REQUIRES_CONFIRMATION</option>
+                        </select></div>
+                        <div class="field"><label>SQL Hash</label><input class="control" id="auditHash"
+                                                                         placeholder="sha256:"></div>
+                        <div class="field"><label>Tool</label><select class="select" id="auditTool">
+                            <option value="">全部</option>
+                            <option>dbflow_execute_sql</option>
+                            <option>dbflow_explain_sql</option>
+                            <option>dbflow_inspect_schema</option>
+                        </select></div>
+                        <button class="btn primary" id="applyAuditFilter">筛选</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="auditTable"></table>
+                    </div>
+                    <div class="panel-body actions" style="justify-content:space-between">
+                        <span class="muted" id="auditCount">共 6 条，当前第 1 页</span>
+                        <div class="actions">
+                            <button class="btn" disabled>上一页</button>
+                            <button class="btn">下一页</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="page" id="page-audit-detail">
+                <div class="page-head">
+                    <div><h1>审计详情</h1>
+                        <p class="muted">还原一次请求的身份、授权、策略、执行和审计链路。</p></div>
+                    <div class="actions">
+                        <button class="btn" data-go="audit">返回列表</button>
+                        <button class="btn" id="copyAuditHash">复制 SQL Hash</button>
+                    </div>
+                </div>
+                <div id="auditDetailHost"></div>
+            </section>
+
+            <section class="page" id="page-health">
+                <div class="page-head">
+                    <div><h1>系统健康</h1>
+                        <p class="muted">检查管理端、MCP、元数据库、配置源和目标数据源池。</p></div>
+                    <div class="actions"><select class="select" id="healthScope">
+                        <option>全部</option>
+                        <option>仅异常</option>
+                    </select>
+                        <button class="btn primary" id="refreshHealth">刷新健康</button>
+                    </div>
+                </div>
+                <div class="notice" id="healthSummary" style="margin-bottom:12px"></div>
+                <div class="health-grid" id="healthGrid"></div>
+            </section>
+        </div>
+    </main>
+</section>
+
+<div class="hidden" id="modalRoot"></div>
+<div class="hidden" id="drawerRoot"></div>
+<div class="toast hidden" id="toast"></div>
+
+<script>
+    const users = [
+        ["U-1001", "admin.refinex", "平台管理员", "ADMIN", "ACTIVE", 6, 2, "2026-04-29 15:42"],
+        ["U-1002", "zhang.wei", "研发负责人", "OPERATOR", "ACTIVE", 4, 1, "2026-04-29 14:18"],
+        ["U-1003", "lin.chen", "数据平台", "OPERATOR", "ACTIVE", 3, 1, "2026-04-29 11:03"],
+        ["U-1004", "svc-codex", "Codex 服务账号", "OPERATOR", "DISABLED", 0, 0, "2026-04-18 09:10"]
+    ];
+    let grants = [
+        ["G-9101", "admin.refinex", "billing-core", "prod", "ACTIVE", "admin.refinex", "2026-04-29 09:20", "HEALTHY"],
+        ["G-9102", "zhang.wei", "billing-core", "staging", "ACTIVE", "admin.refinex", "2026-04-28 17:46", "HEALTHY"],
+        ["G-9103", "lin.chen", "risk-lab", "staging", "ACTIVE", "admin.refinex", "2026-04-27 10:31", "HEALTHY"],
+        ["G-9104", "lin.chen", "risk-lab", "dev", "ACTIVE", "zhang.wei", "2026-04-26 16:12", "DEGRADED"]
+    ];
+    let tokens = [
+        ["T-7001", "admin.refinex", "dbf_live_A7K2", "ACTIVE", "Codex", "10.18.4.21", "2026-05-29", "2026-04-29 15:42"],
+        ["T-7002", "zhang.wei", "dbf_live_K9Q4", "ACTIVE", "Claude Desktop", "10.18.4.36", "2026-05-12", "2026-04-29 14:18"],
+        ["T-7003", "lin.chen", "dbf_live_M2P8", "REVOKED", "OpenCode", "10.18.6.12", "2026-05-01", "2026-04-28 19:21"],
+        ["T-7004", "svc-codex", "dbf_live_R8X1", "EXPIRED", "Codex", "10.18.9.8", "2026-04-25", "2026-04-20 09:04"]
+    ];
+    const audits = [
+        {
+            id: "A-20260429-154512",
+            time: "2026-04-29 15:45:12",
+            user: "admin.refinex",
+            token: "dbf_live_A7K2",
+            client: "Codex 1.11",
+            ip: "10.18.4.21",
+            project: "billing-core",
+            env: "prod",
+            tool: "dbflow_execute_sql",
+            op: "SELECT",
+            risk: "LOW",
+            decision: "EXECUTED",
+            hash: "sha256:3f72a9bd",
+            duration: "48ms",
+            summary: "返回 100 行，已按 maxRows 截断",
+            sql: "SELECT id, status, amount FROM payment_order WHERE status = 'PENDING' ORDER BY created_at DESC LIMIT 100"
+        },
+        {
+            id: "A-20260429-151804",
+            time: "2026-04-29 15:18:04",
+            user: "zhang.wei",
+            token: "dbf_live_K9Q4",
+            client: "Claude Desktop 0.9",
+            ip: "10.18.4.36",
+            project: "billing-core",
+            env: "staging",
+            tool: "dbflow_execute_sql",
+            op: "UPDATE",
+            risk: "MEDIUM",
+            decision: "EXECUTED",
+            hash: "sha256:a10f08ce",
+            duration: "93ms",
+            summary: "affected_rows=12，warning=0",
+            sql: "UPDATE payment_retry SET retry_state = 'READY' WHERE retry_state = 'FAILED' AND retry_count < 3"
+        },
+        {
+            id: "A-20260429-150233",
+            time: "2026-04-29 15:02:33",
+            user: "lin.chen",
+            token: "dbf_live_M2P8",
+            client: "OpenCode 0.4",
+            ip: "10.18.6.12",
+            project: "risk-lab",
+            env: "staging",
+            tool: "dbflow_execute_sql",
+            op: "TRUNCATE",
+            risk: "HIGH",
+            decision: "REQUIRES_CONFIRMATION",
+            hash: "sha256:f90219ab",
+            duration: "0ms",
+            summary: "confirmation_id=CFM-6209，expires_in=10m",
+            sql: "TRUNCATE TABLE risk_calc_sandbox"
+        },
+        {
+            id: "A-20260429-145511",
+            time: "2026-04-29 14:55:11",
+            user: "lin.chen",
+            token: "dbf_live_M2P8",
+            client: "OpenCode 0.4",
+            ip: "10.18.6.12",
+            project: "billing-core",
+            env: "prod",
+            tool: "dbflow_execute_sql",
+            op: "DROP_TABLE",
+            risk: "CRITICAL",
+            decision: "POLICY_DENIED",
+            hash: "sha256:71d0bb31",
+            duration: "0ms",
+            summary: "reason=DROP_TABLE_NOT_WHITELISTED",
+            sql: "DROP TABLE payment_order"
+        },
+        {
+            id: "A-20260429-142008",
+            time: "2026-04-29 14:20:08",
+            user: "zhang.wei",
+            token: "dbf_live_K9Q4",
+            client: "Codex 1.11",
+            ip: "10.18.4.36",
+            project: "billing-core",
+            env: "prod",
+            tool: "dbflow_explain_sql",
+            op: "EXPLAIN",
+            risk: "LOW",
+            decision: "EXECUTED",
+            hash: "sha256:91c4e668",
+            duration: "35ms",
+            summary: "type=ALL，rows=98044，建议检查过滤列索引",
+            sql: "EXPLAIN FORMAT=JSON SELECT * FROM payment_order WHERE merchant_id = 3301"
+        },
+        {
+            id: "A-20260429-140006",
+            time: "2026-04-29 14:00:06",
+            user: "admin.refinex",
+            token: "dbf_live_A7K2",
+            client: "Codex 1.11",
+            ip: "10.18.4.21",
+            project: "risk-lab",
+            env: "dev",
+            tool: "dbflow_inspect_schema",
+            op: "INSPECT_SCHEMA",
+            risk: "LOW",
+            decision: "FAILED",
+            hash: "sha256:00000000",
+            duration: "1200ms",
+            summary: "数据源连接失败：connection timeout",
+            sql: "information_schema.tables / columns / statistics"
+        }
+    ];
+    const policies = [
+        ["DROP_TABLE", "CRITICAL", "billing-core", "prod", "DENY", "需要 YAML 白名单", "DROP_TABLE_NOT_WHITELISTED", "2026-04-29 13:12"],
+        ["DROP_DATABASE", "CRITICAL", "*", "prod", "DENY", "默认拒绝", "DROP_DATABASE_FORBIDDEN", "2026-04-29 13:12"],
+        ["TRUNCATE", "HIGH", "risk-lab", "staging", "CONFIRM", "需要 10 分钟内确认", "CONFIRMATION_REQUIRED", "2026-04-29 13:12"],
+        ["TRUNCATE", "HIGH", "billing-core", "prod", "DENY", "生产环境未放行", "PROD_TRUNCATE_BLOCKED", "2026-04-29 13:12"]
+    ];
+    const configs = [
+        ["billing-core", "prod", "mysql8-primary", "mysql", "10.22.8.17", "3306", "billing", "dbflow_runner", "maxRows=1000 timeout=8s fetchSize=200", "2026-04-29 15:30"],
+        ["billing-core", "staging", "mysql8-stg", "mysql", "10.22.8.44", "3306", "billing_stg", "dbflow_runner", "maxRows=2000 timeout=12s fetchSize=300", "2026-04-29 15:30"],
+        ["risk-lab", "dev", "mysql57-dev", "mysql", "10.23.3.21", "3306", "risk_dev", "dbflow_runner", "maxRows=500 timeout=5s fetchSize=100", "2026-04-29 15:30"]
+    ];
+    const health = [
+        ["应用进程", "HEALTHY", "v0.1.0-SNAPSHOT，uptime 6h 12m", "JVM 412MB / 1024MB"],
+        ["MCP Streamable HTTP", "HEALTHY", "/mcp 可用，最近请求 1 分钟前", "p95=96ms"],
+        ["元数据库", "HEALTHY", "Flyway V1 applied", "Hikari active=2 idle=6"],
+        ["Nacos Config", "HEALTHY", "namespace=dbflow-prod", "last reload 15:30:00"],
+        ["billing-core / prod", "HEALTHY", "mysql8-primary", "active=1 idle=9 wait=0"],
+        ["risk-lab / dev", "DEGRADED", "mysql57-dev connection timeout", "last error 14:00:06"]
+    ];
+    const pageRoutes = {
+        overview: ["/admin", "admin/overview.html", "dashboardSummary + recentAuditTable + attentionList"],
+        users: ["/admin/users", "admin/users.html", "filterBar + userTable"],
+        grants: ["/admin/grants", "admin/grants.html", "filterBar + grantTable + grantModal"],
+        tokens: ["/admin/tokens", "admin/tokens.html", "filterBar + tokenTable + tokenIssueModal + revokeModal"],
+        config: ["/admin/config", "admin/config.html", "configTable + sanitizedConfigCell"],
+        policies: ["/admin/policies/dangerous", "admin/policies-dangerous.html", "policyTable + reasonDrawer"],
+        audit: ["/admin/audit", "admin/audit-list.html", "auditFilterBar + auditTable + pagination"],
+        "audit-detail": ["/admin/audit/{eventId}", "admin/audit-detail.html", "auditIdentityPanel + sqlPanel + timeline"],
+        health: ["/admin/health", "admin/health.html", "healthSummary + healthGrid"]
+    };
+
+    function cellStatus(value) {
+        const map = {
+            ACTIVE: "ok",
+            HEALTHY: "ok",
+            EXECUTED: "ok",
+            LOW: "ok",
+            MEDIUM: "neutral",
+            DISABLED: "neutral",
+            REVOKED: "bad",
+            EXPIRED: "warn",
+            DEGRADED: "warn",
+            FAILED: "bad",
+            HIGH: "warn",
+            CRITICAL: "bad",
+            POLICY_DENIED: "bad",
+            REQUIRES_CONFIRMATION: "warn",
+            DENY: "bad",
+            CONFIRM: "warn"
+        };
+        return `<span class="status ${map[value] || "neutral"}">${value}</span>`;
+    }
+
+    function renderTable(target, headers, rows) {
+        document.getElementById(target).innerHTML = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody>`;
+    }
+
+    function showPage(page) {
+        document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === `page-${page}`));
+        document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.page === page));
+        const route = pageRoutes[page] || pageRoutes.overview;
+        document.getElementById("routeText").textContent = `route=${route[0]} · template=${route[1]} · fragment=${route[2]}`;
+        location.hash = page;
+        if (page === "audit-detail") renderAuditDetail(audits[3]);
+    }
+
+    function showToast(text) {
+        const t = document.getElementById("toast");
+        t.textContent = text;
+        t.classList.remove("hidden");
+        setTimeout(() => t.classList.add("hidden"), 1800);
+    }
+
+    function renderAll() {
+        const recentRows = audits.slice(0, 5).map(a => `<tr><td class="mono">${a.time.slice(11)}</td><td>${a.user}</td><td>${a.project}/${a.env}</td><td>${cellStatus(a.risk)}</td><td>${cellStatus(a.decision)}</td><td><button class="btn text" onclick="openAudit('${a.id}')">详情</button></td></tr>`);
+        renderTable("overviewAuditTable", ["时间", "用户", "项目/环境", "Risk", "Decision", ""], recentRows);
+        renderUsers(users);
+        renderGrants();
+        renderTokens(tokens);
+        renderTable("configTable", ["项目", "环境", "数据源", "类型", "主机", "端口", "库名", "用户名", "执行限制", "加载时间"], configs.map(c => `<tr>${c.map((v, i) => `<td class="${i === 4 ? "mono" : ""}">${v}</td>`).join("")}</tr>`));
+        renderTable("policiesTable", ["操作", "Risk", "项目", "环境", "决策", "要求", "拒绝/确认原因", "更新时间", ""], policies.map(p => `<tr><td>${p[0]}</td><td>${cellStatus(p[1])}</td><td>${p[2]}</td><td>${p[3]}</td><td>${cellStatus(p[4])}</td><td>${p[5]}</td><td class="mono">${p[6]}</td><td>${p[7]}</td><td><button class="btn text" onclick="openReason('${p[6]}')">查看拒绝原因</button></td></tr>`));
+        renderAudit(audits);
+        renderHealth(false);
+    }
+
+    function renderUsers(source) {
+        renderTable("usersTable", ["用户 ID", "用户名", "显示名", "角色", "状态", "授权环境", "有效 Token", "最近使用", ""], source.map(u => `<tr><td class="mono">${u[0]}</td><td>${u[1]}</td><td>${u[2]}</td><td>${u[3]}</td><td>${cellStatus(u[4])}</td><td>${u[5]}</td><td>${u[6]}</td><td>${u[7]}</td><td><button class="btn text" onclick="showPage('grants')">授权</button></td></tr>`));
+    }
+
+    function renderGrants() {
+        renderTable("grantsTable", ["授权 ID", "用户", "项目", "环境", "状态", "授权人", "授权时间", "数据源", ""], grants.map(g => `<tr><td class="mono">${g[0]}</td><td>${g[1]}</td><td>${g[2]}</td><td>${g[3]}</td><td>${cellStatus(g[4])}</td><td>${g[5]}</td><td>${g[6]}</td><td>${cellStatus(g[7])}</td><td><button class="btn text" onclick="showPage('audit')">审计</button></td></tr>`));
+    }
+
+    function renderTokens(source) {
+        renderTable("tokensTable", ["Token ID", "用户", "Token 前缀", "状态", "客户端", "来源 IP", "过期时间", "最近使用", ""], source.map(t => `<tr><td class="mono">${t[0]}</td><td>${t[1]}</td><td class="mono">${t[2]}</td><td>${cellStatus(t[3])}</td><td>${t[4]}</td><td class="mono">${t[5]}</td><td>${t[6]}</td><td>${t[7]}</td><td><button class="btn text" onclick="showPage('audit')">审计</button> <button class="btn text danger-text" ${t[3] !== "ACTIVE" ? "disabled" : ""} onclick="confirmRevoke('${t[0]}')">吊销</button></td></tr>`));
+    }
+
+    function renderAudit(source) {
+        document.getElementById("auditCount").textContent = `共 ${source.length} 条，当前第 1 页`;
+        renderTable("auditTable", ["时间", "用户", "项目/环境", "Tool", "Operation", "Risk", "Decision", "SQL Hash", "耗时", "结果摘要", ""], source.map(a => `<tr><td>${a.time}</td><td>${a.user}</td><td>${a.project}/${a.env}</td><td>${a.tool}</td><td>${a.op}</td><td>${cellStatus(a.risk)}</td><td>${cellStatus(a.decision)}</td><td class="mono">${a.hash}</td><td>${a.duration}</td><td>${a.summary}</td><td><button class="btn text" onclick="openAudit('${a.id}')">查看详情</button></td></tr>`));
+    }
+
+    function renderHealth(onlyBad) {
+        const rows = onlyBad ? health.filter(h => h[1] !== "HEALTHY") : health;
+        const badCount = health.filter(h => h[1] !== "HEALTHY").length;
+        document.getElementById("healthSummary").innerHTML = onlyBad
+            ? `当前仅展示异常项：共 ${badCount} 项。健康项仍在后台持续检查，进入「全部」可查看 MCP、元数据库和配置源。`
+            : `共 ${health.length} 个健康检查项，异常 ${badCount} 项；异常项会关联到配置查看和审计排障。`;
+        document.getElementById("healthGrid").innerHTML = rows.map(h => `<div class="health-item"><div class="health-title"><h3>${h[0]}</h3>${cellStatus(h[1])}</div><p>${h[2]}</p><p class="muted mono" style="margin-top:8px">${h[3]}</p></div>`).join("");
+    }
+
+    function renderAuditDetail(a) {
+        document.getElementById("auditDetailHost").innerHTML = `
+        <div class="panel"><div class="panel-head"><h2>${a.id}</h2>${cellStatus(a.decision)}</div>
+          <div class="panel-body detail-grid">
+            ${[["请求时间", a.time], ["用户", a.user], ["Token", a.token], ["客户端", a.client], ["来源 IP", a.ip], ["项目/环境", `${a.project}/${a.env}`], ["Tool", a.tool], ["Operation", a.op], ["Risk", a.risk], ["Decision", a.decision], ["SQL Hash", a.hash], ["耗时", a.duration]].map(kv => `<div class="kv"><div class="k">${kv[0]}</div><div class="v ${kv[0].includes("Hash") || kv[0] === "Token" ? "mono" : ""}">${kv[1]}</div></div>`).join("")}
+          </div>
+        </div>
+        <div class="split">
+          <div class="panel"><div class="panel-head"><h2>SQL 文本</h2><span class="muted">已脱敏展示</span></div><div class="panel-body"><div class="sql-box">${a.sql}</div><div class="notice" style="margin-top:10px">result_summary 只保存摘要，不保存完整结果集。</div></div></div>
+          <div class="panel"><div class="panel-head"><h2>事件时间线</h2></div><div class="panel-body timeline">
+            <div class="timeline-row"><span class="mono">+0ms</span><span>request received，提取 token_id / client / source_ip。</span></div>
+            <div class="timeline-row"><span class="mono">+4ms</span><span>project/env 授权检查完成。</span></div>
+            <div class="timeline-row"><span class="mono">+9ms</span><span>SQL classifier 输出 ${a.op} / ${a.risk}。</span></div>
+            <div class="timeline-row"><span class="mono">+15ms</span><span>policy decision = ${a.decision}。</span></div>
+            <div class="timeline-row"><span class="mono">+${a.duration}</span><span>写入审计事件和结果摘要。</span></div>
+          </div></div>
+        </div>`;
+    }
+
+    function openAudit(id) {
+        const item = audits.find(a => a.id === id) || audits[0];
+        showPage("audit-detail");
+        renderAuditDetail(item);
+    }
+
+    function openReason(code) {
+        document.getElementById("drawerRoot").classList.remove("hidden");
+        document.getElementById("drawerRoot").innerHTML = `<aside class="drawer"><div class="drawer-head"><h2>策略拒绝原因</h2><button class="btn" onclick="closeDrawer()">关闭</button></div><div class="drawer-body">
+        <div class="notice bad" style="margin-bottom:12px">当前策略按服务端强约束执行，客户端不能绕过。</div>
+        <div class="detail-grid" style="grid-template-columns:1fr 1fr"><div class="kv"><div class="k">Reason Code</div><div class="v mono">${code}</div></div><div class="kv"><div class="k">默认动作</div><div class="v">拒绝或要求确认</div></div><div class="kv"><div class="k">匹配范围</div><div class="v">project/env/schema/table</div></div><div class="kv"><div class="k">审计字段</div><div class="v mono">decision, risk, sql_hash</div></div></div>
+        <div class="sql-box">DROP TABLE payment_order</div>
+        <p class="muted" style="margin-top:10px">示例：生产环境 DROP_TABLE 未命中 YAML 白名单，因此不会执行 SQL，只写入 policy denied 审计事件。</p>
+      </div></aside>`;
+    }
+
+    function openStateSamples() {
+        document.getElementById("drawerRoot").classList.remove("hidden");
+        document.getElementById("drawerRoot").innerHTML = `<aside class="drawer"><div class="drawer-head"><h2>状态样例</h2><button class="btn" onclick="closeDrawer()">关闭</button></div><div class="drawer-body">
+        <div class="state-sample"><h3>加载</h3><p class="muted" style="margin:6px 0">用于表格、详情页、健康检查局部刷新。</p><div class="skeleton-line" style="width:92%"></div><div class="skeleton-line" style="width:78%"></div><div class="skeleton-line" style="width:84%"></div></div>
+        <div class="state-sample"><h3>空结果</h3><p style="margin-top:6px">当前筛选条件下没有审计事件。</p><p class="muted" style="margin-top:6px">建议清除 risk / decision / sql_hash 条件后重试。</p><div class="actions" style="margin-top:10px"><button class="btn">清除筛选</button><button class="btn text">查看全部审计</button></div></div>
+        <div class="state-sample"><h3>错误</h3><p class="danger-text" style="margin-top:6px">审计查询超时。</p><p class="muted" style="margin-top:6px">error_code=AUDIT_QUERY_TIMEOUT，request_id=REQ-9F20C1。</p><div class="actions" style="margin-top:10px"><button class="btn primary">重试</button><button class="btn">复制错误码</button></div></div>
+        <div class="state-sample"><h3>无权限</h3><p style="margin-top:6px">当前管理员无权查看全量审计。</p><p class="muted" style="margin-top:6px">普通用户后续仅可查看自己的记录；页面不展示 Token 明文或数据库密码。</p></div>
+      </div></aside>`;
+    }
+
+    function closeDrawer() {
+        document.getElementById("drawerRoot").classList.add("hidden");
+    }
+
+    function openModal(html) {
+        document.getElementById("modalRoot").classList.remove("hidden");
+        document.getElementById("modalRoot").innerHTML = `<div class="modal-backdrop">${html}</div>`;
+    }
+
+    function closeModal() {
+        document.getElementById("modalRoot").classList.add("hidden");
+        document.getElementById("modalRoot").innerHTML = "";
+    }
+
+    function confirmRevoke(id) {
+        openModal(`<div class="modal"><div class="modal-head"><h2>吊销 Token</h2><button class="btn" onclick="closeModal()">关闭</button></div><div class="modal-body"><p>确认吊销 <span class="mono">${id}</span>？吊销后 MCP 客户端将无法继续访问授权环境。</p></div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn danger" id="confirmRevokeButton" onclick="revokeToken('${id}')">确认吊销</button></div></div>`);
+    }
+
+    function revokeToken(id) {
+        tokens = tokens.map(t => t[0] === id ? [t[0], t[1], t[2], "REVOKED", t[4], t[5], t[6], t[7]] : t);
+        renderTokens(tokens);
+        closeModal();
+        showToast(`已吊销 ${id}`);
+    }
+
+    document.getElementById("togglePassword").onclick = () => {
+        const pass = document.getElementById("loginPass");
+        pass.type = pass.type === "password" ? "text" : "password";
+        document.getElementById("togglePassword").textContent = pass.type === "password" ? "显示" : "隐藏";
+    };
+    document.getElementById("loginButton").onclick = () => {
+        document.getElementById("loginView").classList.add("hidden");
+        document.getElementById("adminApp").classList.remove("hidden");
+        showPage(location.hash.replace("#", "") && location.hash.replace("#", "") !== "login" ? location.hash.replace("#", "") : "overview");
+    };
+    document.getElementById("logoutButton").onclick = () => {
+        document.getElementById("adminApp").classList.add("hidden");
+        document.getElementById("loginView").classList.remove("hidden");
+        location.hash = "login";
+    };
+    document.getElementById("openStateSamples").onclick = openStateSamples;
+    document.querySelectorAll("[data-page]").forEach(b => b.onclick = () => showPage(b.dataset.page));
+    document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => showPage(b.dataset.go));
+    document.getElementById("applyUserFilter").onclick = () => {
+        const keyword = document.getElementById("userKeyword").value.trim();
+        const status = document.getElementById("userStatus").value;
+        renderUsers(users.filter(u => (!keyword || u[1].includes(keyword)) && (!status || u[4] === status)));
+        showToast("用户筛选已应用");
+    };
+    document.getElementById("applyTokenFilter").onclick = () => {
+        const status = document.getElementById("tokenStatus").value;
+        renderTokens(tokens.filter(t => !status || t[3] === status));
+        showToast("Token 筛选已应用");
+    };
+    document.getElementById("applyAuditFilter").onclick = () => {
+        const risk = document.getElementById("auditRisk").value;
+        const decision = document.getElementById("auditDecision").value;
+        const project = document.getElementById("auditProject").value;
+        const tool = document.getElementById("auditTool").value;
+        const user = document.getElementById("auditUser").value.trim();
+        const hash = document.getElementById("auditHash").value.trim();
+        const rows = audits.filter(a => (!risk || a.risk === risk) && (!decision || a.decision === decision) && (!project || a.project === project) && (!tool || a.tool === tool) && (!user || a.user.includes(user)) && (!hash || a.hash.includes(hash)));
+        renderAudit(rows);
+        showToast("审计筛选已应用");
+    };
+    document.getElementById("openTokenModal").onclick = () => {
+        openModal(`<div class="modal"><div class="modal-head"><h2>颁发 Token</h2><button class="btn" onclick="closeModal()">关闭</button></div><div class="modal-body">
+        <div class="field"><label>用户</label><select id="issueUser" class="select"><option>admin.refinex</option><option>zhang.wei</option><option>lin.chen</option></select></div>
+        <div class="field"><label>有效期</label><select id="issueExpire" class="select"><option>30 天</option><option>7 天</option><option>90 天</option></select></div>
+        <div class="field"><label>客户端备注</label><input class="control" value="Codex Desktop"></div>
+        <div id="tokenSecretBox" class="hidden"><div class="notice warn" style="margin-bottom:10px">Token 明文只显示一次，关闭后不可再次查看。</div><div class="secret">dbf_live_demo_7Yh2.kF91-20260429-once-only</div></div>
+      </div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn primary" id="issueTokenSubmit">签发</button></div></div>`);
+        setTimeout(() => document.getElementById("issueTokenSubmit").onclick = () => {
+            document.getElementById("tokenSecretBox").classList.remove("hidden");
+            document.getElementById("issueTokenSubmit").textContent = "已签发";
+            document.getElementById("issueTokenSubmit").disabled = true;
+            tokens.unshift(["T-7005", document.getElementById("issueUser").value, "dbf_live_7Yh2", "ACTIVE", "Codex Desktop", "10.18.4.21", "2026-05-29", "刚刚"]);
+            renderTokens(tokens);
+        }, 0);
+    };
+    document.getElementById("openGrantModal").onclick = () => {
+        openModal(`<div class="modal"><div class="modal-head"><h2>授权环境</h2><button class="btn" onclick="closeModal()">关闭</button></div><div class="modal-body">
+        <div class="field"><label>用户</label><select id="grantUser" class="select"><option>lin.chen</option><option>zhang.wei</option><option>admin.refinex</option></select></div>
+        <div class="field"><label>项目</label><select id="grantProject" class="select"><option>billing-core</option><option>risk-lab</option></select></div>
+        <div class="field"><label>环境</label><select id="grantEnv" class="select"><option>staging</option><option>prod</option><option>dev</option></select></div>
+        <div class="notice">授权立即影响 MCP SQL 执行、EXPLAIN 和 schema inspect 的 project/env 边界。</div>
+      </div><div class="modal-foot"><button class="btn" onclick="closeModal()">取消</button><button class="btn primary" id="grantSubmit">确认授权</button></div></div>`);
+        setTimeout(() => document.getElementById("grantSubmit").onclick = () => {
+            grants.unshift(["G-9105", document.getElementById("grantUser").value, document.getElementById("grantProject").value, document.getElementById("grantEnv").value, "ACTIVE", "admin.refinex", "刚刚", "HEALTHY"]);
+            renderGrants();
+            closeModal();
+            showToast("环境授权已添加");
+        }, 0);
+    };
+    document.getElementById("refreshHealth").onclick = () => {
+        renderHealth(document.getElementById("healthScope").value === "仅异常");
+        showToast("健康状态已刷新：2026-04-29 15:48:20");
+    };
+    document.getElementById("healthScope").onchange = () => renderHealth(document.getElementById("healthScope").value === "仅异常");
+    document.getElementById("globalSearchButton").onclick = () => {
+        const q = document.getElementById("globalSearch").value.trim();
+        if (q) {
+            showPage("audit");
+            document.getElementById("auditHash").value = q.startsWith("sha256") ? q : "";
+            renderAudit(audits.filter(a => a.id.includes(q) || a.hash.includes(q) || a.user.includes(q)));
+        }
+    };
+    document.getElementById("copyAuditHash").onclick = () => showToast("SQL Hash 已复制到剪贴板原型状态");
+    document.getElementById("overviewRefresh").onclick = () => showToast("总览数据已刷新");
+    renderAll();
+    if (location.hash && location.hash !== "#login") document.getElementById("loginButton").click();
+</script>
+</body>
+</html>

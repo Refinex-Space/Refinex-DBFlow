@@ -2,17 +2,17 @@
 
 # Observability
 
-This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture spec but no application source, build file, CI configuration, or test suite yet.
+This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture spec and a minimal single-module Spring Boot Maven scaffold. The current test suite only verifies that the Spring application context starts.
 
 ## Build & Run
 
 | Task | Command | Expected |
 | --- | --- | --- |
-| Install dependencies | Not available yet; no `pom.xml` exists. | Future scaffold must replace this row. |
-| Build | Not available yet; no Maven project exists. | Future scaffold must replace this row. |
-| Run tests | Not available yet; no test suite exists. | Current baseline: no tests. |
+| Install dependencies | `./mvnw dependency:go-offline` | Maven resolves project dependencies for offline use. |
+| Build | `./mvnw package` | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`. |
+| Run tests | `./mvnw test` | Current baseline: Spring Boot context smoke test passes. |
 | Lint / format check | Not available yet; no formatter is configured. | Future scaffold must replace this row. |
-| Start dev server | Not available yet; no Spring Boot app exists. | Future scaffold must replace this row. |
+| Start dev server | `./mvnw spring-boot:run` | Starts the scaffolded Spring Boot application locally. |
 | Validate Harness | `python3 scripts/check_harness.py` | Exit 0, all manifest entries and AGENTS links valid. |
 
 ## CI Configuration
@@ -26,7 +26,7 @@ This document records the current verification state of the repository. Refinex-
 Planned baseline:
 
 - JDK 21
-- Maven wrapper after project scaffold
+- Maven wrapper 3.9.12
 - Spring Boot 3.5.13
 - Spring AI 1.1.4
 - Spring Cloud 2025.0.2
@@ -42,14 +42,13 @@ When Spring AI MCP APIs, auto-configuration, annotations, starter behavior, or t
 
 Secrets and credentials must not be committed. Database passwords, token pepper values, and Nacos credentials should be injected through environment variables, encrypted configuration, or a secret manager.
 
-## Verify Before Building
+## Verify Before Completion
 
-Before any feature or fix work in the current repository state, run:
+Before claiming scaffold or control-plane work is complete, run:
 
 ```bash
+./mvnw test
 python3 scripts/check_harness.py
 ```
 
-Expected: Harness validation passes.
-
-After the Maven/Spring Boot scaffold exists, replace this section with the real build and test commands, then use `harness-verify` before completion claims.
+Expected: Maven tests pass and Harness validation passes. Use `harness-verify` before completion claims.

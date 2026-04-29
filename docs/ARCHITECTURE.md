@@ -4,7 +4,7 @@
 
 Refinex-DBFlow is planned as an internal MySQL MCP database operation gateway. Its purpose is to let AI tools operate authorized MySQL project environments while the server enforces authentication, authorization, dangerous SQL policy, confirmation, and audit logging.
 
-The current repository contains no application source, build file, CI configuration, or test suite. The architecture below records the approved target design from [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md) and must be updated when the Spring Boot project is scaffolded.
+The current repository contains a minimal single-module Spring Boot Maven scaffold, a context smoke test, and Harness control-plane documentation. It does not yet contain MCP tools, SQL policy, database execution, security, audit, management UI, CI configuration, or production runtime configuration. The architecture below records the approved target design from [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md) and must be updated as implementation packages are added.
 
 ## Current Repository Map
 
@@ -13,6 +13,11 @@ The current repository contains no application source, build file, CI configurat
 +-- README.md
 +-- LICENSE
 +-- AGENTS.md
++-- pom.xml
++-- mvnw
++-- mvnw.cmd
++-- .mvn/
++|   +-- wrapper/
 +-- docs/
 |   +-- PLANS.md
 |   +-- ARCHITECTURE.md
@@ -25,9 +30,23 @@ The current repository contains no application source, build file, CI configurat
 |   +-- generated/
 |   |   +-- harness-manifest.md
 |   +-- references/
++-- src/
++|   +-- main/
++|   |   +-- java/com/refinex/dbflow/DbflowApplication.java
++|   |   +-- resources/application.yml
++|   +-- test/
++|       +-- java/com/refinex/dbflow/DbflowApplicationTests.java
 +-- scripts/
     +-- check_harness.py
 ```
+
+## Current Implementation Baseline
+
+- Build system: single-module Maven project with Maven wrapper 3.9.12.
+- Java runtime: JDK 21.
+- Application package root: `com.refinex.dbflow`.
+- Current test baseline: Spring Boot application context smoke test only.
+- Spring AI MCP dependency management is imported through the Spring AI BOM, but the MCP server starter and MCP endpoint are intentionally deferred to the MCP scaffold phase.
 
 ## Target System Shape
 
@@ -82,7 +101,7 @@ Cross-cutting observability may be used by every layer. SQL execution must not b
 | Area | Decision |
 | --- | --- |
 | Runtime | JDK 21 |
-| Build | Maven with Maven wrapper after scaffold |
+| Build | Maven with Maven wrapper 3.9.12 |
 | Framework | Spring Boot 3.5.13 |
 | MCP | Spring AI 1.1.4 MCP server starter |
 | Cloud baseline | Spring Cloud 2025.0.2 |
@@ -102,4 +121,4 @@ Use this local checkout as the first source of truth when implementing or verify
 
 ## Next Architecture Update
 
-After application scaffolding, update this document with actual package paths, build commands, test commands, and module boundaries. Do not add source paths here until they exist in the repository.
+During P01.2, update this document with the actual package boundaries for `common`, `config`, `security`, `access`, `mcp`, `sqlpolicy`, `executor`, `audit`, `admin`, and `observability` after those packages exist. Do not describe business modules as implemented until source paths and tests exist.

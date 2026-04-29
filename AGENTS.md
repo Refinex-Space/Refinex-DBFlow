@@ -5,17 +5,17 @@
 
 ## Project Overview
 
-Refinex-DBFlow is planned as an internal MySQL MCP database operation gateway for AI tools such as Codex, Claude, OpenCode, and Copilot. The repository currently contains documentation and Harness planning artifacts only; application source and build files have not been scaffolded yet.
+Refinex-DBFlow is planned as an internal MySQL MCP database operation gateway for AI tools such as Codex, Claude, OpenCode, and Copilot. The repository currently contains a minimal single-module Spring Boot Maven scaffold plus documentation and Harness planning artifacts. MCP tools, database execution, security, and audit business logic have not been implemented yet.
 
 ## Quick Reference
 
 | Task | Command |
 | --- | --- |
-| Install dependencies | Not available yet; no Maven project exists. |
-| Build | Not available yet; no `pom.xml` exists. |
-| Run tests | Not available yet; no test suite exists. |
+| Install dependencies | `./mvnw dependency:go-offline` |
+| Build | `./mvnw package` |
+| Run tests | `./mvnw test` |
 | Lint / format check | Not available yet; no formatter is configured. |
-| Start dev server | Not available yet; no Spring Boot app exists. |
+| Start dev server | `./mvnw spring-boot:run` |
 | Validate Harness | `python3 scripts/check_harness.py` |
 
 ## Architecture
@@ -45,7 +45,7 @@ The approved target is a Spring Boot WebMVC MCP gateway using Spring AI MCP Stre
 
 ## Module Guide
 
-No module-level `AGENTS.md` files exist yet because the repository has no source modules.
+No module-level `AGENTS.md` files exist yet. The current Java package root is `src/main/java/com/refinex/dbflow`.
 
 ## Harness
 

@@ -5,10 +5,11 @@
 Refinex-DBFlow is planned as an internal MySQL MCP database operation gateway. Its purpose is to let AI tools operate authorized MySQL project environments while the server enforces authentication, authorization, dangerous SQL policy, confirmation, and audit logging.
 
 The current repository contains a single-module Spring Boot Maven scaffold, metadata persistence/services, validated
-`dbflow.*` configuration binding, management-side Spring Security session login, MCP Token lifecycle services, MCP
-Bearer Token HTTP authentication, project/environment access decisions, a Spring AI MCP WebMVC Streamable HTTP
-endpoint, stable MCP tool/resource/prompt skeletons, and Harness control-plane documentation. It does not yet contain
-real database execution MCP tools, SQL policy enforcement, target database execution, full management UI, CI
+`dbflow.*` configuration binding, project/environment scoped Hikari target `DataSource` registry, management-side
+Spring Security session login, MCP Token lifecycle services, MCP Bearer Token HTTP authentication, project/environment
+access decisions, a Spring AI MCP WebMVC Streamable HTTP endpoint, stable MCP tool/resource/prompt skeletons, and
+Harness control-plane documentation. It does not yet contain real database execution MCP tools, SQL policy enforcement,
+target database SQL execution, full management UI, CI
 configuration, or production deployment configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -89,7 +90,10 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- DangerousDdlOperation.java
 |   |   |   |   +-- DbflowProperties.java
 |   |   |   |   +-- package-info.java
-|   |   |   +-- executor/package-info.java
+|   |   |   +-- executor/
+|   |   |   |   +-- HikariDataSourceRegistry.java
+|   |   |   |   +-- ProjectEnvironmentDataSourceRegistry.java
+|   |   |   |   +-- package-info.java
 |   |   |   +-- mcp/
 |   |   |   |   +-- DbflowMcpNames.java
 |   |   |   |   +-- DbflowMcpPrompts.java
@@ -138,6 +142,7 @@ and must be updated as implementation packages are added.
 |           +-- audit/AuditAndConfirmationServiceJpaTests.java
 |           +-- config/DbflowPropertiesTests.java
 |           +-- config/MetadataSchemaMigrationTests.java
+|           +-- executor/HikariDataSourceRegistryTests.java
 |           +-- mcp/DbflowMcpDiscoveryTests.java
 |           +-- mcp/DbflowMcpServerTests.java
 |           +-- observability/RequestIdFilterTests.java
@@ -164,6 +169,9 @@ and must be updated as implementation packages are added.
   boundaries.
 - Configuration binding baseline: `dbflow.*` YAML properties bind datasource defaults, project environments, and
   dangerous DDL policy into `DbflowProperties` with startup validation.
+- Target datasource baseline: `HikariDataSourceRegistry` creates isolated Hikari pools for each configured
+  `projectKey/environmentKey`, applies shared `dbflow.datasource-defaults.hikari` settings, supports optional startup
+  connection validation, and closes all managed pools on shutdown.
 - Admin security baseline: `/admin/**`, `/login`, and `/logout` are protected by a management-side Spring Security
   form-login session chain with CSRF and BCrypt-backed users.
 - MCP Bearer security baseline: `/mcp` is protected by a separate stateless Spring Security chain that accepts only
@@ -187,7 +195,7 @@ and must be updated as implementation packages are added.
 | `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records                                                  | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.                                                             |
 | `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java` | Spring AI MCP tools/resources/prompts skeleton and the MCP authentication/authorization boundary.                                                                          |
 | `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                                                                                                                                                          | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.                                                                                |
-| `com.refinex.dbflow.executor`      | `package-info.java`                                                                                                                                                                                                                          | Reserved boundary for Hikari data sources, JDBC execution, and EXPLAIN.                                                                                                    |
+| `com.refinex.dbflow.executor`      | `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `package-info.java`                                                                                                                                                      | Project/environment scoped target `DataSource` registry; future JDBC execution and EXPLAIN must resolve target pools through this boundary.                                |
 | `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                             | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                               |
 | `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                   | Minimal management endpoint surface for session-security verification.                                                                                                     |
 | `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                       | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                         |
@@ -223,6 +231,11 @@ security
         -> common
         -> Spring Security / Spring Transactions
 
+executor
+        -> config
+        -> common
+        -> HikariCP / JDBC DataSource lifecycle
+
 admin
         -> Spring Web
         -> security filter chain at request boundary
@@ -236,8 +249,8 @@ metadata migration test
         -> Flyway / JDBC / H2 MySQL mode
 ```
 
-`sqlpolicy` and `executor` currently contain only package documentation and have no implementation dependencies. Future
-code should keep the approved target dependency direction below.
+`sqlpolicy` currently contains only package documentation and has no implementation dependencies. Future code should
+keep the approved target dependency direction below.
 
 ## Current Runtime Configuration
 
@@ -426,20 +439,20 @@ Cross-cutting observability may be used by every layer. SQL execution must not b
 
 ## Planned Technology Stack
 
-| Area | Decision |
-| --- | --- |
-| Runtime | JDK 21 |
-| Build | Maven with Maven wrapper 3.9.12 |
-| Framework | Spring Boot 3.5.13 |
-| MCP | Spring AI 1.1.4 MCP server starter |
-| Cloud baseline | Spring Cloud 2025.0.2 |
-| Nacos | Spring Cloud Alibaba `2025.0.0.0` |
-| Target databases | MySQL 8 primary, MySQL 5.7 secondary |
-| SQL execution | Spring JDBC, HikariCP |
-| SQL parsing | JSQLParser |
-| Metadata migrations | Flyway |
-| Metadata access | Spring Data JPA |
-| Testing | JUnit and Testcontainers after scaffold |
+| Area                | Decision                                                                                   |
+|---------------------|--------------------------------------------------------------------------------------------|
+| Runtime             | JDK 21                                                                                     |
+| Build               | Maven with Maven wrapper 3.9.12                                                            |
+| Framework           | Spring Boot 3.5.13                                                                         |
+| MCP                 | Spring AI 1.1.4 MCP server starter                                                         |
+| Cloud baseline      | Spring Cloud 2025.0.2                                                                      |
+| Nacos               | Spring Cloud Alibaba `2025.0.0.0`                                                          |
+| Target databases    | MySQL 8 primary, MySQL 5.7 secondary                                                       |
+| SQL execution       | Spring JDBC, HikariCP                                                                      |
+| SQL parsing         | JSQLParser                                                                                 |
+| Metadata migrations | Flyway                                                                                     |
+| Metadata access     | Spring Data JPA                                                                            |
+| Testing             | JUnit, Spring Boot Test, H2, and future Testcontainers for MySQL-specific execution checks |
 
 ## Local Reference Sources
 
@@ -449,4 +462,6 @@ Use this local checkout as the first source of truth when implementing or verify
 
 ## Next Architecture Update
 
-During P01.2, update this document with the actual package boundaries for `common`, `config`, `security`, `access`, `mcp`, `sqlpolicy`, `executor`, `audit`, `admin`, and `observability` after those packages exist. Do not describe business modules as implemented until source paths and tests exist.
+Update this document when SQL policy parsing, JDBC execution, audit integration, management UI, CI, or deployment
+configuration becomes real source code. Do not describe business modules as implemented until source paths and tests
+exist.

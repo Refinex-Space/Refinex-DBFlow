@@ -1,11 +1,13 @@
 package com.refinex.dbflow.config;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+import java.time.Duration;
 import java.util.*;
 
 /**
@@ -104,6 +106,7 @@ public class DbflowProperties implements InitializingBean {
      */
     @Override
     public void afterPropertiesSet() {
+        datasourceDefaults.validate();
         validateProjectKeys();
         validateProjects();
         policies.getDangerousDdl().validate();
@@ -157,10 +160,25 @@ public class DbflowProperties implements InitializingBean {
             throw new IllegalStateException("dbflow.projects[].environments[].jdbc-url 不能为空: "
                     + project.getKey() + "/" + environment.getKey());
         }
+        if (containsPasswordParameter(environment.getJdbcUrl())) {
+            throw new IllegalStateException("dbflow.projects[].environments[].jdbc-url 不能包含密码参数: "
+                    + project.getKey() + "/" + environment.getKey());
+        }
         if (isBlank(environment.getDriverClassName()) && isBlank(datasourceDefaults.getDriverClassName())) {
             throw new IllegalStateException("dbflow datasource driver 不能为空: "
                     + project.getKey() + "/" + environment.getKey());
         }
+    }
+
+    /**
+     * 判断 JDBC URL 是否包含密码参数，避免连接池或驱动日志泄露密码。
+     *
+     * @param jdbcUrl JDBC URL
+     * @return 包含密码参数时返回 true
+     */
+    private boolean containsPasswordParameter(String jdbcUrl) {
+        String normalized = jdbcUrl.toLowerCase(Locale.ROOT);
+        return normalized.contains("password=") || normalized.contains("password:");
     }
 
     /**
@@ -184,6 +202,17 @@ public class DbflowProperties implements InitializingBean {
          * 默认数据库密码，仅允许环境变量占位或空值。
          */
         private String password;
+
+        /**
+         * 是否在启动阶段主动获取连接校验目标库可用性；默认关闭，避免本地无目标库时阻断启动。
+         */
+        private boolean validateOnStartup;
+
+        /**
+         * 共享 Hikari 连接池配置，应用到每个项目环境目标数据源。
+         */
+        @Valid
+        private Hikari hikari = new Hikari();
 
         /**
          * 返回默认 JDBC 驱动类名。
@@ -237,6 +266,206 @@ public class DbflowProperties implements InitializingBean {
          */
         public void setPassword(String password) {
             this.password = password;
+        }
+
+        /**
+         * 返回是否启用启动期连接校验。
+         *
+         * @return 启用时返回 true
+         */
+        public boolean isValidateOnStartup() {
+            return validateOnStartup;
+        }
+
+        /**
+         * 设置是否启用启动期连接校验。
+         *
+         * @param validateOnStartup 是否启用启动期连接校验
+         */
+        public void setValidateOnStartup(boolean validateOnStartup) {
+            this.validateOnStartup = validateOnStartup;
+        }
+
+        /**
+         * 返回共享 Hikari 连接池配置。
+         *
+         * @return 共享 Hikari 连接池配置
+         */
+        public Hikari getHikari() {
+            return hikari;
+        }
+
+        /**
+         * 设置共享 Hikari 连接池配置。
+         *
+         * @param hikari 共享 Hikari 连接池配置
+         */
+        public void setHikari(Hikari hikari) {
+            this.hikari = Objects.requireNonNullElseGet(hikari, Hikari::new);
+        }
+
+        /**
+         * 校验共享 Hikari 连接池配置。
+         */
+        private void validate() {
+            hikari.validate();
+        }
+    }
+
+    /**
+     * Hikari 连接池共享配置。
+     *
+     * @author refinex
+     */
+    public static class Hikari {
+
+        /**
+         * 连接池名称前缀，最终池名会追加 projectKey 和 environmentKey。
+         */
+        private String poolNamePrefix = "dbflow-target";
+
+        /**
+         * 最大连接数；为空时使用 Hikari 默认值。
+         */
+        @Min(value = 1, message = "maximum-pool-size 必须大于等于 1")
+        private Integer maximumPoolSize;
+
+        /**
+         * 最小空闲连接数；为空时使用 Hikari 默认值。
+         */
+        @Min(value = 0, message = "minimum-idle 必须大于等于 0")
+        private Integer minimumIdle;
+
+        /**
+         * 获取连接最大等待时间；为空时使用 Hikari 默认值。
+         */
+        private Duration connectionTimeout;
+
+        /**
+         * 空闲连接保留时间；为空时使用 Hikari 默认值。
+         */
+        private Duration idleTimeout;
+
+        /**
+         * 连接最大生命周期；为空时使用 Hikari 默认值。
+         */
+        private Duration maxLifetime;
+
+        /**
+         * 返回连接池名称前缀。
+         *
+         * @return 连接池名称前缀
+         */
+        public String getPoolNamePrefix() {
+            return poolNamePrefix;
+        }
+
+        /**
+         * 设置连接池名称前缀。
+         *
+         * @param poolNamePrefix 连接池名称前缀
+         */
+        public void setPoolNamePrefix(String poolNamePrefix) {
+            this.poolNamePrefix = poolNamePrefix;
+        }
+
+        /**
+         * 返回最大连接数。
+         *
+         * @return 最大连接数
+         */
+        public Integer getMaximumPoolSize() {
+            return maximumPoolSize;
+        }
+
+        /**
+         * 设置最大连接数。
+         *
+         * @param maximumPoolSize 最大连接数
+         */
+        public void setMaximumPoolSize(Integer maximumPoolSize) {
+            this.maximumPoolSize = maximumPoolSize;
+        }
+
+        /**
+         * 返回最小空闲连接数。
+         *
+         * @return 最小空闲连接数
+         */
+        public Integer getMinimumIdle() {
+            return minimumIdle;
+        }
+
+        /**
+         * 设置最小空闲连接数。
+         *
+         * @param minimumIdle 最小空闲连接数
+         */
+        public void setMinimumIdle(Integer minimumIdle) {
+            this.minimumIdle = minimumIdle;
+        }
+
+        /**
+         * 返回获取连接最大等待时间。
+         *
+         * @return 获取连接最大等待时间
+         */
+        public Duration getConnectionTimeout() {
+            return connectionTimeout;
+        }
+
+        /**
+         * 设置获取连接最大等待时间。
+         *
+         * @param connectionTimeout 获取连接最大等待时间
+         */
+        public void setConnectionTimeout(Duration connectionTimeout) {
+            this.connectionTimeout = connectionTimeout;
+        }
+
+        /**
+         * 返回空闲连接保留时间。
+         *
+         * @return 空闲连接保留时间
+         */
+        public Duration getIdleTimeout() {
+            return idleTimeout;
+        }
+
+        /**
+         * 设置空闲连接保留时间。
+         *
+         * @param idleTimeout 空闲连接保留时间
+         */
+        public void setIdleTimeout(Duration idleTimeout) {
+            this.idleTimeout = idleTimeout;
+        }
+
+        /**
+         * 返回连接最大生命周期。
+         *
+         * @return 连接最大生命周期
+         */
+        public Duration getMaxLifetime() {
+            return maxLifetime;
+        }
+
+        /**
+         * 设置连接最大生命周期。
+         *
+         * @param maxLifetime 连接最大生命周期
+         */
+        public void setMaxLifetime(Duration maxLifetime) {
+            this.maxLifetime = maxLifetime;
+        }
+
+        /**
+         * 校验 Hikari 连接池配置。
+         */
+        private void validate() {
+            if (maximumPoolSize != null && minimumIdle != null && minimumIdle > maximumPoolSize) {
+                throw new IllegalStateException("dbflow.datasource-defaults.hikari minimum-idle 不能大于 maximum-pool-size");
+            }
         }
     }
 

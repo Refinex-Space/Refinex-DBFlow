@@ -5,6 +5,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -31,6 +33,13 @@ class DbflowPropertiesTests {
                 "dbflow.datasource-defaults.driver-class-name=com.mysql.cj.jdbc.Driver",
                 "dbflow.datasource-defaults.username=dbflow_demo",
                 "dbflow.datasource-defaults.password=${DBFLOW_DEMO_PASSWORD:}",
+                "dbflow.datasource-defaults.validate-on-startup=false",
+                "dbflow.datasource-defaults.hikari.maximum-pool-size=8",
+                "dbflow.datasource-defaults.hikari.minimum-idle=2",
+                "dbflow.datasource-defaults.hikari.connection-timeout=3s",
+                "dbflow.datasource-defaults.hikari.idle-timeout=10m",
+                "dbflow.datasource-defaults.hikari.max-lifetime=30m",
+                "dbflow.datasource-defaults.hikari.pool-name-prefix=dbflow-target",
                 "dbflow.projects[0].key=demo",
                 "dbflow.projects[0].name=Demo Project",
                 "dbflow.projects[0].environments[0].key=dev",
@@ -80,12 +89,30 @@ class DbflowPropertiesTests {
 
             DbflowProperties properties = context.getBean(DbflowProperties.class);
             assertThat(properties.getDatasourceDefaults().getDriverClassName()).isEqualTo("com.mysql.cj.jdbc.Driver");
+            assertThat(properties.getDatasourceDefaults().isValidateOnStartup()).isFalse();
+            assertThat(properties.getDatasourceDefaults().getHikari().getMaximumPoolSize()).isEqualTo(8);
+            assertThat(properties.getDatasourceDefaults().getHikari().getMinimumIdle()).isEqualTo(2);
+            assertThat(properties.getDatasourceDefaults().getHikari().getConnectionTimeout())
+                    .isEqualTo(Duration.ofSeconds(3));
             assertThat(properties.getProjects()).hasSize(1);
             assertThat(properties.getProjects().get(0).getEnvironments()).hasSize(1);
             assertThat(properties.getProjects().get(0).getEnvironments().get(0).getJdbcUrl())
                     .isEqualTo("jdbc:mysql://127.0.0.1:3306/refinex_demo");
             assertThat(properties.getPolicies().getDangerousDdl().getWhitelist()).hasSize(2);
         });
+    }
+
+    /**
+     * 验证非法 Hikari 连接池配置会导致启动失败。
+     */
+    @Test
+    void shouldRejectIllegalHikariPoolSettings() {
+        contextRunner.withPropertyValues(
+                validProperties(
+                        "dbflow.datasource-defaults.hikari.maximum-pool-size=1",
+                        "dbflow.datasource-defaults.hikari.minimum-idle=2"
+                )
+        ).run(context -> assertStartupFailureContains(context.getStartupFailure(), "minimum-idle 不能大于"));
     }
 
     /**
@@ -146,6 +173,21 @@ class DbflowPropertiesTests {
                 "dbflow.projects[0].key=demo",
                 "dbflow.projects[0].environments[0].key=dev"
         ).run(context -> assertStartupFailureContains(context.getStartupFailure(), "jdbc-url 不能为空"));
+    }
+
+    /**
+     * 验证目标库 JDBC URL 不能携带密码参数，避免连接池日志泄露密码。
+     */
+    @Test
+    void shouldRejectPasswordInJdbcUrl() {
+        contextRunner.withPropertyValues(
+                validProperties(
+                        "dbflow.projects[0].environments[0].jdbc-url=jdbc:mysql://127.0.0.1:3306/demo?password=secret-value"
+                )
+        ).run(context -> {
+            assertStartupFailureContains(context.getStartupFailure(), "jdbc-url 不能包含密码参数");
+            assertThat(context.getStartupFailure()).hasMessageNotContaining("secret-value");
+        });
     }
 
     /**

@@ -9,7 +9,8 @@ project/environment access decision tests, MCP Token lifecycle service tests, MC
 Spring AI MCP WebMVC Streamable HTTP server smoke test, and MCP tools/resources/prompts discovery tests. It also
 includes
 validated `dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous DDL policy, plus
-management-side Spring Security tests for form login and CSRF.
+project/environment scoped Hikari target `DataSource` registry lifecycle tests and management-side Spring Security
+tests for form login and CSRF.
 
 ## Build & Run
 
@@ -55,8 +56,17 @@ When Spring AI MCP APIs, auto-configuration, annotations, starter behavior, or t
 Configuration sources and secret boundary:
 
 - DBFlow target database and dangerous DDL policy settings bind from Spring external configuration under `dbflow.*`.
+- Target database pools are created only from `dbflow.projects[*].environments[*]`; the executor registry never falls
+  back to the Spring Boot metadata `DataSource`.
 - Database passwords may use environment placeholders such as `${DBFLOW_DEFAULT_PASSWORD:}` and
   `${DBFLOW_DEMO_ENV_PASSWORD:}`.
+- Target JDBC URLs must not contain password parameters; passwords belong in the password fields or external secret
+  sources so connection pool logs cannot expose them.
+- Shared target pool tuning is configured under `dbflow.datasource-defaults.hikari`, including pool name prefix,
+  maximum pool size, minimum idle, connection timeout, idle timeout, and max lifetime.
+- Startup target database connection validation is controlled by `dbflow.datasource-defaults.validate-on-startup`.
+  Keep it disabled for local/offline development and enable it in environments where startup should fail fast on
+  unreachable target databases.
 - Initial administrator credentials should come from environment variables, local development profile files excluded
   from source control, or a secret-managed BCrypt hash under `dbflow.admin.initial-user.password-hash`.
 - MCP Token pepper is read from `dbflow.security.mcp-token.pepper`; use an environment variable such as
@@ -117,7 +127,10 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `MetadataSchemaMigrationTests` covers all seven metadata tables, token plaintext absence, active token uniqueness,
   grant uniqueness, and key audit/schema indexes.
 - `DbflowPropertiesTests` covers `dbflow.*` binding, dangerous DDL defaults, duplicate project/environment rejection,
-  missing JDBC URL/driver rejection, and invalid whitelist rejection.
+  missing JDBC URL/driver rejection, invalid Hikari pool settings, and invalid whitelist rejection.
+- `HikariDataSourceRegistryTests` covers one isolated Hikari pool per configured project/environment, shared Hikari
+  default application, missing environment rejection without fallback, configurable startup connection validation,
+  sanitized failure messages, and pool shutdown.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,

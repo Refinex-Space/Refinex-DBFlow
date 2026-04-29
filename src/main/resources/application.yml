@@ -35,12 +35,20 @@ spring:
           mcp-endpoint: /mcp
 
 # DBFlow 目标库配置入口：当前阶段只完成 dbflow.* 绑定和校验，真实密码必须通过环境变量占位、Nacos
-# 或安全配置系统注入，不允许写入仓库。
+# 或安全配置系统注入，不允许写入仓库；JDBC URL 不能携带 password 参数。
 # dbflow:
 #   datasource-defaults:
 #     driver-class-name: com.mysql.cj.jdbc.Driver
 #     username: ${DBFLOW_DEFAULT_USERNAME:}
 #     password: ${DBFLOW_DEFAULT_PASSWORD:}
+#     validate-on-startup: false
+#     hikari:
+#       pool-name-prefix: dbflow-target
+#       maximum-pool-size: 10
+#       minimum-idle: 1
+#       connection-timeout: 30s
+#       idle-timeout: 10m
+#       max-lifetime: 30m
 #   admin:
 #     initial-user:
 #       enabled: ${DBFLOW_ADMIN_INITIAL_USER_ENABLED:false}

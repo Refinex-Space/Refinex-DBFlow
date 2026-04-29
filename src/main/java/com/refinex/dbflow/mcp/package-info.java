@@ -1,5 +1,5 @@
 /**
- * MCP 适配边界，后续承载 tools、resources、prompts 和 Streamable HTTP 接入。
+ * MCP 适配边界，承载 tools、resources、prompts、Streamable HTTP 接入和认证授权预留边界。
  *
  * @author refinex
  */

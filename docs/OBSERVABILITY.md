@@ -5,9 +5,10 @@
 This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture
 spec, a minimal single-module Spring Boot Maven scaffold, package boundaries, common model tests, request id filter
 tests, Flyway metadata schema migration tests, JPA service slice tests for access/audit/confirmation metadata,
-project/environment access decision tests, MCP Token lifecycle service tests, and a Spring AI MCP WebMVC Streamable
-HTTP server smoke test. It also includes validated `dbflow.*` YAML binding tests for datasource defaults, project
-environments, and dangerous DDL policy, plus management-side Spring Security tests for form login and CSRF.
+project/environment access decision tests, MCP Token lifecycle service tests, a Spring AI MCP WebMVC Streamable HTTP
+server smoke test, and MCP tools/resources/prompts discovery tests. It also includes validated `dbflow.*` YAML binding
+tests for datasource defaults, project environments, and dangerous DDL policy, plus management-side Spring Security
+tests for form login and CSRF.
 
 ## Build & Run
 
@@ -18,7 +19,7 @@ environments, and dangerous DDL policy, plus management-side Spring Security tes
 | Run tests            | `./mvnw test`                                                                                    | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, security, configuration, and JPA service tests pass. |
 | Lint / format check  | Not available yet; no formatter is configured.                                                   | Future scaffold must replace this row.                                                                                                                          |
 | Start dev server     | `./mvnw spring-boot:run`                                                                         | Starts the Spring Boot application locally with MCP Streamable HTTP available at `http://localhost:8080/mcp`.                                                   |
-| MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` | The client can discover the `dbflow_smoke` tool.                                                                                                                |
+| MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` | The client can discover `dbflow_smoke`, six DBFlow skeleton tools, DBFlow resources/templates, and DBFlow prompts.                                              |
 | Validate Harness     | `python3 scripts/check_harness.py`                                                               | Exit 0, all manifest entries and AGENTS links valid.                                                                                                            |
 
 ## CI Configuration
@@ -79,8 +80,13 @@ MCP server runtime boundary:
 - Streamable HTTP endpoint: `/mcp`
 - Enabled capabilities: `spring.ai.mcp.server.capabilities.tool=true`,
   `spring.ai.mcp.server.capabilities.resource=true`, and `spring.ai.mcp.server.capabilities.prompt=true`
-- Current tool surface: `dbflow_smoke`; it returns only process-level smoke status and does not access target
-  databases, metadata services, SQL policy, audit, or token plaintext.
+- Current tool surface: `dbflow_smoke`, `dbflow_list_targets`, `dbflow_inspect_schema`,
+  `dbflow_get_effective_policy`, `dbflow_explain_sql`, `dbflow_execute_sql`, and `dbflow_confirm_sql`.
+- Current resources: `dbflow://targets`, `dbflow://projects/{project}/envs/{env}/schema`, and
+  `dbflow://projects/{project}/envs/{env}/policy`.
+- Current prompts: `dbflow_safe_mysql_change` and `dbflow_explain_plan_review`.
+- DBFlow skeleton tools return only empty/mock structures and do not access target databases, execute SQL, write audit,
+  or expose token plaintext. Each tool response includes authentication and authorization boundary state.
 
 ## Verify Before Completion
 
@@ -113,4 +119,7 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   environment, disabled user, disabled token, token/user mismatch, and expired token.
 - `AuditAndConfirmationServiceJpaTests` covers confirmation status transition and audit insertion/query behavior.
 - `DbflowMcpServerTests` covers Spring AI MCP server property binding, Streamable HTTP endpoint configuration,
-  WebMVC transport auto-configuration, `dbflow_smoke` tool registration, and smoke tool invocation.
+  WebMVC transport auto-configuration, `dbflow_smoke` tool registration, smoke tool invocation, and authentication
+  boundary behavior for all DBFlow tool skeletons.
+- `DbflowMcpDiscoveryTests` covers JSON-RPC discovery through `/mcp` for the six stable DBFlow skeleton tools,
+  `dbflow://targets`, schema/policy resource templates, and the two DBFlow prompts.

@@ -48,22 +48,30 @@ class DbflowMcpServerTests {
     private final ToolCallbackProvider toolCallbackProvider;
 
     /**
+     * DBFlow MCP tool skeleton。
+     */
+    private final DbflowMcpTools dbflowMcpTools;
+
+    /**
      * 创建 DBFlow MCP Server 测试。
      *
      * @param serverProperties         MCP Server 通用配置属性
      * @param streamableHttpProperties MCP Streamable HTTP 配置属性
      * @param transportProvider        MCP WebMVC Streamable HTTP transport provider
      * @param toolCallbackProvider     DBFlow MCP 工具回调提供器
+     * @param dbflowMcpTools           DBFlow MCP tool skeleton
      */
     @Autowired
     DbflowMcpServerTests(McpServerProperties serverProperties,
                          McpServerStreamableHttpProperties streamableHttpProperties,
                          WebMvcStreamableServerTransportProvider transportProvider,
-                         @Qualifier("dbflowMcpToolCallbackProvider") ToolCallbackProvider toolCallbackProvider) {
+                         @Qualifier("dbflowMcpToolCallbackProvider") ToolCallbackProvider toolCallbackProvider,
+                         DbflowMcpTools dbflowMcpTools) {
         this.serverProperties = serverProperties;
         this.streamableHttpProperties = streamableHttpProperties;
         this.transportProvider = transportProvider;
         this.toolCallbackProvider = toolCallbackProvider;
+        this.dbflowMcpTools = dbflowMcpTools;
     }
 
     /**
@@ -94,6 +102,19 @@ class DbflowMcpServerTests {
     }
 
     /**
+     * 验证每个 DBFlow tool skeleton 都经过认证和授权边界。
+     */
+    @Test
+    void shouldApplyAuthenticationAndAuthorizationBoundaryForSkeletonTools() {
+        assertAuthenticationRequired(this.dbflowMcpTools.listTargets());
+        assertAuthenticationRequired(this.dbflowMcpTools.inspectSchema("demo", "dev", "app", null));
+        assertAuthenticationRequired(this.dbflowMcpTools.getEffectivePolicy("demo", "dev", null, null, "SELECT"));
+        assertAuthenticationRequired(this.dbflowMcpTools.explainSql("demo", "dev", "select 1", null));
+        assertAuthenticationRequired(this.dbflowMcpTools.executeSql("demo", "dev", "select 1", null, true, "test"));
+        assertAuthenticationRequired(this.dbflowMcpTools.confirmSql("challenge-1", "123456", "test"));
+    }
+
+    /**
      * 查找 MCP smoke tool 回调。
      *
      * @return MCP smoke tool 回调
@@ -107,5 +128,17 @@ class DbflowMcpServerTests {
                 .filter(callback -> SMOKE_TOOL_NAME.equals(callback.getToolDefinition().name()))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    /**
+     * 断言 skeleton 响应需要认证。
+     *
+     * @param response skeleton 响应
+     */
+    private void assertAuthenticationRequired(DbflowMcpSkeletonResponse response) {
+        assertThat(response.authentication().authenticated()).isFalse();
+        assertThat(response.authorization().checked()).isTrue();
+        assertThat(response.authorization().allowed()).isFalse();
+        assertThat(response.authorization().reason()).isEqualTo("AUTHENTICATION_REQUIRED");
     }
 }

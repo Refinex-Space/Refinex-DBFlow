@@ -109,4 +109,22 @@ public class DbfProject {
     public String getProjectKey() {
         return projectKey;
     }
+
+    /**
+     * 读取项目名称。
+     *
+     * @return 项目名称
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * 读取项目状态。
+     *
+     * @return 项目状态
+     */
+    public String getStatus() {
+        return status;
+    }
 }

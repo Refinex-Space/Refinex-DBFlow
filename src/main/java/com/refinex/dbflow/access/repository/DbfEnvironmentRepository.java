@@ -20,4 +20,18 @@ public interface DbfEnvironmentRepository extends JpaRepository<DbfEnvironment, 
      * @return 项目环境元数据
      */
     Optional<DbfEnvironment> findByProjectIdAndEnvironmentKey(Long projectId, String environmentKey);
+
+    /**
+     * 按项目、环境标识和状态查询环境。
+     *
+     * @param projectId      项目主键
+     * @param environmentKey 环境标识
+     * @param status         环境状态
+     * @return 项目环境元数据
+     */
+    Optional<DbfEnvironment> findByProjectIdAndEnvironmentKeyAndStatus(
+            Long projectId,
+            String environmentKey,
+            String status
+    );
 }

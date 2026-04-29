@@ -32,6 +32,20 @@ public interface DbfUserEnvGrantRepository extends JpaRepository<DbfUserEnvGrant
     Optional<DbfUserEnvGrant> findByUserIdAndEnvironmentId(Long userId, Long environmentId);
 
     /**
+     * 查询指定用户、环境和状态的授权。
+     *
+     * @param userId        用户主键
+     * @param environmentId 环境主键
+     * @param status        授权状态
+     * @return 授权元数据
+     */
+    Optional<DbfUserEnvGrant> findByUserIdAndEnvironmentIdAndStatus(
+            Long userId,
+            Long environmentId,
+            String status
+    );
+
+    /**
      * 判断指定用户与环境是否存在指定状态授权。
      *
      * @param userId        用户主键

@@ -109,4 +109,31 @@ public class DbfEnvironment {
     public Long getProjectId() {
         return projectId;
     }
+
+    /**
+     * 读取环境标识。
+     *
+     * @return 环境标识
+     */
+    public String getEnvironmentKey() {
+        return environmentKey;
+    }
+
+    /**
+     * 读取环境名称。
+     *
+     * @return 环境名称
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * 读取环境状态。
+     *
+     * @return 环境状态
+     */
+    public String getStatus() {
+        return status;
+    }
 }

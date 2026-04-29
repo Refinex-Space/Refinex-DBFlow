@@ -4,9 +4,10 @@
 
 This document records the current verification state of the repository. Refinex-DBFlow has an approved architecture
 spec, a minimal single-module Spring Boot Maven scaffold, package boundaries, common model tests, request id filter
-tests, Flyway metadata schema migration tests, JPA service slice tests for access/audit/confirmation metadata, and MCP
-Token lifecycle service tests. It also includes validated `dbflow.*` YAML binding tests for datasource defaults,
-project environments, and dangerous DDL policy, plus management-side Spring Security tests for form login and CSRF.
+tests, Flyway metadata schema migration tests, JPA service slice tests for access/audit/confirmation metadata,
+project/environment access decision tests, and MCP Token lifecycle service tests. It also includes validated
+`dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous DDL policy, plus
+management-side Spring Security tests for form login and CSRF.
 
 ## Build & Run
 
@@ -60,6 +61,10 @@ Configuration sources and secret boundary:
   be injected through environment variables, encrypted configuration, Nacos secret handling, or a secret manager.
 - MCP Token plaintext is valid only as the one-time issue response. Logs, audit events, tests, and metadata tables must
   never persist generated plaintext tokens; validation evidence should use hash/prefix/metadata assertions instead.
+- Configured project/environment display may include JDBC URL, driver, username, and metadata ids, but must not expose
+  configured database passwords.
+- Future MCP SQL execution verification must include an `AccessDecisionService` allow/deny check before target database
+  access.
 - MCP Bearer Token authentication is not part of the management session chain and should be verified separately when
   implemented.
 
@@ -89,4 +94,7 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `McpTokenServiceJpaTests` covers one-time plaintext issue, hash/prefix persistence, duplicate active-token rejection,
   invalid token rejection, revocation, reissue, successful validation, and `last_used_at` updates.
 - `AccessServiceJpaTests` covers active token uniqueness, token revocation/reissue, and grant query boundaries.
+- `AccessDecisionServiceJpaTests` covers configured catalog synchronization, password-free environment display,
+  grant create/query/delete by project/environment key, allow decisions, and denial reasons for missing grant, missing
+  environment, disabled user, disabled token, token/user mismatch, and expired token.
 - `AuditAndConfirmationServiceJpaTests` covers confirmation status transition and audit insertion/query behavior.

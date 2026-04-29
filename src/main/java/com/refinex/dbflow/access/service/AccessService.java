@@ -81,6 +81,20 @@ public class AccessService {
     }
 
     /**
+     * 禁用用户。
+     *
+     * @param userId 用户主键
+     * @return 禁用后的用户实体
+     */
+    @Transactional
+    public DbfUser disableUser(Long userId) {
+        DbfUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new DbflowException(ErrorCode.INVALID_REQUEST, "用户不存在"));
+        user.disable();
+        return userRepository.save(user);
+    }
+
+    /**
      * 创建项目。
      *
      * @param projectKey  项目标识
@@ -166,6 +180,56 @@ public class AccessService {
     }
 
     /**
+     * 按项目和环境标识创建用户环境授权。
+     *
+     * @param userId         用户主键
+     * @param projectKey     项目标识
+     * @param environmentKey 环境标识
+     * @param grantType      授权类型
+     * @return 授权实体
+     */
+    @Transactional
+    public DbfUserEnvGrant grantEnvironment(
+            Long userId,
+            String projectKey,
+            String environmentKey,
+            String grantType
+    ) {
+        DbfEnvironment environment = resolveActiveEnvironment(projectKey, environmentKey);
+        return grantEnvironment(userId, environment.getId(), grantType);
+    }
+
+    /**
+     * 按项目和环境标识删除用户环境授权。
+     *
+     * @param userId         用户主键
+     * @param projectKey     项目标识
+     * @param environmentKey 环境标识
+     * @return 删除到授权时返回 true
+     */
+    @Transactional
+    public boolean deleteGrant(Long userId, String projectKey, String environmentKey) {
+        DbfEnvironment environment = resolveActiveEnvironment(projectKey, environmentKey);
+        Optional<DbfUserEnvGrant> grant = grantRepository.findByUserIdAndEnvironmentId(userId, environment.getId());
+        grant.ifPresent(grantRepository::delete);
+        return grant.isPresent();
+    }
+
+    /**
+     * 按项目和环境标识查询用户环境授权。
+     *
+     * @param userId         用户主键
+     * @param projectKey     项目标识
+     * @param environmentKey 环境标识
+     * @return 授权元数据
+     */
+    @Transactional(readOnly = true)
+    public Optional<DbfUserEnvGrant> findGrant(Long userId, String projectKey, String environmentKey) {
+        DbfEnvironment environment = resolveActiveEnvironment(projectKey, environmentKey);
+        return grantRepository.findByUserIdAndEnvironmentId(userId, environment.getId());
+    }
+
+    /**
      * 查询用户 active 授权列表。
      *
      * @param userId 用户主键
@@ -186,5 +250,33 @@ public class AccessService {
     @Transactional(readOnly = true)
     public boolean hasActiveGrant(Long userId, Long environmentId) {
         return grantRepository.existsByUserIdAndEnvironmentIdAndStatus(userId, environmentId, "ACTIVE");
+    }
+
+    /**
+     * 判断用户是否具备指定项目环境 active 授权。
+     *
+     * @param userId         用户主键
+     * @param projectKey     项目标识
+     * @param environmentKey 环境标识
+     * @return 具备 active 授权时返回 true
+     */
+    @Transactional(readOnly = true)
+    public boolean hasActiveGrant(Long userId, String projectKey, String environmentKey) {
+        DbfEnvironment environment = resolveActiveEnvironment(projectKey, environmentKey);
+        return hasActiveGrant(userId, environment.getId());
+    }
+
+    /**
+     * 解析 active 项目环境。
+     *
+     * @param projectKey     项目标识
+     * @param environmentKey 环境标识
+     * @return active 项目环境
+     */
+    private DbfEnvironment resolveActiveEnvironment(String projectKey, String environmentKey) {
+        DbfProject project = projectRepository.findByProjectKeyAndStatus(projectKey, "ACTIVE")
+                .orElseThrow(() -> new DbflowException(ErrorCode.INVALID_REQUEST, "项目不存在或不可用"));
+        return environmentRepository.findByProjectIdAndEnvironmentKeyAndStatus(project.getId(), environmentKey, "ACTIVE")
+                .orElseThrow(() -> new DbflowException(ErrorCode.INVALID_REQUEST, "环境不存在或不可用"));
     }
 }

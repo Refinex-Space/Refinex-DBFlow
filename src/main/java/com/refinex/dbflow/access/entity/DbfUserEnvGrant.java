@@ -102,11 +102,38 @@ public class DbfUserEnvGrant {
     }
 
     /**
+     * 读取用户主键。
+     *
+     * @return 用户主键
+     */
+    public Long getUserId() {
+        return userId;
+    }
+
+    /**
      * 读取环境主键。
      *
      * @return 环境主键
      */
     public Long getEnvironmentId() {
         return environmentId;
+    }
+
+    /**
+     * 读取授权类型。
+     *
+     * @return 授权类型
+     */
+    public String getGrantType() {
+        return grantType;
+    }
+
+    /**
+     * 读取授权状态。
+     *
+     * @return 授权状态
+     */
+    public String getStatus() {
+        return status;
     }
 }

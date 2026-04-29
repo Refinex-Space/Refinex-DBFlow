@@ -75,6 +75,13 @@ public class DbfUser {
     }
 
     /**
+     * 禁用用户。
+     */
+    public void disable() {
+        this.status = "DISABLED";
+    }
+
+    /**
      * 持久化前补齐时间字段。
      */
     @PrePersist

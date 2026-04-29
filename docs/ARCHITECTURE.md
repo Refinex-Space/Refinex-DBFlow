@@ -5,10 +5,10 @@
 Refinex-DBFlow is planned as an internal MySQL MCP database operation gateway. Its purpose is to let AI tools operate authorized MySQL project environments while the server enforces authentication, authorization, dangerous SQL policy, confirmation, and audit logging.
 
 The current repository contains a single-module Spring Boot Maven scaffold, metadata persistence/services, validated
-`dbflow.*` configuration binding, management-side Spring Security session login, MCP Token lifecycle services, and
-Harness control-plane documentation. It does not yet contain MCP tools, MCP Bearer Token HTTP authentication, SQL
-policy enforcement, target database execution, full management UI, CI configuration, or production deployment
-configuration. The architecture
+`dbflow.*` configuration binding, management-side Spring Security session login, MCP Token lifecycle services,
+project/environment access decisions, and Harness control-plane documentation. It does not yet contain MCP tools, MCP
+Bearer Token HTTP authentication, SQL policy enforcement, target database execution, full management UI, CI
+configuration, or production deployment configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
 and must be updated as implementation packages are added.
@@ -55,7 +55,14 @@ and must be updated as implementation packages are added.
 |   |   |   |   |   +-- DbfProjectRepository.java
 |   |   |   |   |   +-- DbfUserEnvGrantRepository.java
 |   |   |   |   |   +-- DbfUserRepository.java
-|   |   |   |   +-- service/AccessService.java
+|   |   |   |   +-- service/
+|   |   |   |   |   +-- AccessDecision.java
+|   |   |   |   |   +-- AccessDecisionReason.java
+|   |   |   |   |   +-- AccessDecisionRequest.java
+|   |   |   |   |   +-- AccessDecisionService.java
+|   |   |   |   |   +-- AccessService.java
+|   |   |   |   |   +-- ConfiguredEnvironmentView.java
+|   |   |   |   |   +-- ProjectEnvironmentCatalogService.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- admin/
 |   |   |   |   +-- AdminHomeController.java
@@ -107,6 +114,7 @@ and must be updated as implementation packages are added.
 |           |   +-- ApiResultTests.java
 |           |   +-- DbflowExceptionTests.java
 |           +-- access/AccessServiceJpaTests.java
+|           +-- access/AccessDecisionServiceJpaTests.java
 |           +-- audit/AuditAndConfirmationServiceJpaTests.java
 |           +-- config/DbflowPropertiesTests.java
 |           +-- config/MetadataSchemaMigrationTests.java
@@ -137,6 +145,9 @@ and must be updated as implementation packages are added.
 - MCP Token lifecycle baseline: `McpTokenService` can issue a unique active Token per user, store only a peppered
   HMAC hash and display prefix, revoke active tokens, reissue after revocation, validate by hash comparison, and update
   `last_used_at`.
+- Access decision baseline: project/environment grants can be created, queried, and deleted by logical keys;
+  configured project environments can be synchronized into metadata display rows; `AccessDecisionService` returns
+  explicit allow/deny decisions before future SQL execution.
 
 ## Current Source Package Boundaries
 
@@ -146,7 +157,7 @@ and must be updated as implementation packages are added.
 | `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                                                                                       | Shared result and exception primitives; no DBFlow business policy.                                                  |
 | `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                               | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                   |
 | `com.refinex.dbflow.security`      | `AdminSecurityConfiguration`, `AdminSecurityProperties`, `AdminUserDetailsService`, `InitialAdminUserInitializer`, `McpTokenProperties`, `McpTokenService`, MCP Token DTO records, `package-info.java` | Management session login, BCrypt admin password model, initial admin bootstrap, and MCP Token lifecycle primitives. |
-| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`                                                                                             | Users, tokens, project/environment registry, grants, and access metadata service boundary.                          |
+| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records            | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.      |
 | `com.refinex.dbflow.mcp`           | `package-info.java`                                                                                                                                                                                    | Reserved boundary for MCP tools, resources, prompts, and transport adapters.                                        |
 | `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                                                                                                                    | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.                         |
 | `com.refinex.dbflow.executor`      | `package-info.java`                                                                                                                                                                                    | Reserved boundary for Hikari data sources, JDBC execution, and EXPLAIN.                                             |
@@ -170,6 +181,7 @@ common
 
 access
         -> common
+        -> config
         -> Spring Data JPA / Spring Transactions
 
 audit
@@ -221,6 +233,8 @@ Sensitive configuration boundary:
   `token_hash`, `token_prefix`, status, expiry, revocation time, and last-used metadata.
 - MCP Token hash uses HMAC-SHA-256 with the configured pepper. Token validation must compare hashes and must not log,
   persist, or audit plaintext tokens.
+- Admin-facing configured environment views are produced through `ConfiguredEnvironmentView`; they may include
+  project/environment names, JDBC URL, driver, and username, but never include database passwords.
 - Real database passwords, token peppers, Nacos credentials, and connection-string secrets must not be committed.
 - The configuration layer only binds and validates values; it does not open target database connections yet.
 
@@ -277,7 +291,11 @@ Key constraints and indexes currently verified by tests:
 Current metadata services:
 
 - `AccessService` creates users, projects, environments, active token metadata, token revocation, grants, active token
-  lookup, active grant lookup, and grant existence checks.
+  lookup, active grant lookup, grant existence checks, and project/environment-key grant create/query/delete.
+- `ProjectEnvironmentCatalogService` synchronizes configured YAML project environments into metadata display rows and
+  returns password-free configured environment views for management surfaces.
+- `AccessDecisionService` checks active user, active token, token ownership, token expiry, active project/environment,
+  and active grant before allowing project environment access.
 - `ConfirmationService` creates pending confirmation challenges, confirms pending challenges, and queries pending
   challenges by user.
 - `AuditService` records audit events and queries recent events by user.
@@ -327,6 +345,7 @@ Cross-cutting observability may be used by every layer. SQL execution must not b
 - `DROP DATABASE` and `DROP TABLE` default to deny and require YAML whitelist entries.
 - `TRUNCATE` requires a server-side confirmation challenge before execution.
 - Every allowed, denied, confirmation-required, expired, and failed operation must be audit logged.
+- Every future MCP SQL execution path must call `AccessDecisionService` before target database access.
 - Target database access should use Spring JDBC and HikariCP; MyBatis and jOOQ are not the primary execution layer.
 - Metadata storage should use Flyway-managed schema plus Spring Data JPA repositories.
 

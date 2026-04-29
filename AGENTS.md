@@ -27,6 +27,7 @@ The approved target is a Spring Boot WebMVC MCP gateway using Spring AI MCP Stre
 ## Documentation Index
 
 - [docs/PLANS.md](docs/PLANS.md) - Active and planned work.
+- [0-1-PLANS.md](0-1-PLANS.md) - Root-level 0-1 development roadmap with staged copy-ready prompts.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Current repository map and approved target architecture.
 - [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) - Build, test, lint, CI, and verification state.
 - [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md) - Approved DBFlow MCP architecture spec.

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Refinex-DBFlow 日志配置基线。
+  当前阶段只定义控制台输出，后续接入审计、traceId 和文件归档时继续扩展。
+-->
+<configuration>
+    <!-- 控制台日志格式：包含时间、级别、线程、logger 与消息，便于本地开发排查。 -->
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} - %msg%n"/>
+
+    <!-- 控制台 appender：本地开发和测试阶段的默认日志输出目标。 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <!-- 日志编码器：统一使用 UTF-8，避免中文日志在不同终端乱码。 -->
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 根日志级别：INFO 兼顾可观察性与噪声控制，敏感信息不得进入日志。 -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

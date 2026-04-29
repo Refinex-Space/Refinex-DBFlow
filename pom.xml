@@ -4,6 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- 继承 Spring Boot 父工程，统一 Maven 插件、编码、测试与依赖管理基线。 -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -17,6 +18,7 @@
     <name>Refinex DBFlow</name>
     <description>Internal MySQL MCP database operation gateway.</description>
 
+    <!-- 项目级版本属性：除阶段明确锁定的 BOM 外，依赖版本优先交给 BOM 管理。 -->
     <properties>
         <java.version>21</java.version>
         <spring-ai.version>1.1.4</spring-ai.version>
@@ -24,8 +26,10 @@
         <spring-cloud-alibaba.version>2025.0.0.0</spring-cloud-alibaba.version>
     </properties>
 
+    <!-- 统一依赖版本管理：当前阶段只导入 BOM，不提前引入业务实现依赖。 -->
     <dependencyManagement>
         <dependencies>
+            <!-- Spring AI 版本基线：P04 开始实现 MCP Server 时复用此 BOM 管理 MCP starter。 -->
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
@@ -33,6 +37,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Spring Cloud 版本基线：后续 Nacos、Actuator 与云原生集成沿用此 BOM。 -->
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
@@ -40,6 +45,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Spring Cloud Alibaba 版本基线：后续 Nacos Config/Discovery starter 由此 BOM 管理。 -->
             <dependency>
                 <groupId>com.alibaba.cloud</groupId>
                 <artifactId>spring-cloud-alibaba-dependencies</artifactId>
@@ -51,10 +57,12 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- WebMVC 基础依赖：提供 Spring MVC、内嵌 Tomcat 与基础 HTTP 能力。 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!-- 测试基础依赖：提供 JUnit、Spring Boot Test 与当前 context smoke test 能力。 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -64,6 +72,7 @@
 
     <build>
         <plugins>
+            <!-- Spring Boot 打包插件：负责生成可执行 Spring Boot jar。 -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

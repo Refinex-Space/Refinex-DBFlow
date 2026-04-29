@@ -30,6 +30,7 @@ The approved target is a Spring Boot WebMVC MCP gateway using Spring AI MCP Stre
 - [0-1-PLANS.md](0-1-PLANS.md) - Root-level 0-1 development roadmap with staged copy-ready prompts.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Current repository map and approved target architecture.
 - [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) - Build, test, lint, CI, and verification state.
+- [docs/references/java-development-standards.md](docs/references/java-development-standards.md) - Java comments, Maven dependency comments, logging XML comments, Alibaba Java style, and SonarQube-oriented development standards.
 - [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md) - Approved DBFlow MCP architecture spec.
 - [docs/exec-plans/completed/2026-04-29-harness-control-plane-bootstrap.md](docs/exec-plans/completed/2026-04-29-harness-control-plane-bootstrap.md) - Completed bootstrap execution plan.
 - [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) - Known technical debt.
@@ -40,6 +41,7 @@ The approved target is a Spring Boot WebMVC MCP gateway using Spring AI MCP Stre
 - Preserve existing unmanaged docs: `README.md` and `LICENSE` are not overwritten by Harness lifecycle work.
 - Design decisions live in `docs/exec-plans/specs/`; implementation plans live in `docs/exec-plans/active/`.
 - MCP/database work must follow the approved wide-entry, strong-server-side-policy architecture.
+- Backend code and configuration must follow [docs/references/java-development-standards.md](docs/references/java-development-standards.md): Chinese JavaDoc comments, parameter-complete method comments, field comments, Maven dependency comments, and logging XML comments.
 - High-risk SQL policy is service-side: `DROP DATABASE` and `DROP TABLE` require YAML whitelist; `TRUNCATE` requires confirmation.
 - Use `harness-verify` before claiming repository work is complete.
 

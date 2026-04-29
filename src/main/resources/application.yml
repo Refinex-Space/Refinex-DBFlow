@@ -1,3 +1,5 @@
+# Spring Boot 应用基础配置。
 spring:
+  # 应用名称用于日志、Actuator 和后续注册发现标识。
   application:
     name: refinex-dbflow

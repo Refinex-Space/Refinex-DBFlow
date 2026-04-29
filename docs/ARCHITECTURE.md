@@ -17,7 +17,7 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 +-- mvnw
 +-- mvnw.cmd
 +-- .mvn/
-+|   +-- wrapper/
+|   +-- wrapper/
 +-- docs/
 |   +-- PLANS.md
 |   +-- ARCHITECTURE.md
@@ -30,12 +30,14 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 |   +-- generated/
 |   |   +-- harness-manifest.md
 |   +-- references/
+|       +-- java-development-standards.md
 +-- src/
-+|   +-- main/
-+|   |   +-- java/com/refinex/dbflow/DbflowApplication.java
-+|   |   +-- resources/application.yml
-+|   +-- test/
-+|       +-- java/com/refinex/dbflow/DbflowApplicationTests.java
+|   +-- main/
+|   |   +-- java/com/refinex/dbflow/DbflowApplication.java
+|   |   +-- resources/application.yml
+|   |   +-- resources/logback-spring.xml
+|   +-- test/
+|       +-- java/com/refinex/dbflow/DbflowApplicationTests.java
 +-- scripts/
     +-- check_harness.py
 ```
@@ -47,6 +49,7 @@ The current repository contains a minimal single-module Spring Boot Maven scaffo
 - Application package root: `com.refinex.dbflow`.
 - Current test baseline: Spring Boot application context smoke test only.
 - Spring AI MCP dependency management is imported through the Spring AI BOM, but the MCP server starter and MCP endpoint are intentionally deferred to the MCP scaffold phase.
+- Development standard baseline: `docs/references/java-development-standards.md` requires Chinese JavaDoc, parameter-complete method comments, field comments, Maven dependency comments, and logging XML comments.
 
 ## Target System Shape
 

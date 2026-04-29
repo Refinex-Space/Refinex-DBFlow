@@ -22,5 +22,6 @@ _No active execution plans._
 
 ## Completed Plans
 
+- [2026-04-29 Java Development Standards](exec-plans/completed/2026-04-29-java-development-standards.md) - Completed; added Java development standards and scaffold comments.
 - [2026-04-29 Spring Boot Maven Scaffold](exec-plans/completed/2026-04-29-spring-boot-maven-scaffold.md) - Completed; created the P01.1 single-module Spring Boot Maven scaffold and verified Maven/Harness commands.
 - [2026-04-29 Harness Control Plane Bootstrap](exec-plans/completed/2026-04-29-harness-control-plane-bootstrap.md) - Completed; initialized the repository control plane from the approved DBFlow architecture spec.

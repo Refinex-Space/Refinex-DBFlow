@@ -1,8 +1,8 @@
 package com.refinex.dbflow.mcp;
 
+import com.refinex.dbflow.executor.*;
 import com.refinex.dbflow.sqlpolicy.TruncateConfirmationConfirmRequest;
 import com.refinex.dbflow.sqlpolicy.TruncateConfirmationDecision;
-import com.refinex.dbflow.sqlpolicy.TruncateConfirmationRequest;
 import com.refinex.dbflow.sqlpolicy.TruncateConfirmationService;
 import org.springaicommunity.mcp.annotation.McpTool;
 import org.springaicommunity.mcp.annotation.McpToolParam;
@@ -36,20 +36,28 @@ public class DbflowMcpTools {
     private final TruncateConfirmationService truncateConfirmationService;
 
     /**
+     * 受控 SQL 执行服务。
+     */
+    private final SqlExecutionService sqlExecutionService;
+
+    /**
      * 创建 DBFlow MCP 工具 skeleton。
      *
      * @param authenticationContextResolver MCP 认证上下文解析器
      * @param accessBoundaryService         MCP 访问授权边界服务
      * @param truncateConfirmationService   TRUNCATE 服务端二次确认服务
+     * @param sqlExecutionService           受控 SQL 执行服务
      */
     public DbflowMcpTools(
             McpAuthenticationContextResolver authenticationContextResolver,
             McpAccessBoundaryService accessBoundaryService,
-            TruncateConfirmationService truncateConfirmationService
+            TruncateConfirmationService truncateConfirmationService,
+            SqlExecutionService sqlExecutionService
     ) {
         this.authenticationContextResolver = authenticationContextResolver;
         this.accessBoundaryService = accessBoundaryService;
         this.truncateConfirmationService = truncateConfirmationService;
+        this.sqlExecutionService = sqlExecutionService;
     }
 
     /**
@@ -230,7 +238,7 @@ public class DbflowMcpTools {
     @McpTool(
             name = DbflowMcpNames.TOOL_EXECUTE_SQL,
             title = "Execute DBFlow SQL",
-            description = "Execute SQL only after authentication, authorization, SQL policy, confirmation, and audit checks. Skeleton never executes SQL and returns no result set.",
+            description = "Execute SQL only after authentication, authorization, SQL policy, confirmation, target datasource, bounded result, and audit checks.",
             annotations = @McpTool.McpAnnotations(
                     title = "Execute DBFlow SQL",
                     readOnlyHint = false,
@@ -255,45 +263,41 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_EXECUTE_SQL
         );
-        if (boundary.allowed() && truncateConfirmationService.isTruncate(sql)) {
-            TruncateConfirmationDecision decision = truncateConfirmationService.createChallenge(
-                    new TruncateConfirmationRequest(
-                            context.requestId(),
-                            context.userId(),
-                            context.tokenId(),
-                            null,
-                            project,
-                            env,
-                            sql,
-                            Instant.now()
-                    )
-            );
-            return response(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
-                    "project", project,
-                    "env", env,
-                    "schema", schema,
-                    "sqlReceived", true,
-                    "dryRun", Boolean.TRUE.equals(dryRun),
-                    "reason", reason,
-                    "resultRows", java.util.List.of(),
-                    "affectedRows", 0,
-                    "confirmationRequired", decision.confirmationRequired(),
-                    "confirmationId", decision.confirmationId(),
-                    "sqlHash", decision.sqlHash(),
-                    "riskLevel", decision.riskLevel().name(),
-                    "expiresAt", decision.expiresAt()
-            ));
-        }
+        SqlExecutionResult result = sqlExecutionService.execute(new SqlExecutionRequest(
+                context.requestId(),
+                context.userId(),
+                context.tokenId(),
+                null,
+                project,
+                env,
+                sql,
+                schema,
+                Boolean.TRUE.equals(dryRun),
+                reason,
+                SqlExecutionOptions.defaults()
+        ));
         return response(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
-                "project", project,
-                "env", env,
+                "project", result.projectKey(),
+                "env", result.environmentKey(),
                 "schema", schema,
                 "sqlReceived", sql != null && !sql.isBlank(),
                 "dryRun", Boolean.TRUE.equals(dryRun),
                 "reason", reason,
-                "resultRows", java.util.List.of(),
-                "affectedRows", 0,
-                "confirmationRequired", false
+                "operation", result.operation().name(),
+                "riskLevel", result.riskLevel().name(),
+                "query", result.query(),
+                "columns", result.columns(),
+                "resultRows", result.rows(),
+                "truncated", result.truncated(),
+                "affectedRows", result.affectedRows(),
+                "warnings", warningData(result.warnings()),
+                "durationMillis", result.durationMillis(),
+                "statementSummary", result.statementSummary(),
+                "sqlHash", result.sqlHash(),
+                "status", result.status(),
+                "confirmationRequired", result.confirmationRequired(),
+                "confirmationId", result.confirmationId(),
+                "expiresAt", result.expiresAt()
         ));
     }
 
@@ -400,5 +404,21 @@ public class DbflowMcpTools {
             values.put(String.valueOf(entries[index]), entries[index + 1]);
         }
         return values;
+    }
+
+    /**
+     * 转换 warning 输出数据。
+     *
+     * @param warnings warning 摘要
+     * @return MCP 响应数据
+     */
+    private java.util.List<Map<String, Object>> warningData(java.util.List<SqlExecutionWarning> warnings) {
+        return warnings.stream()
+                .map(warning -> data(
+                        "level", warning.level(),
+                        "code", warning.code(),
+                        "message", warning.message()
+                ))
+                .toList();
     }
 }

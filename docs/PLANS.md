@@ -22,6 +22,9 @@ No active execution plans.
 
 ## Completed Plans
 
+- [2026-04-29 SQL Execution Engine](exec-plans/completed/2026-04-29-sql-execution-engine.md) -
+  Completed; implemented P07.1 controlled SQL execution through authorization, policy, confirmation, target
+  datasource, bounded JDBC results, MySQL 8 Testcontainers coverage, and audit.
 - [2026-04-29 TRUNCATE Confirmation Challenge](exec-plans/completed/2026-04-29-truncate-confirmation-challenge.md) -
   Completed; implemented server-side TRUNCATE confirmation challenge creation, validation, consumption, and audit
   lifecycle.

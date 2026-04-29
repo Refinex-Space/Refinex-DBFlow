@@ -180,6 +180,60 @@ public class DbfAuditEvent {
     }
 
     /**
+     * 创建 SQL 执行审计事件。
+     *
+     * @param requestId      请求标识
+     * @param userId         用户主键
+     * @param tokenPrefix    Token 前缀
+     * @param projectKey     项目标识
+     * @param environmentKey 环境标识
+     * @param operationType  操作类型
+     * @param riskLevel      风险级别
+     * @param status         执行状态
+     * @param sqlHash        SQL hash
+     * @param sqlText        SQL 原文
+     * @param resultSummary  结果摘要
+     * @param affectedRows   影响行数
+     * @param errorCode      错误码
+     * @param errorMessage   错误摘要
+     * @return 审计事件实体
+     */
+    public static DbfAuditEvent sqlExecution(
+            String requestId,
+            Long userId,
+            String tokenPrefix,
+            String projectKey,
+            String environmentKey,
+            String operationType,
+            String riskLevel,
+            String status,
+            String sqlHash,
+            String sqlText,
+            String resultSummary,
+            Long affectedRows,
+            String errorCode,
+            String errorMessage
+    ) {
+        DbfAuditEvent event = executed(
+                requestId,
+                userId,
+                projectKey,
+                environmentKey,
+                operationType,
+                riskLevel,
+                status,
+                sqlHash,
+                sqlText,
+                resultSummary,
+                affectedRows
+        );
+        event.tokenPrefix = tokenPrefix;
+        event.errorCode = errorCode;
+        event.errorMessage = errorMessage;
+        return event;
+    }
+
+    /**
      * 创建确认挑战审计事件。
      *
      * @param requestId      请求标识

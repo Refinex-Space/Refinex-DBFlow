@@ -10,9 +10,9 @@ Spring AI MCP WebMVC Streamable HTTP server smoke test, and MCP tools/resources/
 includes
 validated `dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous DDL policy, plus
 project/environment scoped Hikari target `DataSource` registry lifecycle tests, candidate datasource reload tests, and
-management-side Spring Security tests for form login and CSRF. Spring Cloud Alibaba Nacos Config and Discovery
-dependencies are present, while default local startup keeps Nacos disabled unless the `nacos` profile is explicitly
-activated.
+SQL parsing/risk classification tests, and management-side Spring Security tests for form login and CSRF. Spring Cloud
+Alibaba Nacos Config and Discovery dependencies are present, while default local startup keeps Nacos disabled unless
+the `nacos` profile is explicitly activated.
 
 ## Build & Run
 
@@ -47,6 +47,7 @@ Planned baseline:
 - Flyway V1 metadata migration with H2 MySQL mode verification
 - Spring Security management session login for `/admin/**`, `/login`, and `/logout`
 - Spring AI MCP WebMVC Server starter with Streamable HTTP endpoint `/mcp`
+- JSQLParser 5.3 for SQL parsing and first-stage risk classification
 - MySQL 8 and MySQL 5.7 via Testcontainers after scaffold
 - Nacos Config and Discovery dependencies with opt-in `nacos` profile
 
@@ -97,6 +98,9 @@ Configuration sources and secret boundary:
   configured database passwords.
 - Future MCP SQL execution verification must include an `AccessDecisionService` allow/deny check before target database
   access.
+- SQL classification is performed by `SqlClassifier` before future policy and execution stages. Multi-statement input
+  is rejected by default; failed DDL/DML/admin parsing is rejected by default; readable commands such as `SELECT`,
+  `SHOW`, `DESCRIBE`, and `EXPLAIN` retain explicit classification and parse status for audit.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -154,6 +158,9 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `DataSourceConfigReloaderTests` covers successful candidate warmup and atomic replacement, failed candidate warmup
   preserving the old pool, candidate validation failure preserving the old pool, and old-pool closure only after a
   successful swap.
+- `SqlClassifierTests` covers MySQL 8 `SELECT`, MySQL 5.7 `SHOW`/`DESCRIBE`/`EXPLAIN`, DML operations
+  `INSERT`/`UPDATE`/`DELETE`/`LOAD DATA`, DDL operations `CREATE`/`ALTER`/`DROP`/`TRUNCATE`, `GRANT`, multi-statement
+  rejection, and fail-closed parsing behavior for unsafe statements.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,

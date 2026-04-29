@@ -8,8 +8,9 @@ The current repository contains a single-module Spring Boot Maven scaffold, meta
 `dbflow.*` configuration binding, project/environment scoped Hikari target `DataSource` registry, candidate-first
 datasource config reload, management-side Spring Security session login, MCP Token lifecycle services, MCP Bearer Token
 HTTP authentication, project/environment access decisions, a Spring AI MCP WebMVC Streamable HTTP endpoint, stable MCP
-tool/resource/prompt skeletons, and Spring Cloud Alibaba Nacos Config/Discovery baseline wiring. It does not yet
-contain real database execution MCP tools, SQL policy enforcement, target database SQL execution, full management UI, CI
+tool/resource/prompt skeletons, SQL parsing/risk classification, and Spring Cloud Alibaba Nacos Config/Discovery
+baseline wiring. It does not yet contain real database execution MCP tools, SQL policy enforcement decisions, target
+database SQL execution, full management UI, CI
 configuration, or production deployment configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -129,7 +130,14 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- McpTokenService.java
 |   |   |   |   +-- McpTokenValidationResult.java
 |   |   |   |   +-- package-info.java
-|   |   |   +-- sqlpolicy/package-info.java
+|   |   |   +-- sqlpolicy/
+|   |   |   |   +-- SqlClassification.java
+|   |   |   |   +-- SqlClassifier.java
+|   |   |   |   +-- SqlOperation.java
+|   |   |   |   +-- SqlParseStatus.java
+|   |   |   |   +-- SqlRiskLevel.java
+|   |   |   |   +-- SqlStatementType.java
+|   |   |   |   +-- package-info.java
 |   |   +-- resources/application.yml
 |   |   +-- resources/application-nacos.yml
 |   |   +-- resources/db/migration/V1__create_metadata_schema.sql
@@ -154,6 +162,7 @@ and must be updated as implementation packages are added.
 |           +-- security/AdminSecurityTests.java
 |           +-- security/McpSecurityTests.java
 |           +-- security/McpTokenServiceJpaTests.java
+|           +-- sqlpolicy/SqlClassifierTests.java
 +-- scripts/
     +-- check_harness.py
 ```
@@ -192,6 +201,9 @@ and must be updated as implementation packages are added.
 - Access decision baseline: project/environment grants can be created, queried, and deleted by logical keys;
   configured project environments can be synchronized into metadata display rows; `AccessDecisionService` returns
   explicit allow/deny decisions before future SQL execution.
+- SQL classification baseline: `SqlClassifier` uses JSQLParser to classify a single SQL statement into auditable
+  statement type, operation, risk level, target schema/table, DDL/DML flags, parse status, and default rejection state.
+  Multi-statement input is rejected, and failed DDL/DML/admin parsing fails closed.
 
 ## Current Source Package Boundaries
 
@@ -203,7 +215,7 @@ and must be updated as implementation packages are added.
 | `com.refinex.dbflow.security`      | Admin session security classes, `McpSecurityConfiguration`, `McpBearerTokenAuthenticationFilter`, `McpAuthenticationToken`, `McpRequestMetadata*`, `McpTokenService`, MCP Token DTO records, `package-info.java`                             | Management session login, BCrypt admin password model, initial admin bootstrap, MCP Bearer HTTP security, request metadata extraction, and MCP Token lifecycle primitives.                                                          |
 | `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records                                                  | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.                                                                                                                      |
 | `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java` | Spring AI MCP tools/resources/prompts skeleton and the MCP authentication/authorization boundary.                                                                                                                                   |
-| `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                                                                                                                                                          | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.                                                                                                                                         |
+| `com.refinex.dbflow.sqlpolicy`     | `SqlClassifier`, `SqlClassification`, SQL operation/status/risk/type enums, `package-info.java`                                                                                                                                              | SQL parsing and auditable risk classification. Whitelist decisions, confirmation policy, and SQL execution gates are still future work.                                                                                             |
 | `com.refinex.dbflow.executor`      | `DataSourceConfigReloader`, `DataSourceReloadResult`, `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `package-info.java`                                                                                                | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement; future JDBC execution and EXPLAIN must resolve target pools through this boundary. |
 | `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                             | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                                                                                        |
 | `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                   | Minimal management endpoint surface for session-security verification.                                                                                                                                                              |
@@ -236,6 +248,9 @@ config
         -> Spring Boot ConfigurationProperties / Jakarta Validation
         -> optional Spring Cloud Alibaba Nacos Config profile
 
+sqlpolicy
+        -> JSQLParser
+
 security
         -> access
         -> common
@@ -259,8 +274,8 @@ metadata migration test
         -> Flyway / JDBC / H2 MySQL mode
 ```
 
-`sqlpolicy` currently contains only package documentation and has no implementation dependencies. Future code should
-keep the approved target dependency direction below.
+`sqlpolicy` currently contains parsing and classification only. Future policy enforcement code should keep the approved
+target dependency direction below.
 
 ## Current Runtime Configuration
 
@@ -306,6 +321,34 @@ Sensitive configuration boundary:
   project/environment names, JDBC URL, driver, and username, but never include database passwords.
 - Real database passwords, token peppers, Nacos credentials, and connection-string secrets must not be committed.
 - The configuration layer only binds and validates values; it does not open target database connections yet.
+
+## Current SQL Classification
+
+`SqlClassifier` is the implemented SQL policy entry point for parsing and risk classification. It is classification
+only: it does not execute SQL, consult grants, apply YAML whitelists, create confirmation challenges, or write audit
+rows yet.
+
+Current classifier output:
+
+- `statementType`: `QUERY`, `DML`, `DDL`, `ADMIN`, or `UNKNOWN`.
+- `operation`: stable operation enum such as `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `ALTER`, `DROP_TABLE`,
+  `DROP_DATABASE`, `TRUNCATE`, `GRANT`, and `LOAD_DATA`.
+- `riskLevel`: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`, or `REJECTED`.
+- `targetSchema` and `targetTable`: best-effort target extraction for audit and later policy matching.
+- `isDdl` and `isDml`: explicit flags for downstream gates.
+- `parseStatus`: `SUCCESS`, `PARSE_FAILED`, or `MULTI_STATEMENT_REJECTED`.
+- `rejectedByDefault` and `auditReason`: local classification evidence for later audit records.
+
+Security posture:
+
+- Multi-statement SQL is rejected before classification continues.
+- Parser success is used for stronger target extraction and statement typing.
+- Parser failure does not make SQL safe. Failed DDL, DML, and administrative commands are classified with
+  `riskLevel=REJECTED` and `rejectedByDefault=true`.
+- `SELECT`, `SHOW`, `DESCRIBE`, and `EXPLAIN` are explicitly classified as query operations even when parser coverage
+  falls back to first-keyword handling, while retaining `parseStatus=PARSE_FAILED` when applicable.
+- MySQL-specific parser gaps observed in JSQLParser 5.3, such as `LOAD DATA`, MySQL account syntax in `GRANT`, and
+  `DROP DATABASE`, are handled by conservative fallback classification and are not allowed by default.
 
 ## Current Datasource Refresh Flow
 
@@ -493,6 +536,6 @@ Use this local checkout as the first source of truth when implementing or verify
 
 ## Next Architecture Update
 
-Update this document when SQL policy parsing, JDBC execution, audit integration, management UI, CI, or deployment
+Update this document when SQL policy enforcement, JDBC execution, audit integration, management UI, CI, or deployment
 configuration becomes real source code. Do not describe business modules as implemented until source paths and tests
 exist.

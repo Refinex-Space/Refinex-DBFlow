@@ -28,6 +28,7 @@
         <spring-ai.version>1.1.4</spring-ai.version>
         <spring-cloud.version>2025.0.2</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.0.0.0</spring-cloud-alibaba.version>
+        <jsqlparser.version>5.3</jsqlparser.version>
     </properties>
 
     <!-- 统一依赖版本管理：当前阶段只导入 BOM，不提前引入业务实现依赖。 -->
@@ -115,6 +116,13 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
+        <!-- JSQLParser SQL 解析依赖：用于 DBFlow 服务端 SQL 分类、风险识别和后续策略执行前置判断。 -->
+        <dependency>
+            <groupId>com.github.jsqlparser</groupId>
+            <artifactId>jsqlparser</artifactId>
+            <version>${jsqlparser.version}</version>
         </dependency>
 
         <!-- H2 本地元数据库：当前阶段用于本地启动和 Flyway migration 测试。 -->

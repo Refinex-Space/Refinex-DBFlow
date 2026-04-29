@@ -22,6 +22,8 @@ No active execution plans.
 
 ## Completed Plans
 
+- [2026-04-29 SQL Classifier](exec-plans/completed/2026-04-29-sql-classifier.md) -
+  Completed; implemented JSQLParser-backed SQL parsing and fail-closed risk classification.
 - [2026-04-29 DataSource Config Reloader](exec-plans/completed/2026-04-29-datasource-config-reloader.md) -
   Completed; implemented candidate validation, Hikari pool warmup, and atomic target datasource registry replacement.
 - [2026-04-29 Nacos Config Discovery Baseline](exec-plans/completed/2026-04-29-nacos-config-discovery-baseline.md) -

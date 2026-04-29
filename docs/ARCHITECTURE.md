@@ -5,11 +5,11 @@
 Refinex-DBFlow is planned as an internal MySQL MCP database operation gateway. Its purpose is to let AI tools operate authorized MySQL project environments while the server enforces authentication, authorization, dangerous SQL policy, confirmation, and audit logging.
 
 The current repository contains a single-module Spring Boot Maven scaffold, metadata persistence/services, validated
-`dbflow.*` configuration binding, project/environment scoped Hikari target `DataSource` registry, management-side
-Spring Security session login, MCP Token lifecycle services, MCP Bearer Token HTTP authentication, project/environment
-access decisions, a Spring AI MCP WebMVC Streamable HTTP endpoint, stable MCP tool/resource/prompt skeletons, and
-Spring Cloud Alibaba Nacos Config/Discovery baseline wiring. It does not yet contain real database execution MCP tools,
-SQL policy enforcement, target database SQL execution, full management UI, CI
+`dbflow.*` configuration binding, project/environment scoped Hikari target `DataSource` registry, candidate-first
+datasource config reload, management-side Spring Security session login, MCP Token lifecycle services, MCP Bearer Token
+HTTP authentication, project/environment access decisions, a Spring AI MCP WebMVC Streamable HTTP endpoint, stable MCP
+tool/resource/prompt skeletons, and Spring Cloud Alibaba Nacos Config/Discovery baseline wiring. It does not yet
+contain real database execution MCP tools, SQL policy enforcement, target database SQL execution, full management UI, CI
 configuration, or production deployment configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -91,6 +91,8 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- DbflowProperties.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- executor/
+|   |   |   |   +-- DataSourceConfigReloader.java
+|   |   |   |   +-- DataSourceReloadResult.java
 |   |   |   |   +-- HikariDataSourceRegistry.java
 |   |   |   |   +-- ProjectEnvironmentDataSourceRegistry.java
 |   |   |   |   +-- package-info.java
@@ -144,6 +146,7 @@ and must be updated as implementation packages are added.
 |           +-- config/DbflowPropertiesTests.java
 |           +-- config/MetadataSchemaMigrationTests.java
 |           +-- config/NacosProfileConfigurationTests.java
+|           +-- executor/DataSourceConfigReloaderTests.java
 |           +-- executor/HikariDataSourceRegistryTests.java
 |           +-- mcp/DbflowMcpDiscoveryTests.java
 |           +-- mcp/DbflowMcpServerTests.java
@@ -176,7 +179,8 @@ and must be updated as implementation packages are added.
   placeholders without committed credentials.
 - Target datasource baseline: `HikariDataSourceRegistry` creates isolated Hikari pools for each configured
   `projectKey/environmentKey`, applies shared `dbflow.datasource-defaults.hikari` settings, supports optional startup
-  connection validation, and closes all managed pools on shutdown.
+  connection validation, supports candidate-first atomic replacement through `DataSourceConfigReloader`, and closes all
+  managed pools on shutdown.
 - Admin security baseline: `/admin/**`, `/login`, and `/logout` are protected by a management-side Spring Security
   form-login session chain with CSRF and BCrypt-backed users.
 - MCP Bearer security baseline: `/mcp` is protected by a separate stateless Spring Security chain that accepts only
@@ -191,19 +195,19 @@ and must be updated as implementation packages are added.
 
 ## Current Source Package Boundaries
 
-| Package                            | Current contents                                                                                                                                                                                                                             | Responsibility                                                                                                                                                             |
-|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `com.refinex.dbflow`               | `DbflowApplication`                                                                                                                                                                                                                          | Spring Boot application entrypoint.                                                                                                                                        |
-| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                                                                                                                             | Shared result and exception primitives; no DBFlow business policy.                                                                                                         |
-| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                                                                     | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                                                                          |
-| `com.refinex.dbflow.security`      | Admin session security classes, `McpSecurityConfiguration`, `McpBearerTokenAuthenticationFilter`, `McpAuthenticationToken`, `McpRequestMetadata*`, `McpTokenService`, MCP Token DTO records, `package-info.java`                             | Management session login, BCrypt admin password model, initial admin bootstrap, MCP Bearer HTTP security, request metadata extraction, and MCP Token lifecycle primitives. |
-| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records                                                  | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.                                                             |
-| `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java` | Spring AI MCP tools/resources/prompts skeleton and the MCP authentication/authorization boundary.                                                                          |
-| `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                                                                                                                                                          | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.                                                                                |
-| `com.refinex.dbflow.executor`      | `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `package-info.java`                                                                                                                                                      | Project/environment scoped target `DataSource` registry; future JDBC execution and EXPLAIN must resolve target pools through this boundary.                                |
-| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                             | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                               |
-| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                   | Minimal management endpoint surface for session-security verification.                                                                                                     |
-| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                       | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                         |
+| Package                            | Current contents                                                                                                                                                                                                                             | Responsibility                                                                                                                                                                                                                      |
+|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `com.refinex.dbflow`               | `DbflowApplication`                                                                                                                                                                                                                          | Spring Boot application entrypoint.                                                                                                                                                                                                 |
+| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                                                                                                                             | Shared result and exception primitives; no DBFlow business policy.                                                                                                                                                                  |
+| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                                                                     | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                                                                                                                                   |
+| `com.refinex.dbflow.security`      | Admin session security classes, `McpSecurityConfiguration`, `McpBearerTokenAuthenticationFilter`, `McpAuthenticationToken`, `McpRequestMetadata*`, `McpTokenService`, MCP Token DTO records, `package-info.java`                             | Management session login, BCrypt admin password model, initial admin bootstrap, MCP Bearer HTTP security, request metadata extraction, and MCP Token lifecycle primitives.                                                          |
+| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records                                                  | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.                                                                                                                      |
+| `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java` | Spring AI MCP tools/resources/prompts skeleton and the MCP authentication/authorization boundary.                                                                                                                                   |
+| `com.refinex.dbflow.sqlpolicy`     | `package-info.java`                                                                                                                                                                                                                          | Reserved boundary for SQL parsing, risk classification, whitelist, and confirmation policy.                                                                                                                                         |
+| `com.refinex.dbflow.executor`      | `DataSourceConfigReloader`, `DataSourceReloadResult`, `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `package-info.java`                                                                                                | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement; future JDBC execution and EXPLAIN must resolve target pools through this boundary. |
+| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                             | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                                                                                        |
+| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                   | Minimal management endpoint surface for session-security verification.                                                                                                                                                              |
+| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                       | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                                                                                  |
 
 ## Current Dependency Direction
 
@@ -302,6 +306,27 @@ Sensitive configuration boundary:
   project/environment names, JDBC URL, driver, and username, but never include database passwords.
 - Real database passwords, token peppers, Nacos credentials, and connection-string secrets must not be committed.
 - The configuration layer only binds and validates values; it does not open target database connections yet.
+
+## Current Datasource Refresh Flow
+
+`DataSourceConfigReloader` is the implemented refresh boundary for future local YAML or Nacos change listeners. It does
+not listen to Nacos directly yet; callers must pass a newly bound `DbflowProperties` candidate.
+
+Implemented refresh sequence:
+
+1. Bind the external change into a candidate `DbflowProperties` instance.
+2. Run `DbflowProperties.afterPropertiesSet()` on the candidate to catch duplicate keys, missing JDBC URL/driver, and
+   unsafe password-in-URL configuration before touching the active registry.
+3. Ask `HikariDataSourceRegistry` to create a full candidate snapshot of project/environment Hikari pools.
+4. Force candidate pool warmup with `getConnection()` even when normal startup validation is disabled.
+5. If every candidate target succeeds, atomically replace the active registry snapshot.
+6. Close the old snapshot only after the replacement succeeds.
+7. If binding, validation, or warmup fails, close any partially created candidate pools, keep the old snapshot active,
+   and write an operational warning log with a sanitized reason.
+
+The refresh path never mutates the existing active pool set in place. Failure of one candidate environment therefore
+does not make existing environments unavailable. Logs and returned messages must use project/environment identifiers
+only; JDBC URLs and passwords are not logged.
 
 ## Current Management Security
 

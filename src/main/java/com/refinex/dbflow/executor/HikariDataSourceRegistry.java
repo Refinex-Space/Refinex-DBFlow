@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 基于 DBFlow 项目环境配置创建并管理 Hikari 目标库数据源。
@@ -29,7 +30,7 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
     /**
      * 已注册的目标库数据源，key 为 projectKey/environmentKey。
      */
-    private final Map<DataSourceKey, HikariDataSource> dataSources;
+    private final AtomicReference<Map<DataSourceKey, HikariDataSource>> dataSources;
 
     /**
      * 创建 Hikari 目标库数据源注册表。
@@ -37,7 +38,8 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
      * @param properties DBFlow 配置属性
      */
     public HikariDataSourceRegistry(DbflowProperties properties) {
-        this.dataSources = Collections.unmodifiableMap(createDataSources(Objects.requireNonNull(properties)));
+        this.dataSources = new AtomicReference<>(
+                Collections.unmodifiableMap(createDataSources(Objects.requireNonNull(properties), false)));
     }
 
     /**
@@ -50,7 +52,7 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
     @Override
     public DataSource getDataSource(String projectKey, String environmentKey) {
         DataSourceKey key = new DataSourceKey(projectKey, environmentKey);
-        HikariDataSource dataSource = dataSources.get(key);
+        HikariDataSource dataSource = dataSources.get().get(key);
         if (dataSource == null) {
             throw new DbflowException(ErrorCode.INVALID_REQUEST,
                     "未配置目标数据源: " + key.toDisplayName());
@@ -63,25 +65,41 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
      */
     @Override
     public void destroy() {
-        for (HikariDataSource dataSource : dataSources.values()) {
-            closeQuietly(dataSource);
-        }
+        closeAll(dataSources.getAndSet(Collections.emptyMap()));
+    }
+
+    /**
+     * 使用已校验候选配置替换当前数据源快照。
+     *
+     * @param candidateProperties 候选 DBFlow 配置属性
+     * @return 数据源重载结果
+     */
+    DataSourceReloadResult replaceWithCandidate(DbflowProperties candidateProperties) {
+        Map<DataSourceKey, HikariDataSource> candidateDataSources = Collections.unmodifiableMap(
+                createDataSources(Objects.requireNonNull(candidateProperties), true));
+        Map<DataSourceKey, HikariDataSource> previousDataSources = dataSources.getAndSet(candidateDataSources);
+        closeAll(previousDataSources);
+        return DataSourceReloadResult.success(candidateDataSources.size(), "目标数据源配置已生效");
     }
 
     /**
      * 根据配置创建全部目标库数据源。
      *
-     * @param properties DBFlow 配置属性
+     * @param properties                DBFlow 配置属性
+     * @param forceConnectionValidation 是否强制预热连接
      * @return 目标库数据源映射
      */
-    private Map<DataSourceKey, HikariDataSource> createDataSources(DbflowProperties properties) {
+    private Map<DataSourceKey, HikariDataSource> createDataSources(
+            DbflowProperties properties,
+            boolean forceConnectionValidation) {
         Map<DataSourceKey, HikariDataSource> targetDataSources = new LinkedHashMap<>();
         DbflowProperties.DatasourceDefaults defaults = properties.getDatasourceDefaults();
         try {
             for (DbflowProperties.Project project : properties.getProjects()) {
                 for (DbflowProperties.Environment environment : project.getEnvironments()) {
                     DataSourceKey key = new DataSourceKey(project.getKey(), environment.getKey());
-                    HikariDataSource dataSource = createDataSource(defaults, project, environment);
+                    HikariDataSource dataSource = createDataSource(defaults, project, environment,
+                            forceConnectionValidation);
                     HikariDataSource previous = targetDataSources.put(key, dataSource);
                     if (previous != null) {
                         closeQuietly(previous);
@@ -103,41 +121,47 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
     /**
      * 创建单个项目环境目标库数据源。
      *
-     * @param defaults    数据源默认配置
-     * @param project     项目配置
-     * @param environment 环境配置
+     * @param defaults                  数据源默认配置
+     * @param project                   项目配置
+     * @param environment               环境配置
+     * @param forceConnectionValidation 是否强制预热连接
      * @return Hikari 数据源
      */
     private HikariDataSource createDataSource(
             DbflowProperties.DatasourceDefaults defaults,
             DbflowProperties.Project project,
-            DbflowProperties.Environment environment) {
-        HikariConfig config = buildConfig(defaults, project, environment);
+            DbflowProperties.Environment environment,
+            boolean forceConnectionValidation) {
+        boolean validateConnection = defaults.isValidateOnStartup() || forceConnectionValidation;
+        HikariConfig config = buildConfig(defaults, project, environment, validateConnection);
         HikariDataSource dataSource = null;
         try {
             dataSource = new HikariDataSource(config);
-            if (defaults.isValidateOnStartup()) {
+            if (validateConnection) {
                 validateConnection(dataSource);
             }
             return dataSource;
         } catch (RuntimeException | SQLException exception) {
             closeQuietly(dataSource);
-            throw new DbflowException(ErrorCode.INTERNAL_ERROR, sanitizedFailureMessage(defaults, project, environment));
+            throw new DbflowException(ErrorCode.INTERNAL_ERROR,
+                    sanitizedFailureMessage(validateConnection, project, environment));
         }
     }
 
     /**
      * 构建单个 Hikari 数据源配置。
      *
-     * @param defaults    数据源默认配置
-     * @param project     项目配置
-     * @param environment 环境配置
+     * @param defaults           数据源默认配置
+     * @param project            项目配置
+     * @param environment        环境配置
+     * @param validateConnection 是否需要启动期连接校验
      * @return Hikari 配置
      */
     private HikariConfig buildConfig(
             DbflowProperties.DatasourceDefaults defaults,
             DbflowProperties.Project project,
-            DbflowProperties.Environment environment) {
+            DbflowProperties.Environment environment,
+            boolean validateConnection) {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(environment.getJdbcUrl());
         config.setDriverClassName(resolveText(environment.getDriverClassName(), defaults.getDriverClassName()));
@@ -145,7 +169,7 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
         setIfPresent(config::setPassword, resolveSecret(environment.getPassword(), defaults.getPassword()));
         config.setPoolName(poolName(defaults.getHikari(), project.getKey(), environment.getKey()));
         applySharedHikari(config, defaults.getHikari());
-        config.setInitializationFailTimeout(defaults.isValidateOnStartup() ? 1L : -1L);
+        config.setInitializationFailTimeout(validateConnection ? 1L : -1L);
         return config;
     }
 
@@ -178,17 +202,17 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
     /**
      * 构造不包含 JDBC URL 或密码的失败消息。
      *
-     * @param defaults    数据源默认配置
-     * @param project     项目配置
-     * @param environment 环境配置
+     * @param validateConnection 是否需要启动期连接校验
+     * @param project            项目配置
+     * @param environment        环境配置
      * @return 脱敏失败消息
      */
     private String sanitizedFailureMessage(
-            DbflowProperties.DatasourceDefaults defaults,
+            boolean validateConnection,
             DbflowProperties.Project project,
             DbflowProperties.Environment environment) {
         DataSourceKey key = new DataSourceKey(project.getKey(), environment.getKey());
-        if (defaults.isValidateOnStartup()) {
+        if (validateConnection) {
             return "目标数据源启动校验失败: " + key.toDisplayName();
         }
         return "目标数据源初始化失败: " + key.toDisplayName();
@@ -292,6 +316,17 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
     private void closeQuietly(HikariDataSource dataSource) {
         if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
+        }
+    }
+
+    /**
+     * 安静关闭一组 Hikari 数据源。
+     *
+     * @param targetDataSources 目标库数据源映射
+     */
+    private void closeAll(Map<DataSourceKey, HikariDataSource> targetDataSources) {
+        for (HikariDataSource dataSource : targetDataSources.values()) {
+            closeQuietly(dataSource);
         }
     }
 

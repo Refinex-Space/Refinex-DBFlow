@@ -18,10 +18,12 @@ Harness Powers lifecycle:
 
 ## Active Plans
 
-_No active execution plans._
+No active execution plans.
 
 ## Completed Plans
 
+- [2026-04-29 DataSource Config Reloader](exec-plans/completed/2026-04-29-datasource-config-reloader.md) -
+  Completed; implemented candidate validation, Hikari pool warmup, and atomic target datasource registry replacement.
 - [2026-04-29 Nacos Config Discovery Baseline](exec-plans/completed/2026-04-29-nacos-config-discovery-baseline.md) -
   Completed; added Spring Cloud Alibaba Nacos Config and Discovery baseline wiring with opt-in profile tests.
 - [2026-04-29 Hikari DataSource Registry](exec-plans/completed/2026-04-29-hikari-datasource-registry.md) -

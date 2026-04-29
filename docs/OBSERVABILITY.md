@@ -9,9 +9,10 @@ project/environment access decision tests, MCP Token lifecycle service tests, MC
 Spring AI MCP WebMVC Streamable HTTP server smoke test, and MCP tools/resources/prompts discovery tests. It also
 includes
 validated `dbflow.*` YAML binding tests for datasource defaults, project environments, and dangerous DDL policy, plus
-project/environment scoped Hikari target `DataSource` registry lifecycle tests and management-side Spring Security
-tests for form login and CSRF. Spring Cloud Alibaba Nacos Config and Discovery dependencies are present, while default
-local startup keeps Nacos disabled unless the `nacos` profile is explicitly activated.
+project/environment scoped Hikari target `DataSource` registry lifecycle tests, candidate datasource reload tests, and
+management-side Spring Security tests for form login and CSRF. Spring Cloud Alibaba Nacos Config and Discovery
+dependencies are present, while default local startup keeps Nacos disabled unless the `nacos` profile is explicitly
+activated.
 
 ## Build & Run
 
@@ -67,8 +68,9 @@ Configuration sources and secret boundary:
 - Nacos namespace, address, username, and password use `DBFLOW_NACOS_*` environment placeholders. No Nacos credentials
   are committed.
 - Nacos refresh is currently a configuration-source capability only. It must not directly close or replace the active
-  Hikari target pools; future hot replacement must validate candidate configuration and candidate pools before any
-  atomic swap.
+  Hikari target pools. Future refresh listeners should pass a fully bound candidate `DbflowProperties` into
+  `DataSourceConfigReloader`, which validates the candidate, preheats candidate pools, atomically swaps the registry
+  snapshot, and closes old pools only after a successful swap.
 - Target database pools are created only from `dbflow.projects[*].environments[*]`; the executor registry never falls
   back to the Spring Boot metadata `DataSource`.
 - Database passwords may use environment placeholders such as `${DBFLOW_DEFAULT_PASSWORD:}` and
@@ -80,6 +82,9 @@ Configuration sources and secret boundary:
 - Startup target database connection validation is controlled by `dbflow.datasource-defaults.validate-on-startup`.
   Keep it disabled for local/offline development and enable it in environments where startup should fail fast on
   unreachable target databases.
+- Runtime target datasource reload always preheats candidate pools before replacing the registry, even when startup
+  validation is disabled. Failed reloads preserve the old registry snapshot and emit sanitized operational warning logs
+  without JDBC URLs or passwords.
 - Initial administrator credentials should come from environment variables, local development profile files excluded
   from source control, or a secret-managed BCrypt hash under `dbflow.admin.initial-user.password-hash`.
 - MCP Token pepper is read from `dbflow.security.mcp-token.pepper`; use an environment variable such as
@@ -146,6 +151,9 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `HikariDataSourceRegistryTests` covers one isolated Hikari pool per configured project/environment, shared Hikari
   default application, missing environment rejection without fallback, configurable startup connection validation,
   sanitized failure messages, and pool shutdown.
+- `DataSourceConfigReloaderTests` covers successful candidate warmup and atomic replacement, failed candidate warmup
+  preserving the old pool, candidate validation failure preserving the old pool, and old-pool closure only after a
+  successful swap.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,

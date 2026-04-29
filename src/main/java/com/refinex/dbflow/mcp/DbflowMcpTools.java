@@ -41,23 +41,31 @@ public class DbflowMcpTools {
     private final SqlExecutionService sqlExecutionService;
 
     /**
+     * 受控 SQL EXPLAIN 服务。
+     */
+    private final SqlExplainService sqlExplainService;
+
+    /**
      * 创建 DBFlow MCP 工具 skeleton。
      *
      * @param authenticationContextResolver MCP 认证上下文解析器
      * @param accessBoundaryService         MCP 访问授权边界服务
      * @param truncateConfirmationService   TRUNCATE 服务端二次确认服务
      * @param sqlExecutionService           受控 SQL 执行服务
+     * @param sqlExplainService             受控 SQL EXPLAIN 服务
      */
     public DbflowMcpTools(
             McpAuthenticationContextResolver authenticationContextResolver,
             McpAccessBoundaryService accessBoundaryService,
             TruncateConfirmationService truncateConfirmationService,
-            SqlExecutionService sqlExecutionService
+            SqlExecutionService sqlExecutionService,
+            SqlExplainService sqlExplainService
     ) {
         this.authenticationContextResolver = authenticationContextResolver;
         this.accessBoundaryService = accessBoundaryService;
         this.truncateConfirmationService = truncateConfirmationService;
         this.sqlExecutionService = sqlExecutionService;
+        this.sqlExplainService = sqlExplainService;
     }
 
     /**
@@ -181,18 +189,18 @@ public class DbflowMcpTools {
     }
 
     /**
-     * 生成 SQL EXPLAIN skeleton。
+     * 生成 SQL EXPLAIN。
      *
      * @param project 项目标识
      * @param env     环境标识
      * @param sql     SQL 原文
      * @param schema  默认 schema
-     * @return EXPLAIN skeleton 响应
+     * @return EXPLAIN 响应
      */
     @McpTool(
             name = DbflowMcpNames.TOOL_EXPLAIN_SQL,
             title = "Explain DBFlow SQL",
-            description = "Run a safe EXPLAIN boundary for SQL before execution. Skeleton does not connect to a target database and returns an empty plan.",
+            description = "Run a safe EXPLAIN for SELECT and explainable DML after authentication, authorization, SQL classification, target datasource access, and audit. Target DML is not executed.",
             annotations = @McpTool.McpAnnotations(
                     title = "Explain DBFlow SQL",
                     readOnlyHint = true,
@@ -205,7 +213,7 @@ public class DbflowMcpTools {
     public DbflowMcpSkeletonResponse explainSql(
             @McpToolParam(description = "Project key configured in dbflow.projects[].key.") String project,
             @McpToolParam(description = "Environment key configured under the project.") String env,
-            @McpToolParam(description = "SQL text to explain. It will not be executed in this skeleton phase.") String sql,
+            @McpToolParam(description = "SQL text to explain. DML is only explained and is not executed.") String sql,
             @McpToolParam(required = false, description = "Optional default schema for SQL resolution.") String schema
     ) {
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
@@ -215,12 +223,35 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_EXPLAIN_SQL
         );
+        SqlExplainResult result = sqlExplainService.explain(new SqlExplainRequest(
+                context.requestId(),
+                context.userId(),
+                context.tokenId(),
+                null,
+                project,
+                env,
+                sql,
+                schema
+        ));
         return response(DbflowMcpNames.TOOL_EXPLAIN_SQL, context, boundary, data(
-                "project", project,
-                "env", env,
+                "project", result.projectKey(),
+                "env", result.environmentKey(),
                 "schema", schema,
                 "sqlReceived", sql != null && !sql.isBlank(),
-                "plan", java.util.List.of()
+                "allowed", result.allowed(),
+                "status", result.status(),
+                "operation", result.operation().name(),
+                "riskLevel", result.riskLevel().name(),
+                "format", result.format(),
+                "explainSql", result.explainSql(),
+                "planRows", planRowData(result.planRows()),
+                "advice", adviceData(result.advice()),
+                "jsonPlanSummary", result.jsonPlanSummary(),
+                "durationMillis", result.durationMillis(),
+                "statementSummary", result.statementSummary(),
+                "sqlHash", result.sqlHash(),
+                "errorCode", result.errorCode(),
+                "errorMessage", result.errorMessage()
         ));
     }
 
@@ -418,6 +449,48 @@ public class DbflowMcpTools {
                         "level", warning.level(),
                         "code", warning.code(),
                         "message", warning.message()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换 EXPLAIN plan row 输出数据。
+     *
+     * @param planRows 执行计划行
+     * @return MCP 响应数据
+     */
+    private java.util.List<Map<String, Object>> planRowData(java.util.List<SqlExplainPlanRow> planRows) {
+        return planRows.stream()
+                .map(row -> data(
+                        "id", row.id(),
+                        "selectType", row.selectType(),
+                        "table", row.table(),
+                        "type", row.type(),
+                        "possibleKeys", row.possibleKeys(),
+                        "key", row.key(),
+                        "keyLen", row.keyLen(),
+                        "ref", row.ref(),
+                        "rows", row.rows(),
+                        "filtered", row.filtered(),
+                        "extra", row.extra(),
+                        "raw", row.raw()
+                ))
+                .toList();
+    }
+
+    /**
+     * 转换 EXPLAIN 建议输出数据。
+     *
+     * @param advice 建议列表
+     * @return MCP 响应数据
+     */
+    private java.util.List<Map<String, Object>> adviceData(java.util.List<SqlExplainAdvice> advice) {
+        return advice.stream()
+                .map(item -> data(
+                        "code", item.code(),
+                        "severity", item.severity(),
+                        "table", item.table(),
+                        "message", item.message()
                 ))
                 .toList();
     }

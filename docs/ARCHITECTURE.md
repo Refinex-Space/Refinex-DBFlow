@@ -11,8 +11,10 @@ HTTP authentication, project/environment access decisions, a Spring AI MCP WebMV
 tool/resource/prompt skeletons, SQL parsing/risk classification, DROP high-risk DDL whitelist decisions, and Spring
 Cloud Alibaba Nacos Config/Discovery baseline wiring. `TRUNCATE` now has a server-side confirmation challenge
 lifecycle wired through the MCP surface, and `dbflow_execute_sql` now uses a controlled JDBC execution engine for
-authorized target environments. It does not yet contain structured `dbflow_explain_sql` planning output,
-`dbflow_inspect_schema` metadata inspection, full management UI, CI configuration, or production deployment
+authorized target environments. `dbflow_explain_sql` now uses a controlled non-mutating EXPLAIN service with stable
+plan rows, optional MySQL 8 JSON plan summaries, MySQL 5.7-compatible traditional output, and deterministic basic
+index advice. It does not yet contain `dbflow_inspect_schema` metadata inspection, full management UI, CI configuration,
+or production deployment
 configuration. The architecture
 below records the approved target design from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -103,6 +105,11 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- SqlExecutionResult.java
 |   |   |   |   +-- SqlExecutionService.java
 |   |   |   |   +-- SqlExecutionWarning.java
+|   |   |   |   +-- SqlExplainAdvice.java
+|   |   |   |   +-- SqlExplainPlanRow.java
+|   |   |   |   +-- SqlExplainRequest.java
+|   |   |   |   +-- SqlExplainResult.java
+|   |   |   |   +-- SqlExplainService.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- mcp/
 |   |   |   |   +-- DbflowMcpNames.java
@@ -171,6 +178,8 @@ and must be updated as implementation packages are added.
 |           +-- executor/DataSourceConfigReloaderTests.java
 |           +-- executor/HikariDataSourceRegistryTests.java
 |           +-- executor/SqlExecutionServiceMysql8Tests.java
+|           +-- executor/SqlExplainServiceMysqlTests.java
+|           +-- executor/SqlExplainServiceTests.java
 |           +-- mcp/DbflowMcpDiscoveryTests.java
 |           +-- mcp/DbflowMcpServerTests.java
 |           +-- observability/RequestIdFilterTests.java
@@ -231,22 +240,27 @@ and must be updated as implementation packages are added.
   classifies SQL, applies DROP dangerous DDL policy, creates TRUNCATE confirmation challenges, resolves the configured
   target `DataSource`, executes bounded JDBC statements, returns query columns/rows/truncation or DML/DDL summaries,
   and records audit events for denied, failed, confirmation-required, and allowed execution states.
+- SQL explain baseline: `SqlExplainService` receives token context, authorizes through `AccessDecisionService`,
+  classifies SQL, allows only `SELECT`, `INSERT`, `UPDATE`, and `DELETE`, resolves the configured target `DataSource`
+  only after authorization and policy checks, runs `EXPLAIN` rather than the target DML, returns stable plan row fields
+  (`table`, `type`, `key`, `rows`, `filtered`, `extra`) plus optional MySQL 8 `EXPLAIN FORMAT=JSON` summary, emits
+  deterministic basic index advice, and records audit events for denied, failed, and explained states.
 
 ## Current Source Package Boundaries
 
-| Package                            | Current contents                                                                                                                                                                                                                                  | Responsibility                                                                                                                                                                              |
-|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `com.refinex.dbflow`               | `DbflowApplication`                                                                                                                                                                                                                               | Spring Boot application entrypoint.                                                                                                                                                         |
-| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                                                                                                                                  | Shared result and exception primitives; no DBFlow business policy.                                                                                                                          |
-| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                                                                          | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                                                                                           |
-| `com.refinex.dbflow.security`      | Admin session security classes, `McpSecurityConfiguration`, `McpBearerTokenAuthenticationFilter`, `McpAuthenticationToken`, `McpRequestMetadata*`, `McpTokenService`, MCP Token DTO records, `package-info.java`                                  | Management session login, BCrypt admin password model, initial admin bootstrap, MCP Bearer HTTP security, request metadata extraction, and MCP Token lifecycle primitives.                  |
-| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records                                                       | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.                                                                              |
-| `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java`      | Spring AI MCP tools/resources/prompts skeleton and the MCP authentication/authorization boundary.                                                                                           |
-| `com.refinex.dbflow.sqlpolicy`     | `SqlClassifier`, `SqlClassification`, SQL operation/status/risk/type enums, `DangerousDdlPolicyEngine`, dangerous DDL decision/reason records, `TruncateConfirmationService`, TRUNCATE confirmation request/decision records, `package-info.java` | SQL parsing, auditable risk classification, DROP DATABASE / DROP TABLE YAML whitelist decisions, and TRUNCATE server-side confirmation lifecycle.                                           |
-| `com.refinex.dbflow.executor`      | `DataSourceConfigReloader`, `DataSourceReloadResult`, `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `SqlExecutionService`, SQL execution request/result/option DTOs, `package-info.java`                                    | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement, and controlled bounded JDBC SQL execution. |
-| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                                  | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                                                |
-| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                        | Minimal management endpoint surface for session-security verification.                                                                                                                      |
-| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                            | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                                          |
+| Package                            | Current contents                                                                                                                                                                                                                                  | Responsibility                                                                                                                                                                                                    |
+|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `com.refinex.dbflow`               | `DbflowApplication`                                                                                                                                                                                                                               | Spring Boot application entrypoint.                                                                                                                                                                               |
+| `com.refinex.dbflow.common`        | `ApiResult`, `DbflowException`, `ErrorCode`, `package-info.java`                                                                                                                                                                                  | Shared result and exception primitives; no DBFlow business policy.                                                                                                                                                |
+| `com.refinex.dbflow.config`        | `DbflowProperties`, `DangerousDdlOperation`, `DangerousDdlDecision`, `package-info.java`                                                                                                                                                          | YAML datasource defaults, project environments, and dangerous DDL policy binding.                                                                                                                                 |
+| `com.refinex.dbflow.security`      | Admin session security classes, `McpSecurityConfiguration`, `McpBearerTokenAuthenticationFilter`, `McpAuthenticationToken`, `McpRequestMetadata*`, `McpTokenService`, MCP Token DTO records, `package-info.java`                                  | Management session login, BCrypt admin password model, initial admin bootstrap, MCP Bearer HTTP security, request metadata extraction, and MCP Token lifecycle primitives.                                        |
+| `com.refinex.dbflow.access`        | `DbfUser`, `DbfApiToken`, `DbfProject`, `DbfEnvironment`, `DbfUserEnvGrant`, repositories, `AccessService`, `AccessDecisionService`, `ProjectEnvironmentCatalogService`, access DTO records                                                       | Users, tokens, project/environment registry, grants, configured catalog synchronization, and access decisions.                                                                                                    |
+| `com.refinex.dbflow.mcp`           | `DbflowMcpTools`, `DbflowMcpResources`, `DbflowMcpPrompts`, `DbflowMcpSmokeTool`, `SecurityContextMcpAuthenticationContextResolver`, authentication/authorization boundary records and services, registration constants, `package-info.java`      | Spring AI MCP tools/resources/prompts skeleton and the MCP authentication/authorization boundary.                                                                                                                 |
+| `com.refinex.dbflow.sqlpolicy`     | `SqlClassifier`, `SqlClassification`, SQL operation/status/risk/type enums, `DangerousDdlPolicyEngine`, dangerous DDL decision/reason records, `TruncateConfirmationService`, TRUNCATE confirmation request/decision records, `package-info.java` | SQL parsing, auditable risk classification, DROP DATABASE / DROP TABLE YAML whitelist decisions, and TRUNCATE server-side confirmation lifecycle.                                                                 |
+| `com.refinex.dbflow.executor`      | `DataSourceConfigReloader`, `DataSourceReloadResult`, `HikariDataSourceRegistry`, `ProjectEnvironmentDataSourceRegistry`, `SqlExecutionService`, `SqlExplainService`, SQL execution and explain request/result/option DTOs, `package-info.java`   | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement, controlled bounded JDBC SQL execution, and non-mutating EXPLAIN. |
+| `com.refinex.dbflow.audit`         | `DbfAuditEvent`, `DbfConfirmationChallenge`, repositories, `AuditService`, `ConfirmationService`                                                                                                                                                  | Audit events, confirmation challenges, audit insertion, and confirmation status transitions.                                                                                                                      |
+| `com.refinex.dbflow.admin`         | `AdminHomeController`, `package-info.java`                                                                                                                                                                                                        | Minimal management endpoint surface for session-security verification.                                                                                                                                            |
+| `com.refinex.dbflow.observability` | `RequestIdFilter`, `package-info.java`                                                                                                                                                                                                            | Request id propagation, logging context, and future metrics/health infrastructure.                                                                                                                                |
 
 ## Current Dependency Direction
 
@@ -288,6 +302,9 @@ security
         -> Spring Security / Spring Transactions
 
 executor
+        -> access decision service
+        -> sqlpolicy
+        -> audit
         -> config
         -> common
         -> HikariCP / JDBC DataSource lifecycle
@@ -337,13 +354,18 @@ Current MCP surface:
 - Resources: `dbflow://targets`, `dbflow://projects/{project}/envs/{env}/schema`, and
   `dbflow://projects/{project}/envs/{env}/policy`.
 - Prompts: `dbflow_safe_mysql_change` and `dbflow_explain_plan_review`.
-- The skeleton returns empty/mock structures only. Each tool passes through `McpAuthenticationContextResolver` and
+- Metadata skeleton tools still return empty/mock structures. Each tool passes through
+  `McpAuthenticationContextResolver` and
   `McpAccessBoundaryService`. Over HTTP, `McpAuthenticationContextResolver` reads the DBFlow MCP authentication from
   Spring SecurityContext; direct in-process calls without SecurityContext still resolve as anonymous and return
   `AUTHENTICATION_REQUIRED`.
-- `dbflow_execute_sql` still does not access target databases. For `TRUNCATE`, after MCP authentication and target
+- `dbflow_explain_sql` delegates to `SqlExplainService`, which authorizes, classifies, verifies the operation is
+  explainable, runs `EXPLAIN` against the target datasource, and returns stable `planRows`, optional
+  `jsonPlanSummary`, and deterministic `advice`.
+- `dbflow_execute_sql` delegates to `SqlExecutionService`. For `TRUNCATE`, after MCP authentication and target
   authorization succeed, it creates a `dbf_confirmation_challenges` row and returns `confirmationRequired=true`,
-  `confirmationId`, `sqlHash`, `riskLevel`, and `expiresAt`.
+  `confirmationId`, `sqlHash`, `riskLevel`, and `expiresAt`; other allowed SQL follows the bounded JDBC execution
+  path.
 - `dbflow_confirm_sql` requires `project`, `env`, `confirmationId`, and the original SQL text. It validates the
   server-side challenge against user id, token id, project key, environment key, SQL hash, status, and expiry before
   marking the challenge `CONFIRMED`.
@@ -438,6 +460,24 @@ Execution behavior:
 - JDBC statements set query timeout, max rows, and fetch size from `SqlExecutionOptions` defaults.
 - Audit rows store SQL text/hash, operation/risk/status, affected rows, and result/error summaries; full result sets are
   not persisted.
+
+## Current SQL Explain
+
+`SqlExplainService` is the implemented non-mutating plan boundary for `dbflow_explain_sql`. It keeps the execution
+order explicit: token context authorization, SQL classification, explain policy check, target datasource access, and
+audit.
+
+Explain behavior:
+
+- Authorization uses `AccessDecisionService` before SQL classification or target database access.
+- Classification uses `SqlClassifier`; parse-rejected DML/DDL/admin statements are denied before target access.
+- Only `SELECT`, `INSERT`, `UPDATE`, and `DELETE` are accepted for EXPLAIN in this stage.
+- DML is never executed directly; the service sends only `EXPLAIN <target SQL>` or, on MySQL 8, an additional
+  `EXPLAIN FORMAT=JSON <target SQL>` for the JSON summary.
+- Plan rows are normalized into stable MCP-friendly fields: `table`, `type`, `possibleKeys`, `key`, `rows`,
+  `filtered`, and `extra`, with the raw row retained for diagnostics.
+- Basic advice is deterministic and rule-based: it marks used indexes, possible full scans, and missing candidate keys.
+- Audit rows store EXPLAIN operation, SQL text/hash, status, and summaries; no full target result set is persisted.
 
 ## Current Datasource Refresh Flow
 
@@ -591,7 +631,8 @@ mcp-adapter / web-admin
         -> audit
 ```
 
-Cross-cutting observability may be used by every layer. SQL execution must not bypass access checks, policy checks, confirmation handling, or audit recording.
+Cross-cutting observability may be used by every layer. SQL execution and EXPLAIN must not bypass access checks, policy
+checks, confirmation handling where applicable, or audit recording.
 
 ## Architectural Constraints
 
@@ -600,7 +641,7 @@ Cross-cutting observability may be used by every layer. SQL execution must not b
 - `DROP DATABASE` and `DROP TABLE` default to deny and require YAML whitelist entries.
 - `TRUNCATE` requires a server-side confirmation challenge before execution.
 - Every allowed, denied, confirmation-required, expired, and failed operation must be audit logged.
-- Every future MCP SQL execution path must call `AccessDecisionService` before target database access.
+- Every MCP SQL execution or EXPLAIN path must call `AccessDecisionService` before target database access.
 - Target database access should use Spring JDBC and HikariCP; MyBatis and jOOQ are not the primary execution layer.
 - Metadata storage should use Flyway-managed schema plus Spring Data JPA repositories.
 

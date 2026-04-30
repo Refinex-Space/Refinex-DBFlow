@@ -22,6 +22,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-04-30 User Guides](exec-plans/completed/2026-04-30-user-guides.md) -
+  Completed; added administrator, operator, and security/audit user guides with project-accurate routes, MCP tool names,
+  secret-safe examples, audit value explanation, and first-use smoke tests.
 - [2026-04-30 MCP Client Guide](exec-plans/completed/2026-04-30-mcp-client-guide.md) -
   Completed; added Codex, Claude, OpenCode, and Copilot MCP Streamable HTTP client guide with fake-token snippets,
   version notes, common errors, and first-use smoke prompts.

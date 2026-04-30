@@ -33,7 +33,8 @@ Operational logs now carry `requestId`/`traceId` MDC fields, and runbook-driven 
 local empty-environment startup path, jar deployment notes, external MySQL/Nacos configuration, reverse proxy/TLS
 guidance, intranet access restrictions, and a secret-safe example YAML. MCP client setup guidance now lives under
 `docs/user-guide/mcp-clients.md`, covering Codex, Claude, OpenCode, and Copilot Streamable HTTP configuration and
-first-use smoke prompts.
+first-use smoke prompts. Administrator, operator, and security/audit guides now live under `docs/user-guide/`, covering
+management UI operations, employee MCP usage, and the audit value of non-black-box AI database access.
 The architecture below records the approved target design
 from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -66,7 +67,10 @@ and must be updated as implementation packages are added.
 |   |   +-- README.md
 |   |   +-- application-dbflow-example.yml
 |   +-- user-guide/
+|   |   +-- admin-guide.md
 |   |   +-- mcp-clients.md
+|   |   +-- operator-guide.md
+|   |   +-- security-and-audit.md
 |   +-- references/
 |   |   +-- java-development-standards.md
 |   +-- runbooks/

@@ -22,6 +22,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-04-30 Operational Health And Metrics](exec-plans/completed/2026-04-30-operational-health-and-metrics.md) -
+  Completed; added Spring Boot Actuator with minimal health/metrics exposure, shared DBFlow health service, custom
+  health indicators, Micrometer metrics, admin health reuse, tests, and observability documentation.
 - [2026-04-29 Admin Operations Pages](exec-plans/completed/2026-04-29-admin-operations-pages.md) -
   Completed; implemented management-side audit list/detail pages, read-only dangerous policy page, and system health
   page with filtering, pagination, denied-reason detail rendering, secret redaction, and admin-only smoke coverage.

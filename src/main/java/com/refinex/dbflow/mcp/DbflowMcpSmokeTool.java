@@ -1,6 +1,8 @@
 package com.refinex.dbflow.mcp;
 
+import com.refinex.dbflow.observability.DbflowMetricsService;
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -30,12 +32,19 @@ public class DbflowMcpSmokeTool {
     private final Clock clock;
 
     /**
+     * DBFlow 指标服务，部分 slice 测试中允许不存在。
+     */
+    private final DbflowMetricsService metricsService;
+
+    /**
      * 创建 DBFlow MCP 启动探测工具。
      *
-     * @param clock 系统时钟
+     * @param clock                  系统时钟
+     * @param metricsServiceProvider DBFlow 指标服务 provider
      */
-    public DbflowMcpSmokeTool(Clock clock) {
+    public DbflowMcpSmokeTool(Clock clock, ObjectProvider<DbflowMetricsService> metricsServiceProvider) {
         this.clock = clock;
+        this.metricsService = metricsServiceProvider.getIfAvailable();
     }
 
     /**
@@ -45,6 +54,9 @@ public class DbflowMcpSmokeTool {
      */
     @Tool(name = "dbflow_smoke", description = "检查 Refinex-DBFlow MCP Server 是否已启动。")
     public DbflowMcpSmokeResponse smoke() {
+        if (metricsService != null) {
+            metricsService.recordMcpCall("dbflow_smoke");
+        }
         return new DbflowMcpSmokeResponse("UP", SERVER_NAME, SERVER_VERSION, Instant.now(this.clock).toString());
     }
 

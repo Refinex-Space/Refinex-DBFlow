@@ -1,28 +1,18 @@
 package com.refinex.dbflow.admin;
 
-import com.refinex.dbflow.access.service.ConfiguredEnvironmentView;
-import com.refinex.dbflow.access.service.ProjectEnvironmentCatalogService;
 import com.refinex.dbflow.audit.service.*;
 import com.refinex.dbflow.config.DangerousDdlDecision;
 import com.refinex.dbflow.config.DangerousDdlOperation;
 import com.refinex.dbflow.config.DbflowProperties;
-import com.refinex.dbflow.executor.ProjectEnvironmentDataSourceRegistry;
-import com.zaxxer.hikari.HikariDataSource;
-import com.zaxxer.hikari.HikariPoolMXBean;
-import org.springframework.core.env.Environment;
+import com.refinex.dbflow.observability.DbflowHealthService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -60,49 +50,25 @@ public class AdminOperationsViewService {
     private final DbflowProperties dbflowProperties;
 
     /**
-     * 元数据库数据源。
+     * DBFlow 运维健康服务。
      */
-    private final DataSource metadataDataSource;
-
-    /**
-     * 项目环境目录服务。
-     */
-    private final ProjectEnvironmentCatalogService catalogService;
-
-    /**
-     * 目标库数据源注册表。
-     */
-    private final ProjectEnvironmentDataSourceRegistry targetRegistry;
-
-    /**
-     * Spring 环境属性。
-     */
-    private final Environment springEnvironment;
+    private final DbflowHealthService healthService;
 
     /**
      * 创建管理端运维页面视图服务。
      *
-     * @param auditQueryService  审计查询服务
-     * @param dbflowProperties   DBFlow 配置属性
-     * @param metadataDataSource 元数据库数据源
-     * @param catalogService     项目环境目录服务
-     * @param targetRegistry     目标库数据源注册表
-     * @param springEnvironment  Spring 环境属性
+     * @param auditQueryService 审计查询服务
+     * @param dbflowProperties  DBFlow 配置属性
+     * @param healthService     DBFlow 运维健康服务
      */
     public AdminOperationsViewService(
             AuditQueryService auditQueryService,
             DbflowProperties dbflowProperties,
-            DataSource metadataDataSource,
-            ProjectEnvironmentCatalogService catalogService,
-            ProjectEnvironmentDataSourceRegistry targetRegistry,
-            Environment springEnvironment
+            DbflowHealthService healthService
     ) {
         this.auditQueryService = Objects.requireNonNull(auditQueryService);
         this.dbflowProperties = Objects.requireNonNull(dbflowProperties);
-        this.metadataDataSource = Objects.requireNonNull(metadataDataSource);
-        this.catalogService = Objects.requireNonNull(catalogService);
-        this.targetRegistry = Objects.requireNonNull(targetRegistry);
-        this.springEnvironment = Objects.requireNonNull(springEnvironment);
+        this.healthService = Objects.requireNonNull(healthService);
     }
 
     /**
@@ -233,20 +199,30 @@ public class AdminOperationsViewService {
      * @return 系统健康页视图
      */
     public HealthPageView healthPage() {
-        List<HealthItem> items = new ArrayList<>();
-        items.add(applicationHealth());
-        items.add(mcpEndpointHealth());
-        items.add(metadataHealth());
-        items.add(nacosHealth());
-        items.addAll(targetPoolHealth());
-        long unhealthy = items.stream().filter(item -> !"HEALTHY".equals(item.status())).count();
-        String overall = unhealthy == 0 ? "HEALTHY" : "DEGRADED";
+        DbflowHealthService.HealthSnapshot snapshot = healthService.snapshot();
         return new HealthPageView(
-                overall,
-                toneForHealth(overall),
-                items.size(),
-                unhealthy,
-                items
+                snapshot.overall(),
+                snapshot.tone(),
+                snapshot.totalCount(),
+                snapshot.unhealthyCount(),
+                snapshot.components().stream().map(this::toHealthItem).toList()
+        );
+    }
+
+    /**
+     * 将共享健康项转换为管理端视图行。
+     *
+     * @param component 共享健康项
+     * @return 管理端健康项
+     */
+    private HealthItem toHealthItem(DbflowHealthService.HealthComponent component) {
+        return new HealthItem(
+                component.name(),
+                component.component(),
+                component.status(),
+                component.description(),
+                component.detail(),
+                component.tone()
         );
     }
 
@@ -383,133 +359,6 @@ public class AdminOperationsViewService {
     }
 
     /**
-     * 创建应用进程健康项。
-     *
-     * @return 健康项
-     */
-    private HealthItem applicationHealth() {
-        Runtime runtime = Runtime.getRuntime();
-        long usedMb = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024;
-        long maxMb = runtime.maxMemory() / 1024 / 1024;
-        return new HealthItem("应用进程", "runtime", "HEALTHY", "Spring Boot 管理端进程可用",
-                "JVM memory used=" + usedMb + "MB max=" + maxMb + "MB", "ok");
-    }
-
-    /**
-     * 创建 MCP endpoint 健康项。
-     *
-     * @return 健康项
-     */
-    private HealthItem mcpEndpointHealth() {
-        boolean enabled = springEnvironment.getProperty("spring.ai.mcp.server.enabled", Boolean.class, true);
-        String endpoint = springEnvironment.getProperty(
-                "spring.ai.mcp.server.streamable-http.mcp-endpoint", "/mcp");
-        String version = springEnvironment.getProperty("spring.ai.mcp.server.version", "unknown");
-        String status = enabled ? "HEALTHY" : "DISABLED";
-        return new HealthItem("MCP Streamable HTTP", "mcp", status,
-                enabled ? endpoint + " endpoint 已配置" : "MCP server 当前禁用",
-                "version=" + version + " endpoint=" + endpoint, toneForHealth(status));
-    }
-
-    /**
-     * 创建元数据库健康项。
-     *
-     * @return 健康项
-     */
-    private HealthItem metadataHealth() {
-        try (Connection connection = metadataDataSource.getConnection()) {
-            boolean valid = connection.isValid(1);
-            DatabaseMetaData metaData = connection.getMetaData();
-            String status = valid ? "HEALTHY" : "DEGRADED";
-            return new HealthItem("元数据库", "metadata-db", status,
-                    metaData.getDatabaseProductName() + " " + metaData.getDatabaseProductVersion(),
-                    "schema managed by Flyway; credentials hidden", toneForHealth(status));
-        } catch (Exception exception) {
-            return new HealthItem("元数据库", "metadata-db", "DOWN", "元数据库连接失败",
-                    sanitize(exception.getMessage()), "bad");
-        }
-    }
-
-    /**
-     * 创建 Nacos 健康项。
-     *
-     * @return 健康项
-     */
-    private HealthItem nacosHealth() {
-        boolean configEnabled = springEnvironment.getProperty("spring.cloud.nacos.config.enabled", Boolean.class, false);
-        boolean discoveryEnabled = springEnvironment.getProperty("spring.cloud.nacos.discovery.enabled", Boolean.class, false);
-        String status = configEnabled || discoveryEnabled ? "HEALTHY" : "DISABLED";
-        String namespace = springEnvironment.getProperty("spring.cloud.nacos.config.namespace", "default");
-        return new HealthItem("Nacos", "nacos", status,
-                "config=" + enabledText(configEnabled) + " discovery=" + enabledText(discoveryEnabled),
-                "namespace=" + namespace + "; credentials hidden", toneForHealth(status));
-    }
-
-    /**
-     * 创建目标项目环境连接池健康项。
-     *
-     * @return 健康项列表
-     */
-    private List<HealthItem> targetPoolHealth() {
-        List<HealthItem> items = new ArrayList<>();
-        List<ConfiguredEnvironmentView> environments = catalogService.listConfiguredEnvironments();
-        if (environments.isEmpty()) {
-            items.add(new HealthItem("项目环境连接池", "target-pool", "DISABLED",
-                    "当前未配置目标项目环境", "dbflow.projects 为空", "neutral"));
-            return items;
-        }
-        for (ConfiguredEnvironmentView environmentView : environments) {
-            items.add(targetPoolHealth(environmentView));
-        }
-        return items;
-    }
-
-    /**
-     * 创建单个目标连接池健康项。
-     *
-     * @param environmentView 项目环境视图
-     * @return 健康项
-     */
-    private HealthItem targetPoolHealth(ConfiguredEnvironmentView environmentView) {
-        String name = environmentView.projectKey() + " / " + environmentView.environmentKey();
-        try {
-            DataSource dataSource = targetRegistry.getDataSource(
-                    environmentView.projectKey(),
-                    environmentView.environmentKey()
-            );
-            if (dataSource instanceof HikariDataSource hikariDataSource) {
-                String status = hikariDataSource.isClosed() ? "DOWN" : "HEALTHY";
-                return new HealthItem(name, "target-pool", status,
-                        "Hikari 连接池已注册，driver=" + displayText(environmentView.driverClassName()),
-                        hikariDetail(hikariDataSource), toneForHealth(status));
-            }
-            return new HealthItem(name, "target-pool", "HEALTHY",
-                    "目标数据源已注册", "type=" + dataSource.getClass().getSimpleName(), "ok");
-        } catch (RuntimeException exception) {
-            return new HealthItem(name, "target-pool", "DEGRADED",
-                    "目标数据源未就绪或不可用", sanitize(exception.getMessage()), "warn");
-        }
-    }
-
-    /**
-     * 创建 Hikari 连接池详情文本。
-     *
-     * @param dataSource Hikari 数据源
-     * @return 脱敏详情文本
-     */
-    private String hikariDetail(HikariDataSource dataSource) {
-        HikariPoolMXBean pool = dataSource.getHikariPoolMXBean();
-        if (pool == null) {
-            return "pool=" + dataSource.getPoolName() + " metrics=not-started";
-        }
-        return "pool=" + dataSource.getPoolName()
-                + " active=" + pool.getActiveConnections()
-                + " idle=" + pool.getIdleConnections()
-                + " total=" + pool.getTotalConnections()
-                + " waiting=" + pool.getThreadsAwaitingConnection();
-    }
-
-    /**
      * 解析失败原因展示文本。
      *
      * @param detail 审计详情
@@ -607,31 +456,6 @@ public class AdminOperationsViewService {
     }
 
     /**
-     * 转换健康状态色调。
-     *
-     * @param status 健康状态
-     * @return 色调
-     */
-    private String toneForHealth(String status) {
-        return switch (status.toUpperCase(Locale.ROOT)) {
-            case "HEALTHY" -> "ok";
-            case "DISABLED" -> "neutral";
-            case "DOWN" -> "bad";
-            default -> "warn";
-        };
-    }
-
-    /**
-     * 转换布尔状态文本。
-     *
-     * @param enabled 是否启用
-     * @return 展示文本
-     */
-    private String enabledText(boolean enabled) {
-        return enabled ? "enabled" : "disabled";
-    }
-
-    /**
      * 将时间格式化为管理端显示文本。
      *
      * @param instant 时间
@@ -680,20 +504,6 @@ public class AdminOperationsViewService {
      */
     private String displayText(Object value) {
         return value == null || !StringUtils.hasText(value.toString()) ? "-" : value.toString();
-    }
-
-    /**
-     * 对健康错误文本做连接串级脱敏。
-     *
-     * @param message 原始消息
-     * @return 脱敏消息
-     */
-    private String sanitize(String message) {
-        if (!StringUtils.hasText(message)) {
-            return "无详细错误";
-        }
-        return message.replaceAll("(?i)jdbc:[^\\s,'\";]+", "[REDACTED]")
-                .replaceAll("(?i)((?:password|pwd)\\s*=\\s*)([^\\s&,'\";]+)", "$1[REDACTED]");
     }
 
     /**

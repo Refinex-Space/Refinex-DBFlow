@@ -82,6 +82,12 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!-- Actuator 运维端点依赖：提供健康检查、指标和后续最小化运行时观测端点。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Thymeleaf 服务端模板依赖：用于管理端 Spring MVC 页面，不引入独立前端构建链。 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

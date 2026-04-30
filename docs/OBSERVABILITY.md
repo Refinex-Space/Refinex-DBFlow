@@ -30,7 +30,12 @@ system health rendering, non-admin rejection, and page-level secret redaction. T
 classes are skipped automatically when the local machine has no Docker runtime. Spring
 Cloud
 Alibaba Nacos Config and Discovery dependencies are present, while default local startup keeps Nacos disabled unless
-the `nacos` profile is explicitly activated.
+the `nacos` profile is explicitly activated. Operational health and metrics now use Spring Boot Actuator with minimal
+web exposure: `/actuator/health`, `/actuator/metrics`, and `/actuator/metrics/{name}`. Custom health indicators cover
+the metadata database, target datasource registry, Nacos config/discovery state, and MCP endpoint readiness, with
+health details hidden by default and the management health page reusing the same shared health service. Micrometer
+meters now record MCP tool call counts, SQL risk distribution, rejection counts, SQL execution duration, and pending
+confirmation challenge counts.
 
 ## Build & Run
 
@@ -42,6 +47,8 @@ the `nacos` profile is explicitly activated.
 | Lint / format check  | Not available yet; no formatter is configured.                                                                                               | Future scaffold must replace this row.                                                                                                                                                                                        |
 | Start dev server     | `./mvnw spring-boot:run`                                                                                                                     | Starts the Spring Boot application locally with MCP Streamable HTTP available at `http://localhost:8080/mcp`.                                                                                                                 |
 | Start with Nacos     | `SPRING_PROFILES_ACTIVE=nacos DBFLOW_NACOS_SERVER_ADDR=127.0.0.1:8848 ./mvnw spring-boot:run`                                                | Starts with `application-nacos.yml`, optional Nacos config imports, and Nacos Discovery enabled when a server is available.                                                                                                   |
+| Health smoke         | `curl -s http://localhost:8080/actuator/health`                                                                                              | Returns bounded Actuator health status without component details unless the deployment explicitly changes `management.endpoint.health.show-details`.                                                                          |
+| Metrics smoke        | `curl -s http://localhost:8080/actuator/metrics`                                                                                             | Lists exposed Micrometer meters, including DBFlow-specific `dbflow.*` meters after startup or first use.                                                                                                                      |
 | MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` with `Authorization: Bearer <DBFlow Token>` | The client can discover `dbflow_smoke`, DBFlow tools, DBFlow resources/templates, and DBFlow prompts.                                                                                                                         |
 | Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                                                                                          |
 
@@ -69,6 +76,7 @@ Planned baseline:
 - JSQLParser 5.3 for SQL parsing and first-stage risk classification
 - MySQL 8 and MySQL 5.7 via Testcontainers after scaffold
 - Nacos Config and Discovery dependencies with opt-in `nacos` profile
+- Spring Boot Actuator with web exposure limited to `health` and `metrics`
 
 Local reference checkouts:
 
@@ -147,6 +155,20 @@ Configuration sources and secret boundary:
 - `/admin/api/audit-events` exposes administrator-only audit list/detail queries with time, user, project,
   environment, risk, decision, SQL hash, and tool filters, bounded pagination, sort-field whitelisting, and sanitized
   DTOs that omit token id/prefix and redact password-like text or JDBC URLs.
+- Actuator web exposure is intentionally minimal. The default local configuration exposes only `/actuator/health`,
+  `/actuator/metrics`, and `/actuator/metrics/{name}`; `/actuator/env` and other sensitive endpoints are not exposed
+  and are denied by the Actuator security chain. Health details are hidden by default through
+  `management.endpoint.health.show-details=never`.
+- Custom DBFlow health indicators are backed by `DbflowHealthService`: `dbflowMetadataDatabaseHealthIndicator`,
+  `dbflowTargetDatasourceRegistryHealthIndicator`, `dbflowNacosHealthIndicator`, and
+  `dbflowMcpEndpointReadinessHealthIndicator`. The service returns sanitized status details and is also the source for
+  `/admin/health`, so management UI health rendering does not duplicate Actuator health logic.
+- DBFlow Micrometer meters use stable, bounded tag values:
+  `dbflow.mcp.calls{tool}`, `dbflow.sql.risk{tool,operation,risk,decision}`,
+  `dbflow.sql.rejections{tool,operation,risk,decision}`,
+  `dbflow.sql.execution.duration{operation,risk,status}`, and
+  `dbflow.confirmation.challenges{status=PENDING}`. The metrics layer never stores token plaintext, database
+  passwords, JDBC URLs, or full SQL result sets.
 - `/login` exposes the custom Thymeleaf management login page and submits to Spring Security form login. `/admin`,
   `/admin/config`, `/admin/policies/dangerous`, `/admin/audit`, `/admin/audit/{eventId}`, and `/admin/health` expose
   the server-rendered management UI shell. The audit pages delegate to `AuditQueryService` for filtered, paginated,
@@ -204,6 +226,10 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   migration.
 - `ApiResultTests` and `DbflowExceptionTests` cover the current common result/exception primitives.
 - `RequestIdFilterTests` covers incoming and generated request id behavior.
+- `OperationalHealthAndMetricsTests` covers custom DBFlow health indicators, hidden Actuator health details, minimal
+  Actuator endpoint exposure, management health reuse of the shared health service, admin-only management health access,
+  and Micrometer meter registration for MCP calls, SQL risk distribution, rejection counts, SQL execution duration, and
+  pending confirmation challenges.
 - `MetadataSchemaMigrationTests` covers all seven metadata tables, token plaintext absence, active token uniqueness,
   grant uniqueness, confirmation challenge token/target/SQL hash binding, audit client/token/tool/decision fields, and
   key audit/schema indexes.

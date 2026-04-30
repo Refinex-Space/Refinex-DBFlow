@@ -29,4 +29,12 @@ public interface DbfConfirmationChallengeRepository extends JpaRepository<DbfCon
      * @return 确认挑战列表
      */
     List<DbfConfirmationChallenge> findByUserIdAndStatus(Long userId, String status);
+
+    /**
+     * 统计指定状态的确认挑战数量。
+     *
+     * @param status 挑战状态
+     * @return 挑战数量
+     */
+    long countByStatus(String status);
 }

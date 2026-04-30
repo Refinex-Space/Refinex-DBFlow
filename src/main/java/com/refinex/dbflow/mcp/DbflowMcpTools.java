@@ -2,11 +2,13 @@ package com.refinex.dbflow.mcp;
 
 import com.refinex.dbflow.audit.service.AuditRequestContext;
 import com.refinex.dbflow.executor.*;
+import com.refinex.dbflow.observability.DbflowMetricsService;
 import com.refinex.dbflow.sqlpolicy.TruncateConfirmationConfirmRequest;
 import com.refinex.dbflow.sqlpolicy.TruncateConfirmationDecision;
 import com.refinex.dbflow.sqlpolicy.TruncateConfirmationService;
 import org.springaicommunity.mcp.annotation.McpTool;
 import org.springaicommunity.mcp.annotation.McpToolParam;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -52,6 +54,11 @@ public class DbflowMcpTools {
     private final SchemaInspectService schemaInspectService;
 
     /**
+     * DBFlow 指标服务，部分 slice 测试中允许不存在。
+     */
+    private final DbflowMetricsService metricsService;
+
+    /**
      * 创建 DBFlow MCP 工具 skeleton。
      *
      * @param authenticationContextResolver MCP 认证上下文解析器
@@ -60,6 +67,7 @@ public class DbflowMcpTools {
      * @param sqlExecutionService           受控 SQL 执行服务
      * @param sqlExplainService             受控 SQL EXPLAIN 服务
      * @param schemaInspectService          schema inspect 服务
+     * @param metricsServiceProvider        DBFlow 指标服务 provider
      */
     public DbflowMcpTools(
             McpAuthenticationContextResolver authenticationContextResolver,
@@ -67,7 +75,8 @@ public class DbflowMcpTools {
             TruncateConfirmationService truncateConfirmationService,
             SqlExecutionService sqlExecutionService,
             SqlExplainService sqlExplainService,
-            SchemaInspectService schemaInspectService
+            SchemaInspectService schemaInspectService,
+            ObjectProvider<DbflowMetricsService> metricsServiceProvider
     ) {
         this.authenticationContextResolver = authenticationContextResolver;
         this.accessBoundaryService = accessBoundaryService;
@@ -75,6 +84,7 @@ public class DbflowMcpTools {
         this.sqlExecutionService = sqlExecutionService;
         this.sqlExplainService = sqlExplainService;
         this.schemaInspectService = schemaInspectService;
+        this.metricsService = metricsServiceProvider.getIfAvailable();
     }
 
     /**
@@ -96,6 +106,7 @@ public class DbflowMcpTools {
             generateOutputSchema = true
     )
     public DbflowMcpSkeletonResponse listTargets() {
+        recordMcpCall(DbflowMcpNames.TOOL_LIST_TARGETS);
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
         McpAuthorizationBoundary boundary = accessBoundaryService.metadataBoundary(
                 context,
@@ -133,6 +144,7 @@ public class DbflowMcpTools {
             @McpToolParam(required = false, description = "Optional table name. Omit it to inspect schema-level metadata.") String table,
             @McpToolParam(required = false, description = "Maximum rows returned per metadata category. Defaults to 100 and is capped server-side.") Integer maxItems
     ) {
+        recordMcpCall(DbflowMcpNames.TOOL_INSPECT_SCHEMA);
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
         McpAuthorizationBoundary boundary = accessBoundaryService.targetBoundary(
                 context,
@@ -202,6 +214,7 @@ public class DbflowMcpTools {
             @McpToolParam(required = false, description = "Optional table name for policy narrowing.") String table,
             @McpToolParam(required = false, description = "Optional SQL operation such as SELECT, UPDATE, TRUNCATE, DROP_TABLE, or DROP_DATABASE.") String operation
     ) {
+        recordMcpCall(DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY);
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
         McpAuthorizationBoundary boundary = accessBoundaryService.targetBoundary(
                 context,
@@ -248,6 +261,7 @@ public class DbflowMcpTools {
             @McpToolParam(description = "SQL text to explain. DML is only explained and is not executed.") String sql,
             @McpToolParam(required = false, description = "Optional default schema for SQL resolution.") String schema
     ) {
+        recordMcpCall(DbflowMcpNames.TOOL_EXPLAIN_SQL);
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
         McpAuthorizationBoundary boundary = accessBoundaryService.targetBoundary(
                 context,
@@ -320,6 +334,7 @@ public class DbflowMcpTools {
             @McpToolParam(required = false, description = "When true, future implementation should validate and explain without applying changes.") Boolean dryRun,
             @McpToolParam(required = false, description = "Human-readable reason for audit and confirmation context.") String reason
     ) {
+        recordMcpCall(DbflowMcpNames.TOOL_EXECUTE_SQL);
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
         McpAuthorizationBoundary boundary = accessBoundaryService.targetBoundary(
                 context,
@@ -396,6 +411,7 @@ public class DbflowMcpTools {
             @McpToolParam(description = "Original TRUNCATE SQL text. Server compares its hash with the challenge.") String sql,
             @McpToolParam(required = false, description = "Human-readable reason for audit context.") String reason
     ) {
+        recordMcpCall(DbflowMcpNames.TOOL_CONFIRM_SQL);
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
         McpAuthorizationBoundary boundary = accessBoundaryService.targetBoundary(
                 context,
@@ -472,6 +488,17 @@ public class DbflowMcpTools {
                 context.sourceIp(),
                 tool
         );
+    }
+
+    /**
+     * 记录 MCP 工具调用指标。
+     *
+     * @param tool 工具名称
+     */
+    private void recordMcpCall(String tool) {
+        if (metricsService != null) {
+            metricsService.recordMcpCall(tool);
+        }
     }
 
     /**

@@ -8,7 +8,9 @@ import com.refinex.dbflow.audit.service.AuditEventWriteRequest;
 import com.refinex.dbflow.audit.service.AuditEventWriter;
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.common.ErrorCode;
+import com.refinex.dbflow.observability.DbflowMetricsService;
 import com.refinex.dbflow.sqlpolicy.*;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -84,6 +86,11 @@ public class SqlExecutionService {
     private final AuditEventWriter auditEventWriter;
 
     /**
+     * DBFlow 指标服务，部分 slice 测试中允许不存在。
+     */
+    private final DbflowMetricsService metricsService;
+
+    /**
      * 创建受控 SQL 执行服务。
      *
      * @param accessDecisionService       项目环境访问判断服务
@@ -92,6 +99,7 @@ public class SqlExecutionService {
      * @param truncateConfirmationService TRUNCATE 确认服务
      * @param dataSourceRegistry          目标库数据源注册表
      * @param auditEventWriter            统一审计事件写入器
+     * @param metricsServiceProvider      DBFlow 指标服务 provider
      */
     public SqlExecutionService(
             AccessDecisionService accessDecisionService,
@@ -99,7 +107,8 @@ public class SqlExecutionService {
             DangerousDdlPolicyEngine dangerousDdlPolicyEngine,
             TruncateConfirmationService truncateConfirmationService,
             ProjectEnvironmentDataSourceRegistry dataSourceRegistry,
-            AuditEventWriter auditEventWriter
+            AuditEventWriter auditEventWriter,
+            ObjectProvider<DbflowMetricsService> metricsServiceProvider
     ) {
         this.accessDecisionService = accessDecisionService;
         this.sqlClassifier = sqlClassifier;
@@ -107,6 +116,7 @@ public class SqlExecutionService {
         this.truncateConfirmationService = truncateConfirmationService;
         this.dataSourceRegistry = dataSourceRegistry;
         this.auditEventWriter = auditEventWriter;
+        this.metricsService = metricsServiceProvider.getIfAvailable();
     }
 
     /**
@@ -118,6 +128,24 @@ public class SqlExecutionService {
     @Transactional(noRollbackFor = DbflowException.class)
     public SqlExecutionResult execute(SqlExecutionRequest request) {
         Objects.requireNonNull(request, "request");
+        long metricsStarted = System.nanoTime();
+        try {
+            SqlExecutionResult result = executeInternal(request);
+            recordExecutionDuration(result.operation().name(), result.riskLevel().name(), result.status(), metricsStarted);
+            return result;
+        } catch (RuntimeException exception) {
+            recordExecutionDuration(SqlOperation.UNKNOWN.name(), SqlRiskLevel.REJECTED.name(), STATUS_FAILED, metricsStarted);
+            throw exception;
+        }
+    }
+
+    /**
+     * 执行受控 SQL 主流程。
+     *
+     * @param request 执行请求
+     * @return 执行结果
+     */
+    private SqlExecutionResult executeInternal(SqlExecutionRequest request) {
         AccessDecision accessDecision = authorize(request);
         String sqlText = safeSqlText(request.sql());
         String sqlHash = StringUtils.hasText(sqlText) ? sqlHash(sqlText) : null;
@@ -154,6 +182,20 @@ public class SqlExecutionService {
             return dryRun(request, classification, sqlHash);
         }
         return executeJdbc(request, classification, sqlText, sqlHash);
+    }
+
+    /**
+     * 记录 SQL 执行耗时指标。
+     *
+     * @param operation      SQL 操作
+     * @param riskLevel      风险等级
+     * @param status         执行状态
+     * @param metricsStarted 指标开始时间纳秒
+     */
+    private void recordExecutionDuration(String operation, String riskLevel, String status, long metricsStarted) {
+        if (metricsService != null) {
+            metricsService.recordSqlExecutionDuration(operation, riskLevel, status, metricsStarted);
+        }
     }
 
     /**

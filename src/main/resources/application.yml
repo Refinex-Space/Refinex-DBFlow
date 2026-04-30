@@ -44,6 +44,19 @@ spring:
         streamable-http:
           mcp-endpoint: /mcp
 
+# Actuator 默认仅暴露健康与指标端点，健康详情不向匿名调用者公开。
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
 # DBFlow 目标库配置入口：当前阶段只完成 dbflow.* 绑定和校验，真实密码必须通过环境变量占位、Nacos
 # 或安全配置系统注入，不允许写入仓库；JDBC URL 不能携带 password 参数。
 # dbflow:

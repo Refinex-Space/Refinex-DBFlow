@@ -1,6 +1,8 @@
 package com.refinex.dbflow.audit.service;
 
 import com.refinex.dbflow.audit.entity.DbfAuditEvent;
+import com.refinex.dbflow.observability.DbflowMetricsService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -58,12 +60,22 @@ public class AuditEventWriter {
     private final AuditService auditService;
 
     /**
+     * DBFlow 指标服务，JPA slice 测试中允许不存在。
+     */
+    private final DbflowMetricsService metricsService;
+
+    /**
      * 创建统一审计事件写入器。
      *
-     * @param auditService 审计服务
+     * @param auditService            审计服务
+     * @param metricsServiceProvider  DBFlow 指标服务 provider
      */
-    public AuditEventWriter(AuditService auditService) {
+    public AuditEventWriter(
+            AuditService auditService,
+            ObjectProvider<DbflowMetricsService> metricsServiceProvider
+    ) {
         this.auditService = auditService;
+        this.metricsService = metricsServiceProvider.getIfAvailable();
     }
 
     /**
@@ -146,7 +158,7 @@ public class AuditEventWriter {
      */
     private DbfAuditEvent write(AuditEventWriteRequest request, String status, String decision) {
         AuditRequestContext context = request.effectiveContext();
-        return auditService.record(DbfAuditEvent.auditEvent(
+        DbfAuditEvent saved = auditService.record(DbfAuditEvent.auditEvent(
                 valueOrUnknown(request.requestId()),
                 request.userId(),
                 request.tokenId(),
@@ -170,6 +182,35 @@ public class AuditEventWriter {
                 boundedSummary(request.errorMessage()),
                 truncate(request.confirmationId(), 64)
         ));
+        recordMetrics(request, context, decision);
+        return saved;
+    }
+
+    /**
+     * 写入审计派生指标。
+     *
+     * @param request  审计写入请求
+     * @param context  审计来源上下文
+     * @param decision 审计决策
+     */
+    private void recordMetrics(AuditEventWriteRequest request, AuditRequestContext context, String decision) {
+        if (metricsService == null || STATUS_REQUEST_RECEIVED.equals(decision)) {
+            return;
+        }
+        metricsService.recordSqlRisk(context.tool(), request.operation(), request.riskLevel(), decision);
+        if (isRejectedDecision(decision)) {
+            metricsService.recordRejection(context.tool(), request.operation(), request.riskLevel(), decision);
+        }
+    }
+
+    /**
+     * 判断审计决策是否属于拒绝。
+     *
+     * @param decision 审计决策
+     * @return 拒绝时返回 true
+     */
+    private boolean isRejectedDecision(String decision) {
+        return "POLICY_DENIED".equalsIgnoreCase(decision) || "DENIED".equalsIgnoreCase(decision);
     }
 
     /**

@@ -60,6 +60,8 @@ result sets.
 | Operator guide       | `docs/user-guide/operator-guide.md`                                                                                                          | Employee Token request, MCP setup, target selection, read-only smoke, confirmation handling, and rejection reason guidance.                                                                                                   |
 | Security/audit guide | `docs/user-guide/security-and-audit.md`                                                                                                      | Explanation of non-black-box AI database operations, audit fields, sensitive-data boundaries, and audit smoke verification.                                                                                                   |
 | Deployment guide     | `docs/deployment/README.md`                                                                                                                  | Executable local empty-environment startup, jar deployment, external MySQL/Nacos configuration, reverse proxy/TLS, intranet access, and preflight checklist.                                                                  |
+| Metadata DB guide    | `docs/deployment/metadata-database.md`                                                                                                       | Clarifies where Flyway metadata migration runs and provides copy-ready MySQL metadata database bootstrap commands.                                                                                                            |
+| Nacos config guide   | `docs/deployment/nacos-config.md`                                                                                                            | Maps current `application-nacos.yml` imports to copy-ready shared and profile-specific Nacos YAML snippets.                                                                                                                   |
 | Troubleshooting      | `docs/runbooks/troubleshooting.md`                                                                                                           | Executable runbook for startup, Nacos, metadata DB, target DB, Token, MCP connectivity, Origin, rate limit, SQL policy, and SQL execution failures.                                                                           |
 | Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                                                                                          |
 
@@ -129,8 +131,9 @@ Configuration sources and secret boundary:
   snapshot, and closes old pools only after a successful swap.
 - Target database pools are created only from `dbflow.projects[*].environments[*]`; the executor registry never falls
   back to the Spring Boot metadata `DataSource`.
-- Database passwords may use environment placeholders such as `${DBFLOW_DEFAULT_PASSWORD:}` and
-  `${DBFLOW_DEMO_ENV_PASSWORD:}`.
+- Database passwords may use environment placeholders such as `${DBFLOW_TARGET_PASSWORD}`,
+  `${DBFLOW_DEMO_DEV_PASSWORD:${DBFLOW_TARGET_PASSWORD}}`, and
+  `${DBFLOW_DEMO_PROD_PASSWORD:${DBFLOW_TARGET_PASSWORD}}`.
 - Target JDBC URLs must not contain password parameters; passwords belong in the password fields or external secret
   sources so connection pool logs cannot expose them.
 - Shared target pool tuning is configured under `dbflow.datasource-defaults.hikari`, including pool name prefix,
@@ -145,7 +148,10 @@ Configuration sources and secret boundary:
   `X-Trace-Id`; when `X-Trace-Id` is absent, DBFlow uses the request id as the trace id. Background config reload paths
   generate a `config-reload-*` correlation id when no request context exists.
 - Initial administrator credentials should come from environment variables, local development profile files excluded
-  from source control, or a secret-managed BCrypt hash under `dbflow.admin.initial-user.password-hash`.
+  from source control, or a secret-managed BCrypt hash under `dbflow.admin.initial-user.password-hash`. Generate the
+  hash with
+  `./mvnw -Dtest=AdminPasswordHashGeneratorTests -Ddbflow.generate-admin-password-hash=true -Dsurefire.useFile=false test`
+  after exporting `DBFLOW_ADMIN_INITIAL_PASSWORD`.
 - MCP Token pepper is read from `dbflow.security.mcp-token.pepper`; use an environment variable such as
   `DBFLOW_MCP_TOKEN_PEPPER` or a secret-managed external configuration source. No default pepper value is committed.
 - MCP endpoint protection is configured under `dbflow.security.mcp-endpoint.*`. Local/LAN deployments may add trusted

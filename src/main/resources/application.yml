@@ -57,38 +57,6 @@ management:
     tags:
       application: ${spring.application.name}
 
-# DBFlow 目标库配置入口：当前阶段只完成 dbflow.* 绑定和校验，真实密码必须通过环境变量占位、Nacos
-# 或安全配置系统注入，不允许写入仓库；JDBC URL 不能携带 password 参数。
-# dbflow:
-#   datasource-defaults:
-#     driver-class-name: com.mysql.cj.jdbc.Driver
-#     username: ${DBFLOW_DEFAULT_USERNAME:}
-#     password: ${DBFLOW_DEFAULT_PASSWORD:}
-#     validate-on-startup: false
-#     hikari:
-#       pool-name-prefix: dbflow-target
-#       maximum-pool-size: 10
-#       minimum-idle: 1
-#       connection-timeout: 30s
-#       idle-timeout: 10m
-#       max-lifetime: 30m
-#   admin:
-#     initial-user:
-#       enabled: ${DBFLOW_ADMIN_INITIAL_USER_ENABLED:false}
-#       username: ${DBFLOW_ADMIN_INITIAL_USERNAME:}
-#       password: ${DBFLOW_ADMIN_INITIAL_PASSWORD:}
-#   security:
-#     mcp-token:
-#       pepper: ${DBFLOW_MCP_TOKEN_PEPPER:}
-#     mcp-endpoint:
-#       origin:
-#         enabled: true
-#         trusted-origins:
-#           - ${DBFLOW_MCP_TRUSTED_ORIGIN:http://127.0.0.1:8080}
-#       request-size:
-#         enabled: true
-#         max-bytes: 1048576
-#       rate-limit:
-#         enabled: true
-#         max-requests: 120
-#         window: 1m
+# DBFlow 业务配置不在默认 application.yml 中维护。target datasource、危险策略、初始管理员、
+# MCP Token pepper 和 /mcp 安全策略应来自外部 config/application-dbflow.yml、Nacos dataId
+# refinex-dbflow.yml / refinex-dbflow-nacos.yml，或环境变量；示例见 docs/deployment/。

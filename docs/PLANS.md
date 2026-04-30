@@ -22,6 +22,17 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-04-30 Final README](exec-plans/completed/2026-04-30-final-readme.md) -
+  Completed; rewrote the root README as the project entrypoint, quick-start guide, safety boundary summary, and
+  documentation index.
+- [2026-04-30 Deployment Config Hardening](exec-plans/completed/2026-04-30-deployment-config-hardening.md) -
+  Completed; added a gated admin password hash generator test, expanded shell-safe environment examples, and clarified
+  default versus external/Nacos-managed configuration boundaries.
+- [2026-04-30 Nacos Config Comments](exec-plans/completed/2026-04-30-nacos-config-comments.md) -
+  Completed; added explanatory comments to copy-ready Nacos YAML snippets without changing runtime configuration.
+- [2026-04-30 Metadata And Nacos Deployment Clarity](exec-plans/completed/2026-04-30-metadata-nacos-deployment-clarity.md) -
+  Completed; clarified Flyway metadata database execution boundaries, copy-ready metadata bootstrap SQL, and
+  copy-ready Nacos imported config content for the current `application-nacos.yml` dataIds.
 - [2026-04-30 User Guides](exec-plans/completed/2026-04-30-user-guides.md) -
   Completed; added administrator, operator, and security/audit user guides with project-accurate routes, MCP tool names,
   secret-safe examples, audit value explanation, and first-use smoke tests.

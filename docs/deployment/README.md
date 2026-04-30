@@ -80,9 +80,22 @@ java -jar target/refinex-dbflow-0.1.0-SNAPSHOT.jar
 `application-dbflow-example.yml` 只包含环境变量占位。填值方式应是 shell 环境变量、systemd `EnvironmentFile`、Nacos
 外部配置、Vault/KMS 或其它密钥系统，不能把真实密码写回仓库。
 
+仓库提供 `.env.example` 作为本地/运维环境变量清单。Spring Boot 不会自动读取 `.env` 文件；如果本地调试要使用它，
+需要显式加载：
+
+```bash
+cp .env.example .env.local
+# 编辑 .env.local，把 replace-with-secret 替换为本地测试值；不要提交 .env.local。
+set -a
+source .env.local
+set +a
+```
+
 ## 5. 配置元数据库
 
 本地默认用 H2；内网部署建议使用独立 MySQL 8 schema 存储 DBFlow 元数据、审计、Token hash 和确认挑战。
+完整说明见 [metadata-database.md](metadata-database.md)：`V1__create_metadata_schema.sql` 只在
+`spring.datasource` 指向的 DBFlow metadata database 执行，不在任何 target project database 执行。
 
 前置条件：已安装 MySQL 客户端，能以管理员身份连接目标 MySQL。
 
@@ -139,12 +152,45 @@ export DBFLOW_ADMIN_INITIAL_PASSWORD="$(openssl rand -base64 24)"
 export DBFLOW_MCP_TOKEN_PEPPER="$(openssl rand -base64 32)"
 ```
 
-启动并首次登录 `/login` 后，应在管理端创建个人管理员/用户，完成授权与 MCP Token 颁发，再关闭初始化账号或改用
-`DBFLOW_ADMIN_INITIAL_PASSWORD_HASH`。MCP Token 明文只在颁发成功页展示一次；丢失后重新颁发。
+如果不希望把明文初始密码作为启动环境变量保存，可以用测试辅助入口生成 BCrypt hash。该测试默认跳过，只有显式开启时运行：
+
+```bash
+read -rsp "Initial admin password: " DBFLOW_ADMIN_INITIAL_PASSWORD; echo
+export DBFLOW_ADMIN_INITIAL_PASSWORD
+./mvnw -Dtest=AdminPasswordHashGeneratorTests \
+  -Ddbflow.generate-admin-password-hash=true \
+  -Dsurefire.useFile=false \
+  test
+unset DBFLOW_ADMIN_INITIAL_PASSWORD
+```
+
+输出形如：
+
+```bash
+DBFLOW_ADMIN_INITIAL_PASSWORD_HASH='$2a$10$replaceWithGeneratedBcryptHash'
+```
+
+把输出值写入运行环境：
+
+```bash
+export DBFLOW_ADMIN_INITIAL_USER_ENABLED=true
+export DBFLOW_ADMIN_INITIAL_USERNAME=admin
+export DBFLOW_ADMIN_INITIAL_PASSWORD_HASH='$2a$10$replaceWithGeneratedBcryptHash'
+unset DBFLOW_ADMIN_INITIAL_PASSWORD
+```
+
+注意：BCrypt hash 内含 `$`，在 shell、systemd `EnvironmentFile` 或 CI secret 中建议使用单引号包裹，避免被变量展开。
+如果 `DBFLOW_ADMIN_INITIAL_PASSWORD` 和 `DBFLOW_ADMIN_INITIAL_PASSWORD_HASH` 同时存在，DBFlow 会优先使用
+`password-hash`。
+
+启动并首次登录 `/login` 后，应在管理端创建个人管理员/用户，完成授权与 MCP Token 颁发，再关闭初始化账号或继续使用
+受管的 `DBFLOW_ADMIN_INITIAL_PASSWORD_HASH`。MCP Token 明文只在颁发成功页展示一次；丢失后重新颁发。
 
 ## 8. Nacos 配置
 
 默认 profile 不连接 Nacos。启用 Nacos 需要显式打开 `nacos` profile，并提供 Nacos 地址、命名空间和认证信息。
+当前 `application-nacos.yml` 导入的 Nacos dataId 及可复制 YAML 模板见
+[nacos-config.md](nacos-config.md)。
 
 前置条件：Nacos 2.x 服务已启动，账号具备读取 `DBFLOW_GROUP` 配置和注册服务权限。
 

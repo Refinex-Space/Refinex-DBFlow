@@ -47,6 +47,7 @@ and must be updated as implementation packages are added.
 +-- README.md
 +-- LICENSE
 +-- AGENTS.md
++-- .env.example
 +-- pom.xml
 +-- mvnw
 +-- mvnw.cmd
@@ -66,6 +67,8 @@ and must be updated as implementation packages are added.
 |   +-- deployment/
 |   |   +-- README.md
 |   |   +-- application-dbflow-example.yml
+|   |   +-- metadata-database.md
+|   |   +-- nacos-config.md
 |   +-- user-guide/
 |   |   +-- admin-guide.md
 |   |   +-- mcp-clients.md
@@ -481,7 +484,8 @@ Current MCP surface:
 
 Sensitive configuration boundary:
 
-- Database passwords may be empty or environment-variable placeholders such as `${DBFLOW_DEFAULT_PASSWORD:}`.
+- Database passwords may be empty or environment-variable placeholders such as `${DBFLOW_TARGET_PASSWORD}` and
+  `${DBFLOW_DEMO_DEV_PASSWORD:${DBFLOW_TARGET_PASSWORD}}`.
 - Initial administrator password may be supplied through `DBFLOW_ADMIN_INITIAL_PASSWORD` or a secret-managed BCrypt hash
   through `dbflow.admin.initial-user.password-hash`; no default administrator password is committed.
 - MCP Token plaintext is returned only by `McpTokenIssueResult` at issue time. `dbf_api_tokens` stores only

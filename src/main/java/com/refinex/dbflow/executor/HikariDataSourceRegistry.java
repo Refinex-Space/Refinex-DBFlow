@@ -5,6 +5,8 @@ import com.refinex.dbflow.common.ErrorCode;
 import com.refinex.dbflow.config.DbflowProperties;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -28,6 +30,11 @@ import java.util.concurrent.atomic.AtomicReference;
 public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceRegistry, DisposableBean {
 
     /**
+     * 运维日志记录器。
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(HikariDataSourceRegistry.class);
+
+    /**
      * 已注册的目标库数据源，key 为 projectKey/environmentKey。
      */
     private final AtomicReference<Map<DataSourceKey, HikariDataSource>> dataSources;
@@ -40,6 +47,7 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
     public HikariDataSourceRegistry(DbflowProperties properties) {
         this.dataSources = new AtomicReference<>(
                 Collections.unmodifiableMap(createDataSources(Objects.requireNonNull(properties), false)));
+        LOGGER.info("datasource.registry.initialized targetCount={}", dataSources.get().size());
     }
 
     /**
@@ -75,10 +83,13 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
      * @return 数据源重载结果
      */
     DataSourceReloadResult replaceWithCandidate(DbflowProperties candidateProperties) {
+        LOGGER.info("datasource.registry.replace.started");
         Map<DataSourceKey, HikariDataSource> candidateDataSources = Collections.unmodifiableMap(
                 createDataSources(Objects.requireNonNull(candidateProperties), true));
         Map<DataSourceKey, HikariDataSource> previousDataSources = dataSources.getAndSet(candidateDataSources);
         closeAll(previousDataSources);
+        LOGGER.info("datasource.registry.replace.completed previousCount={} targetCount={}",
+                previousDataSources.size(), candidateDataSources.size());
         return DataSourceReloadResult.success(candidateDataSources.size(), "目标数据源配置已生效");
     }
 
@@ -140,9 +151,13 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
             if (validateConnection) {
                 validateConnection(dataSource);
             }
+            LOGGER.info("datasource.target.created project={} env={} validateConnection={}",
+                    project.getKey(), environment.getKey(), validateConnection);
             return dataSource;
         } catch (RuntimeException | SQLException exception) {
             closeQuietly(dataSource);
+            LOGGER.warn("datasource.target.create.failed project={} env={} validateConnection={} errorType={}",
+                    project.getKey(), environment.getKey(), validateConnection, exception.getClass().getSimpleName());
             throw new DbflowException(ErrorCode.INTERNAL_ERROR,
                     sanitizedFailureMessage(validateConnection, project, environment));
         }

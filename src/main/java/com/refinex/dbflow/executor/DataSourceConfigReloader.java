@@ -1,6 +1,7 @@
 package com.refinex.dbflow.executor;
 
 import com.refinex.dbflow.config.DbflowProperties;
+import com.refinex.dbflow.observability.LogContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -41,18 +42,20 @@ public class DataSourceConfigReloader {
      * @return 重载结果
      */
     public DataSourceReloadResult reload(DbflowProperties candidateProperties) {
-        LOGGER.info("开始重载目标数据源配置");
-        if (!validateCandidateProperties(candidateProperties)) {
-            return DataSourceReloadResult.failure("候选数据源配置校验失败");
-        }
-        try {
-            DataSourceReloadResult result = registry.replaceWithCandidate(candidateProperties);
-            LOGGER.info("目标数据源配置重载成功，targetCount={}", result.targetCount());
-            return result;
-        } catch (RuntimeException exception) {
-            String message = sanitizeReloadFailure(exception);
-            LOGGER.warn("目标数据源配置重载失败，保留旧连接池，reason={}", message);
-            return DataSourceReloadResult.failure(message);
+        try (LogContext.Scope ignored = LogContext.ensureCorrelation("config-reload")) {
+            LOGGER.info("config.reload.started");
+            if (!validateCandidateProperties(candidateProperties)) {
+                return DataSourceReloadResult.failure("候选数据源配置校验失败");
+            }
+            try {
+                DataSourceReloadResult result = registry.replaceWithCandidate(candidateProperties);
+                LOGGER.info("config.reload.completed status=success targetCount={}", result.targetCount());
+                return result;
+            } catch (RuntimeException exception) {
+                String message = sanitizeReloadFailure(exception);
+                LOGGER.warn("config.reload.completed status=failure reason={}", message);
+                return DataSourceReloadResult.failure(message);
+            }
         }
     }
 
@@ -67,7 +70,7 @@ public class DataSourceConfigReloader {
             Objects.requireNonNull(candidateProperties, "candidateProperties").afterPropertiesSet();
             return true;
         } catch (RuntimeException exception) {
-            LOGGER.warn("候选数据源配置校验失败，保留旧连接池，reason={}", exception.getClass().getSimpleName());
+            LOGGER.warn("config.reload.validation.failed reason={}", exception.getClass().getSimpleName());
             return false;
         }
     }

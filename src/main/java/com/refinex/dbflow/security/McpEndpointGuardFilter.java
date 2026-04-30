@@ -1,5 +1,6 @@
 package com.refinex.dbflow.security;
 
+import com.refinex.dbflow.observability.LogContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
@@ -7,6 +8,8 @@ import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.util.StringUtils;
@@ -27,6 +30,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author refinex
  */
 public class McpEndpointGuardFilter extends OncePerRequestFilter {
+
+    /**
+     * 运维日志记录器。
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(McpEndpointGuardFilter.class);
 
     /**
      * MCP endpoint 安全配置。
@@ -104,24 +112,44 @@ public class McpEndpointGuardFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         McpRequestMetadata metadata = metadataExtractor.extract(request);
-        if (!allowedOrigin(request)) {
-            errorResponseWriter.forbidden(response, metadata.requestId(), "ORIGIN_DENIED", "Origin 不在 MCP 可信来源列表");
-            return;
+        try (LogContext.Scope ignored = LogContext.withCorrelation(
+                metadata.requestId(),
+                LogContext.currentTraceIdOrDefault(metadata.requestId()))) {
+            LOGGER.info("mcp.request.received method={} sourceIp={} contentLength={} originPresent={}",
+                    request.getMethod(), metadata.sourceIp(), request.getContentLengthLong(),
+                    StringUtils.hasText(request.getHeader(HttpHeaders.ORIGIN)));
+            if (!allowedOrigin(request)) {
+                LOGGER.warn("mcp.request.rejected reason=origin-denied sourceIp={} origin={}",
+                        metadata.sourceIp(), normalizeOrigin(request.getHeader(HttpHeaders.ORIGIN)));
+                errorResponseWriter.forbidden(response, metadata.requestId(), "ORIGIN_DENIED",
+                        "Origin 不在 MCP 可信来源列表");
+                return;
+            }
+            if (requestTooLarge(request)) {
+                LOGGER.warn("mcp.request.rejected reason=request-too-large sourceIp={} contentLength={} maxBytes={}",
+                        metadata.sourceIp(), request.getContentLengthLong(), properties.getRequestSize().getMaxBytes());
+                errorResponseWriter.requestTooLarge(response, metadata.requestId(),
+                        properties.getRequestSize().getMaxBytes());
+                return;
+            }
+            if (rateLimited(metadata.sourceIp())) {
+                LOGGER.warn("mcp.request.rejected reason=rate-limited sourceIp={} maxRequests={} window={}",
+                        metadata.sourceIp(), properties.getRateLimit().getMaxRequests(),
+                        properties.getRateLimit().getWindow());
+                errorResponseWriter.rateLimited(response, metadata.requestId());
+                return;
+            }
+            HttpServletRequest guardedRequest = limitedBodyRequest(request);
+            if (guardedRequest == null) {
+                LOGGER.warn(
+                        "mcp.request.rejected reason=request-too-large sourceIp={} contentLength=chunked maxBytes={}",
+                        metadata.sourceIp(), properties.getRequestSize().getMaxBytes());
+                errorResponseWriter.requestTooLarge(response, metadata.requestId(),
+                        properties.getRequestSize().getMaxBytes());
+                return;
+            }
+            filterChain.doFilter(guardedRequest, response);
         }
-        if (requestTooLarge(request)) {
-            errorResponseWriter.requestTooLarge(response, metadata.requestId(), properties.getRequestSize().getMaxBytes());
-            return;
-        }
-        if (rateLimited(metadata.sourceIp())) {
-            errorResponseWriter.rateLimited(response, metadata.requestId());
-            return;
-        }
-        HttpServletRequest guardedRequest = limitedBodyRequest(request);
-        if (guardedRequest == null) {
-            errorResponseWriter.requestTooLarge(response, metadata.requestId(), properties.getRequestSize().getMaxBytes());
-            return;
-        }
-        filterChain.doFilter(guardedRequest, response);
     }
 
     /**

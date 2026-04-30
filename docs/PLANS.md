@@ -22,6 +22,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-04-30 Structured Logging And Troubleshooting](exec-plans/completed/2026-04-30-structured-logging-troubleshooting.md) -
+  Completed; added request/trace correlated safe operational logs, Logback MDC fields, and executable troubleshooting
+  runbook coverage for startup, Nacos, database, Token, MCP, policy, and SQL failure paths.
 - [2026-04-30 MCP Endpoint Security Hardening](exec-plans/completed/2026-04-30-mcp-endpoint-security-hardening.md) -
   Completed; hardened `/mcp` Streamable HTTP with trusted Origin validation, request size limiting, fixed-window
   source-IP rate limiting, query-string token rejection, stable sanitized HTTP errors, and tool-level denial/failure

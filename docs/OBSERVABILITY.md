@@ -37,7 +37,10 @@ health details hidden by default and the management health page reusing the same
 meters now record MCP tool call counts, SQL risk distribution, rejection counts, SQL execution duration, and pending
 confirmation challenge counts. MCP endpoint security now covers trusted Origin validation, request size limiting,
 fixed-window source-IP rate limiting, stable sanitized HTTP errors, query-string token rejection, and tool-level error
-metadata for policy denial, SQL failure, confirmation expiry, and truncated results.
+metadata for policy denial, SQL failure, confirmation expiry, and truncated results. Operational logs now carry
+`requestId` and `traceId` through MDC, and key MCP, SQL, policy, config reload, and datasource replacement events use
+stable key/value messages for troubleshooting without logging Token plaintext, database passwords, JDBC URLs, or full
+result sets.
 
 ## Build & Run
 
@@ -52,6 +55,7 @@ metadata for policy denial, SQL failure, confirmation expiry, and truncated resu
 | Health smoke         | `curl -s http://localhost:8080/actuator/health`                                                                                              | Returns bounded Actuator health status without component details unless the deployment explicitly changes `management.endpoint.health.show-details`.                                                                          |
 | Metrics smoke        | `curl -s http://localhost:8080/actuator/metrics`                                                                                             | Lists exposed Micrometer meters, including DBFlow-specific `dbflow.*` meters after startup or first use.                                                                                                                      |
 | MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` with `Authorization: Bearer <DBFlow Token>` | The client can discover `dbflow_smoke`, DBFlow tools, DBFlow resources/templates, and DBFlow prompts.                                                                                                                         |
+| Troubleshooting      | `docs/runbooks/troubleshooting.md`                                                                                                           | Executable runbook for startup, Nacos, metadata DB, target DB, Token, MCP connectivity, Origin, rate limit, SQL policy, and SQL execution failures.                                                                           |
 | Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                                                                                          |
 
 ## CI Configuration
@@ -81,6 +85,8 @@ Planned baseline:
 - MySQL 8 and MySQL 5.7 via Testcontainers after scaffold
 - Nacos Config and Discovery dependencies with opt-in `nacos` profile
 - Spring Boot Actuator with web exposure limited to `health` and `metrics`
+- Logback console logging with MDC fields `requestId` and `traceId`; run local troubleshooting with
+  `./mvnw spring-boot:run | tee target/dbflow.log` when a searchable log file is needed
 
 Local reference checkouts:
 
@@ -117,6 +123,9 @@ Configuration sources and secret boundary:
 - Runtime target datasource reload always preheats candidate pools before replacing the registry, even when startup
   validation is disabled. Failed reloads preserve the old registry snapshot and emit sanitized operational warning logs
   without JDBC URLs or passwords.
+- Operational logs use `requestId` and `traceId` for correlation. HTTP requests accept `X-Request-Id` and
+  `X-Trace-Id`; when `X-Trace-Id` is absent, DBFlow uses the request id as the trace id. Background config reload paths
+  generate a `config-reload-*` correlation id when no request context exists.
 - Initial administrator credentials should come from environment variables, local development profile files excluded
   from source control, or a secret-managed BCrypt hash under `dbflow.admin.initial-user.password-hash`.
 - MCP Token pepper is read from `dbflow.security.mcp-token.pepper`; use an environment variable such as
@@ -195,6 +204,8 @@ Configuration sources and secret boundary:
 - MCP tool responses expose stable `error` and `notices` objects for policy denial, SQL execution failure,
   confirmation expiry, and result truncation. `result_summary` and notices remain bounded; full result sets are not
   copied into error metadata.
+- Troubleshooting starts from [docs/runbooks/troubleshooting.md](runbooks/troubleshooting.md). Use `requestId`,
+  `traceId`, and `sqlHash` to correlate MCP client responses, audit events, operational logs, health, and metrics.
 
 MCP server runtime boundary:
 
@@ -212,7 +223,7 @@ MCP server runtime boundary:
 - Request metadata extraction: `clientInfo` currently uses optional `Mcp-Client-Info` header at the filter layer and
   SQL tool calls copy it into `AuditRequestContext`. `User-Agent` comes from the HTTP header, source IP prefers
   `X-Forwarded-For`, then `X-Real-IP`, then remote address, and request id comes from `X-Request-Id` or a generated
-  UUID.
+  UUID. Trace id comes from `X-Trace-Id` or falls back to request id.
 - Enabled capabilities: `spring.ai.mcp.server.capabilities.tool=true`,
   `spring.ai.mcp.server.capabilities.resource=true`, and `spring.ai.mcp.server.capabilities.prompt=true`
 - Current tool surface: `dbflow_smoke`, `dbflow_list_targets`, `dbflow_inspect_schema`,
@@ -241,7 +252,7 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `DbflowApplicationTests` verifies the Spring Boot context starts with the local H2 metadata datasource and Flyway
   migration.
 - `ApiResultTests` and `DbflowExceptionTests` cover the current common result/exception primitives.
-- `RequestIdFilterTests` covers incoming and generated request id behavior.
+- `RequestIdFilterTests` covers incoming and generated request id behavior plus trace id MDC propagation and cleanup.
 - `OperationalHealthAndMetricsTests` covers custom DBFlow health indicators, hidden Actuator health details, minimal
   Actuator endpoint exposure, management health reuse of the shared health service, admin-only management health access,
   and Micrometer meter registration for MCP calls, SQL risk distribution, rejection counts, SQL execution duration, and

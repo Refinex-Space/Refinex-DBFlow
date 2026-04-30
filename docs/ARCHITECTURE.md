@@ -28,6 +28,8 @@ DDL policy state, metadata database status, target Hikari pools, Nacos enablemen
 yet contain CI configuration or production deployment configuration. The MCP Streamable HTTP endpoint is now hardened
 with configurable trusted Origin validation, request size limits, fixed-window source-IP rate limiting, query-string
 token rejection, stable sanitized HTTP errors, and bounded MCP tool error metadata for denial/failure/expiry/truncation.
+Operational logs now carry `requestId`/`traceId` MDC fields, and runbook-driven troubleshooting starts from
+`docs/runbooks/troubleshooting.md`.
 The architecture below records the approved target design
 from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -57,7 +59,9 @@ and must be updated as implementation packages are added.
 |   +-- generated/
 |   |   +-- harness-manifest.md
 |   +-- references/
-|       +-- java-development-standards.md
+|   |   +-- java-development-standards.md
+|   +-- runbooks/
+|       +-- troubleshooting.md
 +-- src/
 |   +-- main/
 |   |   +-- java/com/refinex/dbflow/
@@ -164,6 +168,7 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- DbflowHealthIndicators.java
 |   |   |   |   +-- DbflowHealthService.java
 |   |   |   |   +-- DbflowMetricsService.java
+|   |   |   |   +-- LogContext.java
 |   |   |   |   +-- RequestIdFilter.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- security/

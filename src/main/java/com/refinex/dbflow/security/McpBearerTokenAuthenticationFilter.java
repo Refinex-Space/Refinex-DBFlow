@@ -1,9 +1,12 @@
 package com.refinex.dbflow.security;
 
+import com.refinex.dbflow.observability.LogContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContext;
@@ -22,6 +25,11 @@ import java.util.Optional;
  * @author refinex
  */
 public class McpBearerTokenAuthenticationFilter extends OncePerRequestFilter {
+
+    /**
+     * 运维日志记录器。
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(McpBearerTokenAuthenticationFilter.class);
 
     /**
      * Bearer 认证前缀。
@@ -108,28 +116,38 @@ public class McpBearerTokenAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         McpRequestMetadata metadata = metadataExtractor.extract(request);
-        if (hasQueryStringToken(request)) {
-            writeUnauthorized(response, metadata, "invalid_request");
-            return;
-        }
+        try (LogContext.Scope ignored = LogContext.withCorrelation(
+                metadata.requestId(),
+                LogContext.currentTraceIdOrDefault(metadata.requestId()))) {
+            if (hasQueryStringToken(request)) {
+                LOGGER.warn("mcp.auth.rejected reason=query-string-token sourceIp={}", metadata.sourceIp());
+                writeUnauthorized(response, metadata, "invalid_request");
+                return;
+            }
 
-        Optional<String> bearerToken = resolveBearerToken(request);
-        if (bearerToken.isEmpty()) {
-            writeUnauthorized(response, metadata, "invalid_token");
-            return;
-        }
+            Optional<String> bearerToken = resolveBearerToken(request);
+            if (bearerToken.isEmpty()) {
+                LOGGER.warn("mcp.auth.rejected reason=missing-or-malformed-token sourceIp={}", metadata.sourceIp());
+                writeUnauthorized(response, metadata, "invalid_token");
+                return;
+            }
 
-        Optional<McpTokenValidationResult> validationResult =
-                tokenService.validateToken(bearerToken.orElseThrow(), Instant.now(clock));
-        if (validationResult.isEmpty()) {
-            writeUnauthorized(response, metadata, "invalid_token");
-            return;
-        }
+            Optional<McpTokenValidationResult> validationResult =
+                    tokenService.validateToken(bearerToken.orElseThrow(), Instant.now(clock));
+            if (validationResult.isEmpty()) {
+                LOGGER.warn("mcp.auth.rejected reason=invalid-token sourceIp={}", metadata.sourceIp());
+                writeUnauthorized(response, metadata, "invalid_token");
+                return;
+            }
 
-        SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
-        securityContext.setAuthentication(McpAuthenticationToken.authenticated(validationResult.orElseThrow(), metadata));
-        SecurityContextHolder.setContext(securityContext);
-        filterChain.doFilter(request, response);
+            McpTokenValidationResult validToken = validationResult.orElseThrow();
+            LOGGER.info("mcp.auth.accepted userId={} tokenId={} sourceIp={}",
+                    validToken.userId(), validToken.tokenId(), metadata.sourceIp());
+            SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+            securityContext.setAuthentication(McpAuthenticationToken.authenticated(validToken, metadata));
+            SecurityContextHolder.setContext(securityContext);
+            filterChain.doFilter(request, response);
+        }
     }
 
     /**

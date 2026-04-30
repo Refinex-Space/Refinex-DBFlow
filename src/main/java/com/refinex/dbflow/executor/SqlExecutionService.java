@@ -9,7 +9,10 @@ import com.refinex.dbflow.audit.service.AuditEventWriter;
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.common.ErrorCode;
 import com.refinex.dbflow.observability.DbflowMetricsService;
+import com.refinex.dbflow.observability.LogContext;
 import com.refinex.dbflow.sqlpolicy.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +32,11 @@ import java.util.*;
  */
 @Service
 public class SqlExecutionService {
+
+    /**
+     * 运维日志记录器。
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlExecutionService.class);
 
     /**
      * SQL hash 算法。
@@ -128,14 +136,29 @@ public class SqlExecutionService {
     @Transactional(noRollbackFor = DbflowException.class)
     public SqlExecutionResult execute(SqlExecutionRequest request) {
         Objects.requireNonNull(request, "request");
-        long metricsStarted = System.nanoTime();
-        try {
-            SqlExecutionResult result = executeInternal(request);
-            recordExecutionDuration(result.operation().name(), result.riskLevel().name(), result.status(), metricsStarted);
-            return result;
-        } catch (RuntimeException exception) {
-            recordExecutionDuration(SqlOperation.UNKNOWN.name(), SqlRiskLevel.REJECTED.name(), STATUS_FAILED, metricsStarted);
-            throw exception;
+        try (LogContext.Scope ignored = LogContext.withCorrelation(
+                request.requestId(),
+                LogContext.currentTraceIdOrDefault(request.requestId()))) {
+            long metricsStarted = System.nanoTime();
+            LOGGER.info("sql.execution.received project={} env={} dryRun={} schemaPresent={}",
+                    request.projectKey(), request.environmentKey(), request.dryRun(), StringUtils.hasText(request.schema()));
+            try {
+                SqlExecutionResult result = executeInternal(request);
+                recordExecutionDuration(result.operation().name(), result.riskLevel().name(), result.status(), metricsStarted);
+                LOGGER.info(
+                        "sql.execution.completed project={} env={} operation={} risk={} status={} sqlHash={} "
+                                + "durationMillis={} affectedRows={} truncated={}",
+                        result.projectKey(), result.environmentKey(), result.operation(), result.riskLevel(),
+                        result.status(), result.sqlHash(), result.durationMillis(), result.affectedRows(),
+                        result.truncated());
+                return result;
+            } catch (RuntimeException exception) {
+                recordExecutionDuration(SqlOperation.UNKNOWN.name(), SqlRiskLevel.REJECTED.name(), STATUS_FAILED,
+                        metricsStarted);
+                LOGGER.warn("sql.execution.failed project={} env={} errorType={}",
+                        request.projectKey(), request.environmentKey(), exception.getClass().getSimpleName());
+                throw exception;
+            }
         }
     }
 
@@ -152,15 +175,23 @@ public class SqlExecutionService {
         auditEventWriter.requestReceived(auditRequest(request, SqlOperation.UNKNOWN, SqlRiskLevel.LOW, sqlHash,
                 sqlText, "SQL 请求已接收", 0L, null, null, null));
         if (!accessDecision.allowed()) {
+            LOGGER.warn("sql.policy.denied phase=authorization project={} env={} reason={}",
+                    request.projectKey(), request.environmentKey(), accessDecision.reason());
             return deny(request, SqlOperation.UNKNOWN, SqlRiskLevel.REJECTED, sqlHash,
                     "授权拒绝: " + accessDecision.reason().name() + " - " + accessDecision.message());
         }
         if (!StringUtils.hasText(sqlText)) {
+            LOGGER.warn("sql.policy.denied phase=validation project={} env={} reason=EMPTY_SQL",
+                    request.projectKey(), request.environmentKey());
             return deny(request, SqlOperation.UNKNOWN, SqlRiskLevel.REJECTED, sqlHash, "SQL 不能为空");
         }
 
         SqlClassification classification = sqlClassifier.classify(sqlText);
         if (classification.rejectedByDefault()) {
+            LOGGER.warn("sql.policy.denied phase=classification project={} env={} operation={} risk={} reason={} "
+                            + "sqlHash={}",
+                    request.projectKey(), request.environmentKey(), classification.operation(),
+                    classification.riskLevel(), classification.auditReason(), sqlHash);
             return deny(request, classification.operation(), classification.riskLevel(), sqlHash,
                     "SQL 分类拒绝: " + classification.auditReason());
         }
@@ -171,11 +202,18 @@ public class SqlExecutionService {
                 classification
         );
         if (!policyDecision.allowed()) {
+            LOGGER.warn("sql.policy.denied phase=dangerous-ddl project={} env={} operation={} risk={} reasonCode={} "
+                            + "sqlHash={}",
+                    request.projectKey(), request.environmentKey(), classification.operation(),
+                    classification.riskLevel(), policyDecision.reasonCode(), sqlHash);
             return deny(request, classification.operation(), classification.riskLevel(), sqlHash,
                     "SQL 策略拒绝: " + policyDecision.reasonCode().name() + " - " + policyDecision.reason());
         }
 
         if (classification.operation() == SqlOperation.TRUNCATE) {
+            LOGGER.info("sql.execution.requires-confirmation project={} env={} operation={} risk={} sqlHash={}",
+                    request.projectKey(), request.environmentKey(), classification.operation(),
+                    classification.riskLevel(), sqlHash);
             return requireConfirmation(request, classification);
         }
         if (request.dryRun()) {

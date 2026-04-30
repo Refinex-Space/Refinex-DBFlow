@@ -1,16 +1,15 @@
 package com.refinex.dbflow.observability;
 
-import java.io.IOException;
-import java.util.UUID;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.MDC;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.UUID;
 
 /**
  * 请求标识过滤器。
@@ -26,9 +25,19 @@ public class RequestIdFilter extends OncePerRequestFilter {
     public static final String REQUEST_ID_HEADER = "X-Request-Id";
 
     /**
+     * 链路标识 HTTP 头名称。
+     */
+    public static final String TRACE_ID_HEADER = LogContext.TRACE_ID_HEADER;
+
+    /**
      * 日志 MDC 中保存 request id 的键名。
      */
-    public static final String MDC_KEY = "requestId";
+    public static final String MDC_KEY = LogContext.REQUEST_ID_KEY;
+
+    /**
+     * 日志 MDC 中保存 trace id 的键名。
+     */
+    public static final String TRACE_MDC_KEY = LogContext.TRACE_ID_KEY;
 
     /**
      * 为每个 HTTP 请求建立 request id，并写入响应头和日志上下文。
@@ -46,12 +55,11 @@ public class RequestIdFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         String requestId = resolveRequestId(request);
+        String traceId = resolveTraceId(request, requestId);
         response.setHeader(REQUEST_ID_HEADER, requestId);
-        MDC.put(MDC_KEY, requestId);
-        try {
+        response.setHeader(TRACE_ID_HEADER, traceId);
+        try (LogContext.Scope ignored = LogContext.withCorrelation(requestId, traceId)) {
             filterChain.doFilter(request, response);
-        } finally {
-            MDC.remove(MDC_KEY);
         }
     }
 
@@ -67,5 +75,20 @@ public class RequestIdFilter extends OncePerRequestFilter {
             return UUID.randomUUID().toString();
         }
         return requestId;
+    }
+
+    /**
+     * 解析请求中的 trace id；未传入时沿用 request id。
+     *
+     * @param request   HTTP 请求
+     * @param requestId 请求标识
+     * @return 可用于跨服务日志串联的 trace id
+     */
+    private String resolveTraceId(HttpServletRequest request, String requestId) {
+        String traceId = request.getHeader(TRACE_ID_HEADER);
+        if (traceId == null || traceId.isBlank()) {
+            return requestId;
+        }
+        return traceId.trim();
     }
 }

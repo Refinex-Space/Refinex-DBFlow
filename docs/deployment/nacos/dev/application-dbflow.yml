@@ -24,12 +24,14 @@ spring:
   datasource:
     # 默认 H2 MySQL mode；只适合本机 smoke，不适合生产。
     url: jdbc:h2:mem:dbflow_metadata;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    # url: jdbc:mysql://127.0.0.1:3306/dbflow_metadata?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
     # 默认 sa；H2 dev 用户名。
     username: sa
     # 默认空；H2 dev 密码。
     password:
     # 默认 org.h2.Driver；改 MySQL metadata database 时改为 com.mysql.cj.jdbc.Driver。
     driver-class-name: org.h2.Driver
+    # driver-class-name: com.mysql.cj.jdbc.Driver
 
 # server：DBFlow Web/Admin/MCP HTTP 服务监听配置。
 # 若完全不配置 server.address，Spring Boot 会监听所有网卡；dev 模板显式收敛到 127.0.0.1。

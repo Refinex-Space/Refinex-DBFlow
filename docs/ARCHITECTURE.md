@@ -31,7 +31,9 @@ token rejection, stable sanitized HTTP errors, and bounded MCP tool error metada
 Operational logs now carry `requestId`/`traceId` MDC fields, and runbook-driven troubleshooting starts from
 `docs/runbooks/troubleshooting.md`. Deployment guidance now lives under `docs/deployment/`, including a runnable
 local empty-environment startup path, jar deployment notes, external MySQL/Nacos configuration, reverse proxy/TLS
-guidance, intranet access restrictions, and a secret-safe example YAML.
+guidance, intranet access restrictions, and a secret-safe example YAML. MCP client setup guidance now lives under
+`docs/user-guide/mcp-clients.md`, covering Codex, Claude, OpenCode, and Copilot Streamable HTTP configuration and
+first-use smoke prompts.
 The architecture below records the approved target design
 from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -63,6 +65,8 @@ and must be updated as implementation packages are added.
 |   +-- deployment/
 |   |   +-- README.md
 |   |   +-- application-dbflow-example.yml
+|   +-- user-guide/
+|   |   +-- mcp-clients.md
 |   +-- references/
 |   |   +-- java-development-standards.md
 |   +-- runbooks/

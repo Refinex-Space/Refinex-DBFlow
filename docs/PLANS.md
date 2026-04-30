@@ -22,6 +22,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-04-30 MCP Client Guide](exec-plans/completed/2026-04-30-mcp-client-guide.md) -
+  Completed; added Codex, Claude, OpenCode, and Copilot MCP Streamable HTTP client guide with fake-token snippets,
+  version notes, common errors, and first-use smoke prompts.
 - [2026-04-30 Deployment Documentation](exec-plans/completed/2026-04-30-deployment-documentation.md) -
   Completed; added executable deployment documentation, secret-safe example YAML, local empty-environment jar startup
   verification, and deployment links in architecture/observability docs.

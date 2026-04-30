@@ -29,7 +29,9 @@ yet contain CI configuration or production deployment configuration. The MCP Str
 with configurable trusted Origin validation, request size limits, fixed-window source-IP rate limiting, query-string
 token rejection, stable sanitized HTTP errors, and bounded MCP tool error metadata for denial/failure/expiry/truncation.
 Operational logs now carry `requestId`/`traceId` MDC fields, and runbook-driven troubleshooting starts from
-`docs/runbooks/troubleshooting.md`.
+`docs/runbooks/troubleshooting.md`. Deployment guidance now lives under `docs/deployment/`, including a runnable
+local empty-environment startup path, jar deployment notes, external MySQL/Nacos configuration, reverse proxy/TLS
+guidance, intranet access restrictions, and a secret-safe example YAML.
 The architecture below records the approved target design
 from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -58,6 +60,9 @@ and must be updated as implementation packages are added.
 |   |   +-- tech-debt-tracker.md
 |   +-- generated/
 |   |   +-- harness-manifest.md
+|   +-- deployment/
+|   |   +-- README.md
+|   |   +-- application-dbflow-example.yml
 |   +-- references/
 |   |   +-- java-development-standards.md
 |   +-- runbooks/

@@ -1,0 +1,104 @@
+# Refinex-DBFlow deployment example.
+#
+# Copy this file to an external config directory as `application-dbflow.yml` and
+# inject all secret values through environment variables or a secret manager.
+# Do not commit filled passwords, Token pepper values, or Nacos credentials.
+
+spring:
+  datasource:
+    url: ${DBFLOW_METADATA_JDBC_URL}
+    username: ${DBFLOW_METADATA_USERNAME:dbflow_meta}
+    password: ${DBFLOW_METADATA_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    locations: classpath:db/migration
+  cloud:
+    service-registry:
+      auto-registration:
+        enabled: false
+    nacos:
+      config:
+        enabled: false
+      discovery:
+        enabled: false
+
+server:
+  address: ${DBFLOW_SERVER_ADDRESS:127.0.0.1}
+  port: ${DBFLOW_SERVER_PORT:8080}
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: never
+
+dbflow:
+  datasource-defaults:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DBFLOW_TARGET_USERNAME}
+    password: ${DBFLOW_TARGET_PASSWORD}
+    validate-on-startup: ${DBFLOW_TARGET_VALIDATE_ON_STARTUP:false}
+    hikari:
+      pool-name-prefix: dbflow-target
+      maximum-pool-size: ${DBFLOW_TARGET_POOL_MAX_SIZE:10}
+      minimum-idle: ${DBFLOW_TARGET_POOL_MIN_IDLE:1}
+      connection-timeout: ${DBFLOW_TARGET_POOL_CONNECTION_TIMEOUT:30s}
+      idle-timeout: ${DBFLOW_TARGET_POOL_IDLE_TIMEOUT:10m}
+      max-lifetime: ${DBFLOW_TARGET_POOL_MAX_LIFETIME:30m}
+  projects:
+    - key: demo
+      name: Demo Project
+      environments:
+        - key: dev
+          name: Demo Dev
+          jdbc-url: ${DBFLOW_DEMO_DEV_JDBC_URL}
+          username: ${DBFLOW_DEMO_DEV_USERNAME:${DBFLOW_TARGET_USERNAME}}
+          password: ${DBFLOW_DEMO_DEV_PASSWORD:${DBFLOW_TARGET_PASSWORD}}
+        - key: prod
+          name: Demo Production
+          jdbc-url: ${DBFLOW_DEMO_PROD_JDBC_URL}
+          username: ${DBFLOW_DEMO_PROD_USERNAME:${DBFLOW_TARGET_USERNAME}}
+          password: ${DBFLOW_DEMO_PROD_PASSWORD:${DBFLOW_TARGET_PASSWORD}}
+  policies:
+    dangerous-ddl:
+      defaults:
+        DROP_TABLE: DENY
+        DROP_DATABASE: DENY
+        TRUNCATE: REQUIRE_CONFIRMATION
+      whitelist:
+        - project-key: demo
+          environment-key: dev
+          schema-name: scratch
+          table-name: tmp_*
+          operation: DROP_TABLE
+          allow-prod-dangerous-ddl: false
+  admin:
+    initial-user:
+      enabled: ${DBFLOW_ADMIN_INITIAL_USER_ENABLED:false}
+      username: ${DBFLOW_ADMIN_INITIAL_USERNAME:admin}
+      display-name: ${DBFLOW_ADMIN_INITIAL_DISPLAY_NAME:DBFlow Administrator}
+      password: ${DBFLOW_ADMIN_INITIAL_PASSWORD:}
+      password-hash: ${DBFLOW_ADMIN_INITIAL_PASSWORD_HASH:}
+  security:
+    mcp-token:
+      pepper: ${DBFLOW_MCP_TOKEN_PEPPER}
+    mcp-endpoint:
+      origin:
+        enabled: true
+        trusted-origins:
+          - ${DBFLOW_MCP_TRUSTED_ORIGIN}
+      request-size:
+        enabled: true
+        max-bytes: ${DBFLOW_MCP_MAX_REQUEST_BYTES:1048576}
+      rate-limit:
+        enabled: true
+        max-requests: ${DBFLOW_MCP_RATE_LIMIT_MAX_REQUESTS:120}
+        window: ${DBFLOW_MCP_RATE_LIMIT_WINDOW:1m}

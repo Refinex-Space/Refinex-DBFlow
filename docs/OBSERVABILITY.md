@@ -55,6 +55,7 @@ result sets.
 | Health smoke         | `curl -s http://localhost:8080/actuator/health`                                                                                              | Returns bounded Actuator health status without component details unless the deployment explicitly changes `management.endpoint.health.show-details`.                                                                          |
 | Metrics smoke        | `curl -s http://localhost:8080/actuator/metrics`                                                                                             | Lists exposed Micrometer meters, including DBFlow-specific `dbflow.*` meters after startup or first use.                                                                                                                      |
 | MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` with `Authorization: Bearer <DBFlow Token>` | The client can discover `dbflow_smoke`, DBFlow tools, DBFlow resources/templates, and DBFlow prompts.                                                                                                                         |
+| Deployment guide     | `docs/deployment/README.md`                                                                                                                  | Executable local empty-environment startup, jar deployment, external MySQL/Nacos configuration, reverse proxy/TLS, intranet access, and preflight checklist.                                                                  |
 | Troubleshooting      | `docs/runbooks/troubleshooting.md`                                                                                                           | Executable runbook for startup, Nacos, metadata DB, target DB, Token, MCP connectivity, Origin, rate limit, SQL policy, and SQL execution failures.                                                                           |
 | Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                                                                                          |
 
@@ -96,6 +97,9 @@ When Spring AI MCP APIs, auto-configuration, annotations, starter behavior, or t
 
 Configuration sources and secret boundary:
 
+- Deployment operators should start from [docs/deployment/README.md](deployment/README.md) and copy
+  [application-dbflow-example.yml](deployment/application-dbflow-example.yml) to an external config directory before
+  filling values through environment variables or a secret manager.
 - DBFlow target database and dangerous DDL policy settings bind from Spring external configuration under `dbflow.*`.
 - Default local profile disables `spring.cloud.nacos.config.enabled`, `spring.cloud.nacos.discovery.enabled`, and
   `spring.cloud.service-registry.auto-registration.enabled`; local tests and `./mvnw spring-boot:run` do not require a

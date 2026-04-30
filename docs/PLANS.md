@@ -22,6 +22,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-04-30 Deployment Documentation](exec-plans/completed/2026-04-30-deployment-documentation.md) -
+  Completed; added executable deployment documentation, secret-safe example YAML, local empty-environment jar startup
+  verification, and deployment links in architecture/observability docs.
 - [2026-04-30 Structured Logging And Troubleshooting](exec-plans/completed/2026-04-30-structured-logging-troubleshooting.md) -
   Completed; added request/trace correlated safe operational logs, Logback MDC fields, and executable troubleshooting
   runbook coverage for startup, Nacos, database, Token, MCP, policy, and SQL failure paths.

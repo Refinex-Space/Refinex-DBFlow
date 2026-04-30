@@ -1,21 +1,35 @@
-# 本地不接 Nacos 时使用：
-#   mkdir -p config
-#   cp docs/deployment/nacos/dev/application-dbflow.yml config/application-dbflow.yml
-#   SPRING_PROFILES_ACTIVE=dbflow SPRING_CONFIG_ADDITIONAL_LOCATION=optional:file:./config/ ./mvnw spring-boot:run
+# Nacos Data ID: application-dbflow.yml
+# Group: DBFLOW_GROUP
+# Format: YAML
 #
-# 这个文件只服务 dev/本机启动，便于直接复制后改少量配置。
+# dev 启动可直接复制本文件到 Nacos。默认管理员：admin / admin。首次登录后请立即修改密码。
+# target project/env 由用户按需添加到 dbflow.projects，不再通过一堆示例环境变量间接配置。
+#
 # 本文件里的“默认”优先指 DBFlow dev 模板默认值；少数 Spring Boot / Hikari 框架默认会在注释中单独说明。
 #
 # dev 默认值速览：
 # - 管理员：admin / admin。首次登录后请立即修改密码。
 # - HTTP 监听：127.0.0.1:8080，只允许本机访问。
-# - metadata database：不在本文件配置，默认沿用 src/main/resources/application.yml 的 H2 内存库。
+# - metadata database：本文件显式配置 H2 内存库，仅适合 dev smoke。
 # - target project/env：默认空，需要用户按需在 dbflow.projects 添加。
 # - DROP_TABLE / DROP_DATABASE：默认 DENY。
 # - TRUNCATE：默认 REQUIRE_CONFIRMATION。
 # - MCP Origin 校验：默认开启，只信任 localhost/127.0.0.1。
 # - MCP request size limit：默认开启，最大 1048576 bytes（1 MiB）。
 # - MCP rate limit：默认开启，单来源 120 requests / 1 minute。
+
+# spring.datasource：DBFlow 自己的 metadata database，用于用户、Token、授权、审计、confirmation 等元数据。
+# 默认 H2 内存库；应用重启后数据会丢失。需要持久化时改为 MySQL，并让 Flyway 在该库执行 V1 migration。
+spring:
+  datasource:
+    # 默认 H2 MySQL mode；只适合本机 smoke，不适合生产。
+    url: jdbc:h2:mem:dbflow_metadata;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    # 默认 sa；H2 dev 用户名。
+    username: sa
+    # 默认空；H2 dev 密码。
+    password:
+    # 默认 org.h2.Driver；改 MySQL metadata database 时改为 com.mysql.cj.jdbc.Driver。
+    driver-class-name: org.h2.Driver
 
 # server：DBFlow Web/Admin/MCP HTTP 服务监听配置。
 # 若完全不配置 server.address，Spring Boot 会监听所有网卡；dev 模板显式收敛到 127.0.0.1。
@@ -26,21 +40,6 @@ server:
   port: 8080
   # 默认 framework；让 Spring 读取 X-Forwarded-*，便于后续接 Nginx/TLS 反向代理。
   forward-headers-strategy: framework
-
-# spring.cloud：本地 YAML 启动不依赖 Nacos，不向注册中心注册服务。
-spring:
-  cloud:
-    service-registry:
-      auto-registration:
-        # 默认 false；本地启动不注册到 Nacos Discovery。
-        enabled: false
-    nacos:
-      config:
-        # 默认 false；配置来自 config/application-dbflow.yml，而不是 Nacos。
-        enabled: false
-      discovery:
-        # 默认 false；本地启动不发布服务实例。
-        enabled: false
 
 # management：Actuator 暴露面。
 # dev 模板只暴露 health、metrics；健康详情默认不公开，避免泄露连接池、数据库等内部信息。
@@ -79,7 +78,7 @@ dbflow:
       max-lifetime: 30m
 
   # projects：DBFlow 可操作的 project/env 清单。
-  # 默认 []，即没有任何 target database。用户按需添加；不要把生产真实密码提交到仓库。
+  # 默认 []，即没有任何 target database。用户直接在 Nacos 维护自己的目标库。
   # 字段说明：
   # - key：项目稳定标识，MCP 调用时传 project；全局唯一，必填。
   # - name：管理端展示名，可选。
@@ -87,18 +86,18 @@ dbflow:
   # - environments[].name：管理端展示名，可选。
   # - environments[].jdbc-url：目标库 JDBC URL，必填；禁止在 URL 中带 password 参数。
   # - environments[].driver-class-name：可选；为空时继承 datasource-defaults.driver-class-name。
-  # - environments[].username/password：目标库账号密码；dev 可明文，本地/生产建议改用环境变量占位或密钥系统。
+  # - environments[].username/password：目标库账号密码；dev 可明文，内网/生产建议改用 Nacos 加密、环境变量占位或密钥系统。
   #
-  # 示例：
+  # 示例：取消注释后改成自己的库。
   # projects:
-  #   - key: demo
-  #     name: Demo
+  #   - key: your-project
+  #     name: Your Project
   #     environments:
   #       - key: dev
-  #         name: Development
-  #         jdbc-url: jdbc:mysql://127.0.0.1:3306/demo?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
-  #         username: dbflow_demo
-  #         password: ${DBFLOW_DEMO_PASSWORD:}
+  #         name: Dev
+  #         jdbc-url: jdbc:mysql://127.0.0.1:3306/your_schema?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+  #         username: your_dbflow_user
+  #         password: your_dbflow_password
   projects: [ ]
 
   # policies：SQL 风险策略配置。
@@ -128,7 +127,7 @@ dbflow:
       username: admin
       # 默认 DBFlow Administrator；管理端展示名。
       display-name: DBFlow Administrator
-      # 默认 admin；仅适合 dev。本地持久化或生产请改强密码，或改用 password-hash。
+      # 默认 admin；仅适合 dev。内网/生产请改强密码，或改用 password-hash。
       password: admin
       # 可选；配置 BCrypt hash 后可不配置 password。dev 模板默认不启用。
       # password-hash:

@@ -1,0 +1,48 @@
+# 测试环境不依赖外部 Nacos；生产/本地运行默认仍由 src/main/resources/application.yml 走 Nacos。
+spring:
+  application:
+    name: refinex-dbflow
+  config:
+    import: ""
+  cloud:
+    service-registry:
+      auto-registration:
+        enabled: false
+    nacos:
+      config:
+        enabled: false
+      discovery:
+        enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    locations: classpath:db/migration
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: refinex-dbflow
+        version: 0.1.0-SNAPSHOT
+        type: SYNC
+        protocol: STREAMABLE
+        instructions: Refinex-DBFlow MCP server exposes guarded database operation capabilities.
+        capabilities:
+          tool: true
+          resource: true
+          prompt: true
+        streamable-http:
+          mcp-endpoint: /mcp
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}

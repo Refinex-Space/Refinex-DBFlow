@@ -69,7 +69,6 @@ and must be updated as implementation packages are added.
 |   |   +-- nacos/
 |   |       +-- dev/
 |   |           +-- application-dbflow.yml
-|   |           +-- refinex-dbflow-nacos.yml
 |   +-- user-guide/
 |   |   +-- admin-guide.md
 |   |   +-- mcp-clients.md
@@ -223,7 +222,6 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- TruncateConfirmationService.java
 |   |   |   |   +-- package-info.java
 |   |   +-- resources/application.yml
-|   |   +-- resources/application-nacos.yml
 |   |   +-- resources/db/migration/V1__create_metadata_schema.sql
 |   |   +-- resources/static/admin-assets/
 |   |   |   +-- css/admin.css
@@ -295,9 +293,9 @@ and must be updated as implementation packages are added.
   boundaries.
 - Configuration binding baseline: `dbflow.*` YAML properties bind datasource defaults, project environments, and
   dangerous DDL policy into `DbflowProperties` with startup validation.
-- Nacos configuration baseline: Spring Cloud Alibaba Nacos Config and Discovery starters are declared, default local
-  profile disables Nacos, and `application-nacos.yml` provides opt-in Config Data imports and Discovery registration
-  placeholders without committed credentials.
+- Nacos configuration baseline: Spring Cloud Alibaba Nacos Config and Discovery starters are declared, `application.yml`
+  imports Nacos Data IDs by default, and Nacos address/namespace/credential placeholders are externalized without
+  committed credentials.
 - Target datasource baseline: `HikariDataSourceRegistry` creates isolated Hikari pools for each configured
   `projectKey/environmentKey`, applies shared `dbflow.datasource-defaults.hikari` settings, supports optional startup
   connection validation, supports candidate-first atomic replacement through `DataSourceConfigReloader`, and closes all

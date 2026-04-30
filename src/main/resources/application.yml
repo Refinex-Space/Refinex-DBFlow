@@ -1,24 +1,33 @@
 # Spring Boot 应用基础配置。
+# 运行配置默认由 Nacos Data ID 提供；不要在 jar 内维护管理员密码、Token pepper、target datasource 或危险策略。
 spring:
-  # 应用名称用于日志、Actuator 和后续注册发现标识。
+  # 应用名称用于日志、Actuator、指标标签和 Nacos Discovery 服务名。
   application:
     name: refinex-dbflow
-  # 默认本地配置不连接 Nacos，避免开发和测试依赖外部配置中心或注册中心。
+  config:
+    # 默认启动即按 Nacos 方式装载配置；当前只约定一个可复制 Data ID：application-dbflow.yml。
+    # optional 只避免本地缺少 Data ID 时提前中断；实际部署仍应通过健康检查保证 Nacos 可用。
+    import:
+      - optional:nacos:application-dbflow.yml?group=DBFLOW_GROUP&refreshEnabled=true
   cloud:
     service-registry:
       auto-registration:
-        enabled: false
+        enabled: true
     nacos:
+      # Nacos 地址、用户名、密码全部来自环境变量或外部安全配置，仓库不提供真实默认凭据。
+      server-addr: ${DBFLOW_NACOS_SERVER_ADDR:127.0.0.1:8848}
+      username: ${DBFLOW_NACOS_USERNAME:}
+      password: ${DBFLOW_NACOS_PASSWORD:}
       config:
-        enabled: false
+        enabled: true
+        namespace: ${DBFLOW_NACOS_NAMESPACE:}
+        group: DBFLOW_GROUP
+        refresh-enabled: true
       discovery:
-        enabled: false
-  # 本地元数据库占位配置：P02 阶段使用 H2 MySQL mode 验证 Flyway schema，生产凭据后续由安全配置注入。
-  datasource:
-    url: jdbc:h2:mem:dbflow_metadata;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+        enabled: true
+        namespace: ${DBFLOW_NACOS_NAMESPACE:}
+        group: DBFLOW_GROUP
+        service: refinex-dbflow
   # JPA 当前只消费 Flyway 管理后的 schema，不允许 Hibernate 自动建表或改表。
   jpa:
     hibernate:
@@ -27,7 +36,7 @@ spring:
   # Flyway 默认读取 classpath:db/migration，本处显式记录元数据库迁移入口。
   flyway:
     locations: classpath:db/migration
-  # Spring AI MCP Server 配置：当前阶段只启用 Streamable HTTP 和最小 smoke tool，不包含数据库执行能力。
+  # Spring AI MCP Server 固定能力声明。管理员、target datasource、安全策略等运行配置由 Nacos YAML 提供。
   ai:
     mcp:
       server:
@@ -36,7 +45,7 @@ spring:
         version: 0.1.0-SNAPSHOT
         type: SYNC
         protocol: STREAMABLE
-        instructions: Refinex-DBFlow MCP server exposes guarded database operation capabilities in later phases.
+        instructions: Refinex-DBFlow MCP server exposes guarded database operation capabilities.
         capabilities:
           tool: true
           resource: true
@@ -44,29 +53,7 @@ spring:
         streamable-http:
           mcp-endpoint: /mcp
 
-# Actuator 默认仅暴露健康与指标端点，健康详情不向匿名调用者公开。
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,metrics
-  endpoint:
-    health:
-      show-details: never
   metrics:
     tags:
       application: ${spring.application.name}
-
-# DBFlow 默认配置只服务本地首次启动。target datasource、危险策略和生产密钥应来自外部
-# config/application-dbflow.yml、Nacos dataId refinex-dbflow-nacos.yml，或密钥系统；示例见 docs/deployment/。
-dbflow:
-  # 本地默认 profile 只提供首次登录账号：admin / admin；部署配置仍以 Nacos 或外部 YAML 为准。
-  admin:
-    initial-user:
-      enabled: true
-      username: admin
-      display-name: DBFlow Administrator
-      password: admin
-  security:
-    mcp-token:
-      pepper: dev-only-change-me

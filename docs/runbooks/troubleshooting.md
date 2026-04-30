@@ -96,14 +96,14 @@ Symptoms:
 Steps:
 
 ```bash
-SPRING_PROFILES_ACTIVE=nacos DBFLOW_NACOS_SERVER_ADDR=127.0.0.1:8848 ./mvnw spring-boot:run
+DBFLOW_NACOS_SERVER_ADDR=127.0.0.1:8848 ./mvnw spring-boot:run
 curl -s http://127.0.0.1:8848/nacos/v1/ns/operator/metrics
 rg -n "nacos|spring.config.import|DBFLOW_NACOS" src/main/resources docs
 ```
 
 Checks:
 
-- 本地默认不需要 Nacos；只有显式 `SPRING_PROFILES_ACTIVE=nacos` 才启用。
+- 默认启动方式需要 Nacos；如果 Nacos 不可用，先修复 Nacos 或使用测试环境覆盖配置。
 - 确认 `DBFLOW_NACOS_NAMESPACE`、`DBFLOW_NACOS_USERNAME`、`DBFLOW_NACOS_PASSWORD` 来自环境变量或密钥系统。
 - 日志和文档不得出现 Nacos 密码明文。
 

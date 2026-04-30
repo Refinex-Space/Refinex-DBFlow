@@ -27,10 +27,10 @@ for creating/disabling users, granting/revoking project environments, issuing/re
 Token plaintext display, and admin-only CSRF-protected POST boundaries. Management operations pages now have smoke
 coverage for audit filtering, pagination, denied-reason detail rendering, dangerous policy read-only rendering,
 system health rendering, non-admin rejection, and page-level secret redaction. The Testcontainers
-classes are skipped automatically when the local machine has no Docker runtime. Spring
-Cloud
-Alibaba Nacos Config and Discovery dependencies are present, while default local startup keeps Nacos disabled unless
-the `nacos` profile is explicitly activated. Operational health and metrics now use Spring Boot Actuator with minimal
+classes are skipped automatically when the local machine has no Docker runtime. Spring Cloud Alibaba Nacos Config and
+Discovery dependencies are present, and default startup imports the single Nacos Data ID `application-dbflow.yml`.
+Tests override Nacos through `src/test/resources/application.yml` so unit and slice tests remain offline. Operational
+health and metrics now use Spring Boot Actuator with minimal
 web exposure: `/actuator/health`, `/actuator/metrics`, and `/actuator/metrics/{name}`. Custom health indicators cover
 the metadata database, target datasource registry, Nacos config/discovery state, and MCP endpoint readiness, with
 health details hidden by default and the management health page reusing the same shared health service. Micrometer
@@ -51,7 +51,7 @@ result sets.
 | Run tests            | `./mvnw test`                                                                                                                                | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, security, configuration, JPA service tests, and Docker-optional MySQL execution/explain/schema inspect tests pass. |
 | Lint / format check  | Not available yet; no formatter is configured.                                                                                               | Future scaffold must replace this row.                                                                                                                                                                                        |
 | Start dev server     | `./mvnw spring-boot:run`                                                                                                                     | Starts the Spring Boot application locally with MCP Streamable HTTP available at `http://localhost:8080/mcp`.                                                                                                                 |
-| Start with Nacos     | `SPRING_PROFILES_ACTIVE=nacos DBFLOW_NACOS_SERVER_ADDR=127.0.0.1:8848 ./mvnw spring-boot:run`                                                | Starts with `application-nacos.yml`, optional Nacos config imports, and Nacos Discovery enabled when a server is available.                                                                                                   |
+| Start with Nacos     | `set -a; source .env.example; set +a; ./mvnw spring-boot:run`                                                                                | Starts with default Nacos config imports and Nacos Discovery enabled.                                                                                                                                                         |
 | Health smoke         | `curl -s http://localhost:8080/actuator/health`                                                                                              | Returns bounded Actuator health status without component details unless the deployment explicitly changes `management.endpoint.health.show-details`.                                                                          |
 | Metrics smoke        | `curl -s http://localhost:8080/actuator/metrics`                                                                                             | Lists exposed Micrometer meters, including DBFlow-specific `dbflow.*` meters after startup or first use.                                                                                                                      |
 | MCP smoke discovery  | MCP Inspector or a compatible Streamable HTTP MCP client connects to `http://localhost:8080/mcp` with `Authorization: Bearer <DBFlow Token>` | The client can discover `dbflow_smoke`, DBFlow tools, DBFlow resources/templates, and DBFlow prompts.                                                                                                                         |
@@ -59,9 +59,8 @@ result sets.
 | Admin guide          | `docs/user-guide/admin-guide.md`                                                                                                             | Management-side login, user, project/env grant, Token, audit, policy, health, and connection troubleshooting workflows.                                                                                                       |
 | Operator guide       | `docs/user-guide/operator-guide.md`                                                                                                          | Employee Token request, MCP setup, target selection, read-only smoke, confirmation handling, and rejection reason guidance.                                                                                                   |
 | Security/audit guide | `docs/user-guide/security-and-audit.md`                                                                                                      | Explanation of non-black-box AI database operations, audit fields, sensitive-data boundaries, and audit smoke verification.                                                                                                   |
-| Deployment guide     | `docs/deployment/README.md`                                                                                                                  | Single deployment entrypoint for Nacos dev startup, local YAML startup, metadata DB notes, project/env configuration, reverse proxy/TLS, and intranet access.                                                                 |
-| Dev local YAML       | `docs/deployment/nacos/dev/application-dbflow.yml`                                                                                           | Copyable local dev config for running without Nacos.                                                                                                                                                                          |
-| Dev Nacos YAML       | `docs/deployment/nacos/dev/refinex-dbflow-nacos.yml`                                                                                         | Copyable Nacos Data ID content for `refinex-dbflow-nacos.yml`.                                                                                                                                                                |
+| Deployment guide     | `docs/deployment/README.md`                                                                                                                  | Single deployment entrypoint for Nacos dev startup, metadata DB notes, project/env configuration, reverse proxy/TLS, and intranet access.                                                                                     |
+| Dev Nacos YAML       | `docs/deployment/nacos/dev/application-dbflow.yml`                                                                                           | Copyable Nacos Data ID content for `application-dbflow.yml`.                                                                                                                                                                  |
 | Troubleshooting      | `docs/runbooks/troubleshooting.md`                                                                                                           | Executable runbook for startup, Nacos, metadata DB, target DB, Token, MCP connectivity, Origin, rate limit, SQL policy, and SQL execution failures.                                                                           |
 | Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                                                                                          |
 
@@ -90,7 +89,7 @@ Planned baseline:
   rate limiting
 - JSQLParser 5.3 for SQL parsing and first-stage risk classification
 - MySQL 8 and MySQL 5.7 via Testcontainers after scaffold
-- Nacos Config and Discovery dependencies with opt-in `nacos` profile
+- Nacos Config and Discovery dependencies with default Nacos startup
 - Spring Boot Actuator with web exposure limited to `health` and `metrics`
 - Logback console logging with MDC fields `requestId` and `traceId`; run local troubleshooting with
   `./mvnw spring-boot:run | tee target/dbflow.log` when a searchable log file is needed
@@ -103,9 +102,8 @@ When Spring AI MCP APIs, auto-configuration, annotations, starter behavior, or t
 
 Configuration sources and secret boundary:
 
-- Deployment operators should start from [docs/deployment/README.md](deployment/README.md). Dev Nacos startup copies
-  [refinex-dbflow-nacos.yml](deployment/nacos/dev/refinex-dbflow-nacos.yml) into Nacos; non-Nacos local startup copies
-  [application-dbflow.yml](deployment/nacos/dev/application-dbflow.yml) into `config/application-dbflow.yml`.
+- Deployment operators should start from [docs/deployment/README.md](deployment/README.md). Dev startup copies
+  [application-dbflow.yml](deployment/nacos/dev/application-dbflow.yml) into Nacos.
 - MCP client users should start from [docs/user-guide/mcp-clients.md](user-guide/mcp-clients.md) for Codex, Claude,
   OpenCode, and Copilot Streamable HTTP setup. The guide intentionally uses fake Token examples and version notes for
   client-specific configuration fields.
@@ -117,12 +115,11 @@ Configuration sources and secret boundary:
   [docs/user-guide/security-and-audit.md](user-guide/security-and-audit.md) to understand audit fields, sensitive-data
   exclusions, and the value of non-black-box AI database operations.
 - DBFlow target database and dangerous DDL policy settings bind from Spring external configuration under `dbflow.*`.
-- Default local profile disables `spring.cloud.nacos.config.enabled`, `spring.cloud.nacos.discovery.enabled`, and
-  `spring.cloud.service-registry.auto-registration.enabled`; local tests and `./mvnw spring-boot:run` do not require a
-  real Nacos server.
-- Nacos is opt-in through `application-nacos.yml` and `SPRING_PROFILES_ACTIVE=nacos`. The profile imports
-  `optional:nacos:refinex-dbflow.yml?group=DBFLOW_GROUP&refreshEnabled=true` and
-  `optional:nacos:refinex-dbflow-${spring.profiles.active}.yml?group=DBFLOW_GROUP&refreshEnabled=true`.
+- Default application startup uses Nacos Config and Discovery. Tests override this with
+  `src/test/resources/application.yml`
+  so unit and slice tests do not require a real Nacos server.
+- Nacos import is declared in `application.yml` by default:
+  `optional:nacos:application-dbflow.yml?group=DBFLOW_GROUP&refreshEnabled=true`.
 - Nacos namespace, address, username, and password use `DBFLOW_NACOS_*` environment placeholders. No Nacos credentials
   are committed.
 - Nacos refresh is currently a configuration-source capability only. It must not directly close or replace the active
@@ -283,8 +280,8 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `DbflowPropertiesTests` covers `dbflow.*` binding, dangerous DDL defaults, duplicate project/environment rejection,
   missing JDBC URL/driver rejection, invalid Hikari pool settings, invalid whitelist rejection, and
   `allow-prod-dangerous-ddl` binding.
-- `NacosProfileConfigurationTests` covers default local Nacos disablement, `nacos` profile Config Data imports,
-  namespace/group placeholders, Discovery group, and absence of committed Nacos credential defaults.
+- `NacosProfileConfigurationTests` covers the default single Nacos Config Data import, namespace/group placeholders,
+  Discovery group, and absence of committed Nacos credential defaults.
 - `HikariDataSourceRegistryTests` covers one isolated Hikari pool per configured project/environment, shared Hikari
   default application, missing environment rejection without fallback, configurable startup connection validation,
   sanitized failure messages, and pool shutdown.

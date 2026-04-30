@@ -35,7 +35,7 @@ No active plans.
   Completed; added explanatory comments to copy-ready Nacos YAML snippets without changing runtime configuration.
 - [2026-04-30 Metadata And Nacos Deployment Clarity](exec-plans/completed/2026-04-30-metadata-nacos-deployment-clarity.md) -
   Completed; clarified Flyway metadata database execution boundaries, copy-ready metadata bootstrap SQL, and
-  copy-ready Nacos imported config content for the current `application-nacos.yml` dataIds.
+  copy-ready Nacos imported config content for the runtime Nacos Data IDs.
 - [2026-04-30 User Guides](exec-plans/completed/2026-04-30-user-guides.md) -
   Completed; added administrator, operator, and security/audit user guides with project-accurate routes, MCP tool names,
   secret-safe examples, audit value explanation, and first-use smoke tests.
@@ -89,7 +89,8 @@ No active plans.
 - [2026-04-29 DataSource Config Reloader](exec-plans/completed/2026-04-29-datasource-config-reloader.md) -
   Completed; implemented candidate validation, Hikari pool warmup, and atomic target datasource registry replacement.
 - [2026-04-29 Nacos Config Discovery Baseline](exec-plans/completed/2026-04-29-nacos-config-discovery-baseline.md) -
-  Completed; added Spring Cloud Alibaba Nacos Config and Discovery baseline wiring with opt-in profile tests.
+  Completed; added Spring Cloud Alibaba Nacos Config and Discovery baseline wiring; current startup now imports Nacos by
+  default.
 - [2026-04-29 Hikari DataSource Registry](exec-plans/completed/2026-04-29-hikari-datasource-registry.md) -
   Completed; implemented project/environment scoped target database Hikari pools and lifecycle tests.
 - [2026-04-29 MCP Bearer Token Authentication](exec-plans/completed/2026-04-29-mcp-bearer-token-auth.md) -

@@ -1,6 +1,6 @@
 # Refinex-DBFlow Deployment
 
-这份文档只保留一条主路径：复制 dev YAML，启动应用，使用 `admin/admin` 登录，随后在管理端修改密码并按需添加
+这份文档只保留一条主路径：复制 Nacos dev YAML，启动应用，使用 `admin/admin` 登录，随后在管理端修改密码并按需添加
 project/env。首次启动不需要提前准备示例业务库环境变量。
 
 ## 1. 前置条件
@@ -20,23 +20,20 @@ cd /Users/refinex/develop/code/Refinex-DBFlow
 
 ## 2. 推荐启动方式：Nacos dev
 
-`src/main/resources/application-nacos.yml` 当前会导入：
+`src/main/resources/application.yml` 默认会导入：
 
 ```text
-optional:nacos:refinex-dbflow.yml?group=DBFLOW_GROUP&refreshEnabled=true
-optional:nacos:refinex-dbflow-${spring.profiles.active}.yml?group=DBFLOW_GROUP&refreshEnabled=true
+optional:nacos:application-dbflow.yml?group=DBFLOW_GROUP&refreshEnabled=true
 ```
 
-dev 只需要先建一个 Data ID：
+dev 只需要先建一个 Data ID。不要再拆共享配置、profile 配置或本地外部 YAML：
 
-| 字段      | 值                                                                           |
-|---------|-----------------------------------------------------------------------------|
-| Data ID | `refinex-dbflow-nacos.yml`                                                  |
-| Group   | `DBFLOW_GROUP`                                                              |
-| Format  | YAML                                                                        |
-| 内容      | 复制 [nacos/dev/refinex-dbflow-nacos.yml](nacos/dev/refinex-dbflow-nacos.yml) |
-
-`refinex-dbflow.yml` 是可选共享配置；dev 首次启动可以不建，因为 import 使用了 `optional:`。
+| 字段      | 值                                                                       |
+|---------|-------------------------------------------------------------------------|
+| Data ID | `application-dbflow.yml`                                                |
+| Group   | `DBFLOW_GROUP`                                                          |
+| Format  | YAML                                                                    |
+| 内容      | 复制 [nacos/dev/application-dbflow.yml](nacos/dev/application-dbflow.yml) |
 
 启动：
 
@@ -59,24 +56,10 @@ set +a
 
 首次登录后请立即修改管理员密码，再创建个人用户、授权 project/env、颁发 MCP Token。
 
-## 3. 不接 Nacos 的本地启动
-
-如果只是本机跑通，不想启动 Nacos：
-
-```bash
-mkdir -p config
-cp docs/deployment/nacos/dev/application-dbflow.yml config/application-dbflow.yml
-SPRING_PROFILES_ACTIVE=dbflow \
-SPRING_CONFIG_ADDITIONAL_LOCATION=optional:file:./config/ \
-./mvnw spring-boot:run
-```
-
-这个路径使用同样的初始账号 `admin/admin`。
-
-## 4. 配置 project/env
+## 3. 配置 project/env
 
 目标业务库不通过 `.env.example` 配置，直接在 `dbflow.projects` 中维护。把
-[nacos/dev/refinex-dbflow-nacos.yml](nacos/dev/refinex-dbflow-nacos.yml) 里的示例结构取消注释并改成自己的库即可：
+[nacos/dev/application-dbflow.yml](nacos/dev/application-dbflow.yml) 里的示例结构取消注释并改成自己的库即可：
 
 ```yaml
 dbflow:
@@ -98,11 +81,11 @@ dbflow:
 - `prod` 环境不要默认配置 DROP 白名单。
 - `TRUNCATE` 默认需要服务端 confirmation challenge。
 
-## 5. 元数据库
+## 4. 元数据库
 
-首次 dev 启动默认使用 H2 内存库，适合把管理端和 MCP endpoint 跑起来。
+dev Nacos YAML 默认配置 H2 内存库，适合把管理端和 MCP endpoint 跑起来；应用重启后元数据会丢失。
 
-如果要使用 MySQL 作为 DBFlow 元数据库，在同一个 Nacos YAML 中增加 `spring.datasource` 即可。Flyway migration
+如果要使用 MySQL 作为 DBFlow 元数据库，在同一个 Nacos YAML 中替换 `spring.datasource` 即可。Flyway migration
 `src/main/resources/db/migration/V1__create_metadata_schema.sql` 只会在 `spring.datasource` 指向的 DBFlow metadata
 database
 执行，不会在 `dbflow.projects` 里的 target database 执行。
@@ -127,7 +110,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, REFERENCES
 FLUSH PRIVILEGES;
 ```
 
-## 6. 构建 jar
+## 5. 构建 jar
 
 ```bash
 ./mvnw test
@@ -146,7 +129,7 @@ set +a
 java -jar target/refinex-dbflow-0.1.0-SNAPSHOT.jar
 ```
 
-## 7. 内网部署注意
+## 6. 内网部署注意
 
 - DBFlow 不应暴露公网。
 - 建议应用只监听内网或 `127.0.0.1`，由内网反向代理终止 TLS。
@@ -179,7 +162,7 @@ server {
 
 如果浏览器型 MCP 客户端会带 `Origin`，把代理域名加入 `dbflow.security.mcp-endpoint.origin.trusted-origins`。
 
-## 8. 相关文档
+## 7. 相关文档
 
 - [../user-guide/admin-guide.md](../user-guide/admin-guide.md) - 管理员登录、用户、授权、Token、审计和健康状态。
 - [../user-guide/mcp-clients.md](../user-guide/mcp-clients.md) - Codex、Claude、OpenCode、Copilot MCP 客户端配置。

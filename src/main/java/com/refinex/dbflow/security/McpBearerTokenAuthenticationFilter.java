@@ -5,7 +5,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -55,6 +54,11 @@ public class McpBearerTokenAuthenticationFilter extends OncePerRequestFilter {
     private final Clock clock;
 
     /**
+     * MCP 安全错误响应写入器。
+     */
+    private final McpSecurityErrorResponseWriter errorResponseWriter;
+
+    /**
      * 创建 MCP Bearer Token 认证过滤器。
      *
      * @param tokenService      MCP Token 生命周期服务
@@ -62,9 +66,10 @@ public class McpBearerTokenAuthenticationFilter extends OncePerRequestFilter {
      */
     public McpBearerTokenAuthenticationFilter(
             McpTokenService tokenService,
-            McpRequestMetadataExtractor metadataExtractor
+            McpRequestMetadataExtractor metadataExtractor,
+            McpSecurityErrorResponseWriter errorResponseWriter
     ) {
-        this(tokenService, metadataExtractor, Clock.systemUTC());
+        this(tokenService, metadataExtractor, errorResponseWriter, Clock.systemUTC());
     }
 
     /**
@@ -72,15 +77,18 @@ public class McpBearerTokenAuthenticationFilter extends OncePerRequestFilter {
      *
      * @param tokenService      MCP Token 生命周期服务
      * @param metadataExtractor MCP 请求元信息提取器
+     * @param errorResponseWriter MCP 安全错误响应写入器
      * @param clock             时钟
      */
     McpBearerTokenAuthenticationFilter(
             McpTokenService tokenService,
             McpRequestMetadataExtractor metadataExtractor,
+            McpSecurityErrorResponseWriter errorResponseWriter,
             Clock clock
     ) {
         this.tokenService = tokenService;
         this.metadataExtractor = metadataExtractor;
+        this.errorResponseWriter = errorResponseWriter;
         this.clock = clock;
     }
 
@@ -187,10 +195,6 @@ public class McpBearerTokenAuthenticationFilter extends OncePerRequestFilter {
             McpRequestMetadata metadata,
             String error
     ) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer error=\"" + error + "\"");
-        response.setHeader(McpRequestMetadataExtractor.REQUEST_ID_HEADER, metadata.requestId());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write("{\"error\":\"unauthorized\"}");
+        errorResponseWriter.unauthorized(response, metadata.requestId(), error);
     }
 }

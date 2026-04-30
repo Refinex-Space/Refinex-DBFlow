@@ -22,6 +22,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-04-30 MCP Endpoint Security Hardening](exec-plans/completed/2026-04-30-mcp-endpoint-security-hardening.md) -
+  Completed; hardened `/mcp` Streamable HTTP with trusted Origin validation, request size limiting, fixed-window
+  source-IP rate limiting, query-string token rejection, stable sanitized HTTP errors, and tool-level denial/failure
+  metadata.
 - [2026-04-30 Operational Health And Metrics](exec-plans/completed/2026-04-30-operational-health-and-metrics.md) -
   Completed; added Spring Boot Actuator with minimal health/metrics exposure, shared DBFlow health service, custom
   health indicators, Micrometer metrics, admin health reuse, tests, and observability documentation.

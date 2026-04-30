@@ -35,7 +35,9 @@ web exposure: `/actuator/health`, `/actuator/metrics`, and `/actuator/metrics/{n
 the metadata database, target datasource registry, Nacos config/discovery state, and MCP endpoint readiness, with
 health details hidden by default and the management health page reusing the same shared health service. Micrometer
 meters now record MCP tool call counts, SQL risk distribution, rejection counts, SQL execution duration, and pending
-confirmation challenge counts.
+confirmation challenge counts. MCP endpoint security now covers trusted Origin validation, request size limiting,
+fixed-window source-IP rate limiting, stable sanitized HTTP errors, query-string token rejection, and tool-level error
+metadata for policy denial, SQL failure, confirmation expiry, and truncated results.
 
 ## Build & Run
 
@@ -73,6 +75,8 @@ Planned baseline:
 - Spring Security management session login for `/admin/**`, `/login`, and `/logout`
 - Thymeleaf management templates under `templates/admin/` and static assets under `/admin-assets/**`
 - Spring AI MCP WebMVC Server starter with Streamable HTTP endpoint `/mcp`
+- `/mcp` endpoint guard with configurable trusted Origin validation, request size limit, and fixed-window source-IP
+  rate limiting
 - JSQLParser 5.3 for SQL parsing and first-stage risk classification
 - MySQL 8 and MySQL 5.7 via Testcontainers after scaffold
 - Nacos Config and Discovery dependencies with opt-in `nacos` profile
@@ -117,6 +121,9 @@ Configuration sources and secret boundary:
   from source control, or a secret-managed BCrypt hash under `dbflow.admin.initial-user.password-hash`.
 - MCP Token pepper is read from `dbflow.security.mcp-token.pepper`; use an environment variable such as
   `DBFLOW_MCP_TOKEN_PEPPER` or a secret-managed external configuration source. No default pepper value is committed.
+- MCP endpoint protection is configured under `dbflow.security.mcp-endpoint.*`. Local/LAN deployments may add trusted
+  browser origins with `origin.trusted-origins`; non-browser MCP clients that omit `Origin` remain accepted. Request
+  size and basic rate limiting are enabled by default and should be tightened per deployment profile.
 - Secrets and credentials must not be committed. Database passwords, token pepper values, and Nacos credentials should
   be injected through environment variables, encrypted configuration, Nacos secret handling, or a secret manager.
 - MCP Token plaintext is valid only as the one-time issue response. Logs, audit events, tests, and metadata tables must
@@ -182,6 +189,12 @@ Configuration sources and secret boundary:
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
+- `/mcp` HTTP errors use stable JSON codes for unauthenticated, forbidden, untrusted Origin, request-too-large, and
+  rate-limited requests. Responses include a request id but never include Java stack traces, JDBC URLs, database
+  passwords, or Token plaintext.
+- MCP tool responses expose stable `error` and `notices` objects for policy denial, SQL execution failure,
+  confirmation expiry, and result truncation. `result_summary` and notices remain bounded; full result sets are not
+  copied into error metadata.
 
 MCP server runtime boundary:
 
@@ -193,6 +206,9 @@ MCP server runtime boundary:
 - HTTP authentication: every `/mcp` request must include `Authorization: Bearer <DBFlow Token>`. The server rejects
   missing, malformed, unknown, revoked, or expired tokens with HTTP 401 and rejects query string `token`/`access_token`.
   `Mcp-Session-Id` does not carry authentication state.
+- Endpoint guard: present `Origin` headers must match configured trusted origins when origin validation is enabled;
+  absent `Origin` headers are allowed for CLI/agent MCP clients. Requests over the configured byte limit return HTTP
+  413, and source-IP rate limit exhaustion returns HTTP 429 before SQL tool execution.
 - Request metadata extraction: `clientInfo` currently uses optional `Mcp-Client-Info` header at the filter layer and
   SQL tool calls copy it into `AuditRequestContext`. `User-Agent` comes from the HTTP header, source IP prefers
   `X-Forwarded-For`, then `X-Real-IP`, then remote address, and request id comes from `X-Request-Id` or a generated
@@ -289,7 +305,11 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,
-  no-session-auth-reuse, and SecurityContext-to-MCP-context propagation paths.
+  no-session-auth-reuse, SecurityContext-to-MCP-context propagation, unauthorized environment denial, stable tool error
+  metadata, and token/secret redaction paths.
+- `McpEndpointGuardSecurityTests` covers trusted and untrusted `Origin`, request-size rejection, source-IP rate
+  limiting, stable JSON security errors, and absence of stack traces, JDBC URLs, passwords, or Token plaintext in
+  guard responses.
 - `McpTokenServiceJpaTests` covers one-time plaintext issue, hash/prefix persistence, duplicate active-token rejection,
   invalid token rejection, revocation, reissue, successful validation, and `last_used_at` updates.
 - `AccessServiceJpaTests` covers active token uniqueness, token revocation/reissue, and grant query boundaries.

@@ -1,6 +1,7 @@
 package com.refinex.dbflow.mcp;
 
 import com.refinex.dbflow.audit.service.AuditRequestContext;
+import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.executor.*;
 import com.refinex.dbflow.observability.DbflowMetricsService;
 import com.refinex.dbflow.sqlpolicy.TruncateConfirmationConfirmRequest;
@@ -10,10 +11,13 @@ import org.springaicommunity.mcp.annotation.McpTool;
 import org.springaicommunity.mcp.annotation.McpToolParam;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * DBFlow MCP 工具 skeleton。
@@ -22,6 +26,30 @@ import java.util.Map;
  */
 @Component
 public class DbflowMcpTools {
+
+    /**
+     * 统一脱敏占位符。
+     */
+    private static final String REDACTED = "[REDACTED]";
+
+    /**
+     * JDBC 连接串模式。
+     */
+    private static final Pattern JDBC_URL_PATTERN = Pattern.compile("jdbc:[^\\s,'\";]+", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * 密码参数模式。
+     */
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile(
+            "(?i)((?:password|pwd)\\s*=\\s*)([^\\s&,'\";]+)"
+    );
+
+    /**
+     * Token 风险字段模式。
+     */
+    private static final Pattern TOKEN_PATTERN = Pattern.compile(
+            "(?i)((?:token|access_token|authorization)\\s*[=:]\\s*)(bearer\\s+)?([^\\s&,'\";]+)"
+    );
 
     /**
      * MCP 认证上下文解析器。
@@ -180,7 +208,9 @@ public class DbflowMcpTools {
                 "routines", routineData(result.routines()),
                 "durationMillis", result.durationMillis(),
                 "errorCode", result.errorCode(),
-                "errorMessage", result.errorMessage()
+                "errorMessage", sanitize(result.errorMessage()),
+                "error", errorData(result.errorCode(), result.errorMessage()),
+                "notices", notices(result.truncated())
         ));
     }
 
@@ -298,7 +328,8 @@ public class DbflowMcpTools {
                 "statementSummary", result.statementSummary(),
                 "sqlHash", result.sqlHash(),
                 "errorCode", result.errorCode(),
-                "errorMessage", result.errorMessage()
+                "errorMessage", sanitize(result.errorMessage()),
+                "error", errorData(result.errorCode(), result.errorMessage())
         ));
     }
 
@@ -342,20 +373,51 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_EXECUTE_SQL
         );
-        SqlExecutionResult result = sqlExecutionService.execute(new SqlExecutionRequest(
-                context.requestId(),
-                context.userId(),
-                context.tokenId(),
-                null,
-                project,
-                env,
-                sql,
-                schema,
-                Boolean.TRUE.equals(dryRun),
-                reason,
-                SqlExecutionOptions.defaults(),
-                auditContext(context, DbflowMcpNames.TOOL_EXECUTE_SQL)
-        ));
+        SqlExecutionResult result;
+        try {
+            result = sqlExecutionService.execute(new SqlExecutionRequest(
+                    context.requestId(),
+                    context.userId(),
+                    context.tokenId(),
+                    null,
+                    project,
+                    env,
+                    sql,
+                    schema,
+                    Boolean.TRUE.equals(dryRun),
+                    reason,
+                    SqlExecutionOptions.defaults(),
+                    auditContext(context, DbflowMcpNames.TOOL_EXECUTE_SQL)
+            ));
+        } catch (DbflowException exception) {
+            return response(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
+                    "project", project,
+                    "env", env,
+                    "schema", schema,
+                    "sqlReceived", sql != null && !sql.isBlank(),
+                    "dryRun", Boolean.TRUE.equals(dryRun),
+                    "reason", reason,
+                    "query", false,
+                    "truncated", false,
+                    "affectedRows", 0L,
+                    "status", "FAILED",
+                    "error", errorData("SQL_EXECUTION_FAILED", exception.getMessage())
+            ));
+        } catch (RuntimeException exception) {
+            return response(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
+                    "project", project,
+                    "env", env,
+                    "schema", schema,
+                    "sqlReceived", sql != null && !sql.isBlank(),
+                    "dryRun", Boolean.TRUE.equals(dryRun),
+                    "reason", reason,
+                    "query", false,
+                    "truncated", false,
+                    "affectedRows", 0L,
+                    "status", "FAILED",
+                    "error", errorData("SQL_EXECUTION_FAILED", "SQL 执行失败")
+            ));
+        }
         return response(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
                 "project", result.projectKey(),
                 "env", result.environmentKey(),
@@ -377,7 +439,9 @@ public class DbflowMcpTools {
                 "status", result.status(),
                 "confirmationRequired", result.confirmationRequired(),
                 "confirmationId", result.confirmationId(),
-                "expiresAt", result.expiresAt()
+                "expiresAt", result.expiresAt(),
+                "error", executionError(result),
+                "notices", notices(result.truncated())
         ));
     }
 
@@ -420,20 +484,35 @@ public class DbflowMcpTools {
                 DbflowMcpNames.TOOL_CONFIRM_SQL
         );
         if (boundary.allowed()) {
-            TruncateConfirmationDecision decision = truncateConfirmationService.confirm(
-                    new TruncateConfirmationConfirmRequest(
-                            context.requestId(),
-                            context.userId(),
-                            context.tokenId(),
-                            context.tokenPrefix(),
-                            project,
-                            env,
-                            confirmationId,
-                            sql,
-                            Instant.now(),
-                            auditContext(context, DbflowMcpNames.TOOL_CONFIRM_SQL)
-                    )
-            );
+            TruncateConfirmationDecision decision;
+            try {
+                decision = truncateConfirmationService.confirm(
+                        new TruncateConfirmationConfirmRequest(
+                                context.requestId(),
+                                context.userId(),
+                                context.tokenId(),
+                                context.tokenPrefix(),
+                                project,
+                                env,
+                                confirmationId,
+                                sql,
+                                Instant.now(),
+                                auditContext(context, DbflowMcpNames.TOOL_CONFIRM_SQL)
+                        )
+                );
+            } catch (DbflowException exception) {
+                String code = confirmationErrorCode(exception.getMessage());
+                return response(DbflowMcpNames.TOOL_CONFIRM_SQL, context, boundary, data(
+                        "project", project,
+                        "env", env,
+                        "confirmationId", confirmationId,
+                        "sqlReceived", sql != null && !sql.isBlank(),
+                        "reason", reason,
+                        "confirmed", false,
+                        "status", code,
+                        "error", errorData(code, exception.getMessage())
+                ));
+            }
             return response(DbflowMcpNames.TOOL_CONFIRM_SQL, context, boundary, data(
                     "project", project,
                     "env", env,
@@ -452,7 +531,9 @@ public class DbflowMcpTools {
                 "confirmationId", confirmationId,
                 "sqlReceived", sql != null && !sql.isBlank(),
                 "reason", reason,
-                "confirmed", false
+                "confirmed", false,
+                "status", "DENIED",
+                "error", errorData(boundary.reason(), boundary.message())
         ));
     }
 
@@ -513,6 +594,85 @@ public class DbflowMcpTools {
             values.put(String.valueOf(entries[index]), entries[index + 1]);
         }
         return values;
+    }
+
+    /**
+     * 创建统一错误数据。
+     *
+     * @param code    错误码
+     * @param message 错误摘要
+     * @return 错误数据；无错误码时返回 null
+     */
+    private Map<String, Object> errorData(String code, String message) {
+        if (!StringUtils.hasText(code)) {
+            return Collections.emptyMap();
+        }
+        return data(
+                "code", sanitize(code),
+                "message", sanitize(message),
+                "stackTraceIncluded", false
+        );
+    }
+
+    /**
+     * 创建 SQL 执行结果错误数据。
+     *
+     * @param result SQL 执行结果
+     * @return 错误数据；成功或确认挑战时返回 null
+     */
+    private Map<String, Object> executionError(SqlExecutionResult result) {
+        if ("DENIED".equalsIgnoreCase(result.status())) {
+            return errorData("POLICY_DENIED", result.statementSummary());
+        }
+        if ("FAILED".equalsIgnoreCase(result.status())) {
+            return errorData("SQL_EXECUTION_FAILED", result.statementSummary());
+        }
+        return Collections.emptyMap();
+    }
+
+    /**
+     * 创建结果提示列表。
+     *
+     * @param truncated 结果是否截断
+     * @return 提示列表
+     */
+    private java.util.List<Map<String, Object>> notices(boolean truncated) {
+        if (!truncated) {
+            return java.util.List.of();
+        }
+        return java.util.List.of(data(
+                "code", "RESULT_TRUNCATED",
+                "message", "结果已按服务端上限截断，未返回完整结果集"
+        ));
+    }
+
+    /**
+     * 从确认异常消息映射稳定错误码。
+     *
+     * @param message 异常消息
+     * @return 稳定错误码
+     */
+    private String confirmationErrorCode(String message) {
+        if (StringUtils.hasText(message) && message.contains("过期")) {
+            return "CONFIRMATION_EXPIRED";
+        }
+        return "CONFIRMATION_DENIED";
+    }
+
+    /**
+     * 对 MCP 客户端展示文本做基础脱敏。
+     *
+     * @param value 原始文本
+     * @return 脱敏文本
+     */
+    private String sanitize(String value) {
+        if (!StringUtils.hasText(value)) {
+            return value;
+        }
+        String sanitized = JDBC_URL_PATTERN.matcher(value).replaceAll(REDACTED);
+        sanitized = PASSWORD_PATTERN.matcher(sanitized).replaceAll("$1" + REDACTED);
+        sanitized = TOKEN_PATTERN.matcher(sanitized).replaceAll("$1" + REDACTED);
+        return sanitized;
     }
 
     /**

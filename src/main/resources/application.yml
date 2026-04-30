@@ -80,3 +80,15 @@ management:
 #   security:
 #     mcp-token:
 #       pepper: ${DBFLOW_MCP_TOKEN_PEPPER:}
+#     mcp-endpoint:
+#       origin:
+#         enabled: true
+#         trusted-origins:
+#           - ${DBFLOW_MCP_TRUSTED_ORIGIN:http://127.0.0.1:8080}
+#       request-size:
+#         enabled: true
+#         max-bytes: 1048576
+#       rate-limit:
+#         enabled: true
+#         max-requests: 120
+#         window: 1m

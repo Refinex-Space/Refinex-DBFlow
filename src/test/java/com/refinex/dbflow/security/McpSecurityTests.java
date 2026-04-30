@@ -83,6 +83,8 @@ class McpSecurityTests {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE)).contains("Bearer");
+        assertThat(parsePayload(response.getBody()).path("code").asText()).isEqualTo("UNAUTHORIZED");
+        assertThat(response.getBody()).doesNotContain("Exception", "password", "jdbc:");
     }
 
     /**
@@ -105,6 +107,8 @@ class McpSecurityTests {
         ResponseEntity<String> response = post("/mcp?access_token=dbf_query", bearerToken, null, initializeRequest());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(parsePayload(response.getBody()).path("code").asText()).isEqualTo("UNAUTHORIZED");
+        assertThat(response.getBody()).doesNotContain("dbf_query", bearerToken);
     }
 
     /**
@@ -147,6 +151,25 @@ class McpSecurityTests {
         assertThat(toolPayload.path("authentication").path("userId").isNumber()).isTrue();
         assertThat(toolPayload.path("authentication").path("tokenId").isNumber()).isTrue();
         assertThat(toolPayload.path("authentication").path("userAgent").asText()).isEqualTo("dbflow-mcp-security-test");
+    }
+
+    /**
+     * 验证目标环境权限拒绝以稳定结构返回，不泄露内部异常。
+     */
+    @Test
+    void shouldReturnStableToolErrorForUnauthorizedTarget() {
+        String bearerToken = issueBearerToken();
+        ResponseEntity<String> initializeResponse = post("/mcp", bearerToken, null, initializeRequest());
+        String sessionId = initializeResponse.getHeaders().getFirst(MCP_SESSION_HEADER);
+
+        ResponseEntity<String> toolCall = post("/mcp", bearerToken, sessionId, executeSqlToolCallRequest());
+        JsonNode toolPayload = parseToolTextPayload(toolCall.getBody());
+
+        assertThat(toolCall.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(toolPayload.path("authorization").path("allowed").asBoolean()).isFalse();
+        assertThat(toolPayload.path("data").path("status").asText()).isEqualTo("DENIED");
+        assertThat(toolPayload.path("data").path("error").path("code").asText()).isEqualTo("POLICY_DENIED");
+        assertThat(toolPayload.toString()).doesNotContain("Exception", "jdbc:", "password", bearerToken);
     }
 
     /**
@@ -219,6 +242,27 @@ class McpSecurityTests {
                 "params", Map.of(
                         "name", DbflowMcpNames.TOOL_LIST_TARGETS,
                         "arguments", Map.of()
+                )
+        );
+    }
+
+    /**
+     * 创建无授权目标环境的 execute_sql tool 调用请求。
+     *
+     * @return tools/call 请求体
+     */
+    private Map<String, Object> executeSqlToolCallRequest() {
+        return Map.of(
+                "jsonrpc", "2.0",
+                "id", 4,
+                "method", "tools/call",
+                "params", Map.of(
+                        "name", DbflowMcpNames.TOOL_EXECUTE_SQL,
+                        "arguments", Map.of(
+                                "project", "missing-project",
+                                "env", "prod",
+                                "sql", "SELECT 1"
+                        )
                 )
         );
     }

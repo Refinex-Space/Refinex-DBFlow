@@ -25,8 +25,10 @@ project/environment grants. Token plaintext is shown only through a one-time fla
 lists omit Token hash, password hash, database passwords, and full Token plaintext. The audit, dangerous policy, and
 system health pages now render real server-side views for audit filtering/pagination/details, YAML/Nacos dangerous
 DDL policy state, metadata database status, target Hikari pools, Nacos enablement, and MCP endpoint state. It does not
-yet contain CI configuration or production deployment configuration. The architecture below records the approved target
-design
+yet contain CI configuration or production deployment configuration. The MCP Streamable HTTP endpoint is now hardened
+with configurable trusted Origin validation, request size limits, fixed-window source-IP rate limiting, query-string
+token rejection, stable sanitized HTTP errors, and bounded MCP tool error metadata for denial/failure/expiry/truncation.
+The architecture below records the approved target design
 from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
 and must be updated as implementation packages are added.
@@ -159,17 +161,24 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- SecurityContextMcpAuthenticationContextResolver.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- observability/
+|   |   |   |   +-- DbflowHealthIndicators.java
+|   |   |   |   +-- DbflowHealthService.java
+|   |   |   |   +-- DbflowMetricsService.java
 |   |   |   |   +-- RequestIdFilter.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- security/
+|   |   |   |   +-- ActuatorSecurityConfiguration.java
 |   |   |   |   +-- AdminSecurityConfiguration.java
 |   |   |   |   +-- AdminSecurityProperties.java
 |   |   |   |   +-- AdminUserDetailsService.java
 |   |   |   |   +-- InitialAdminUserInitializer.java
 |   |   |   |   +-- McpAuthenticationToken.java
 |   |   |   |   +-- McpBearerTokenAuthenticationFilter.java
+|   |   |   |   +-- McpEndpointGuardFilter.java
+|   |   |   |   +-- McpEndpointSecurityProperties.java
 |   |   |   |   +-- McpRequestMetadata.java
 |   |   |   |   +-- McpRequestMetadataExtractor.java
+|   |   |   |   +-- McpSecurityErrorResponseWriter.java
 |   |   |   |   +-- McpSecurityConfiguration.java
 |   |   |   |   +-- McpTokenIssueResult.java
 |   |   |   |   +-- McpTokenProperties.java

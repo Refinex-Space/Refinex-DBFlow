@@ -3,8 +3,6 @@ package com.refinex.dbflow.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -35,6 +33,8 @@ public class McpSecurityConfiguration {
      * @param http              HTTP 安全构造器
      * @param tokenService      MCP Token 生命周期服务
      * @param metadataExtractor MCP 请求元信息提取器
+     * @param endpointSecurityProperties MCP endpoint 安全加固配置
+     * @param errorResponseWriter MCP 安全错误响应写入器
      * @return MCP 安全过滤链
      * @throws Exception Spring Security 构建异常
      */
@@ -43,10 +43,17 @@ public class McpSecurityConfiguration {
     public SecurityFilterChain mcpSecurityFilterChain(
             HttpSecurity http,
             McpTokenService tokenService,
-            McpRequestMetadataExtractor metadataExtractor
+            McpRequestMetadataExtractor metadataExtractor,
+            McpEndpointSecurityProperties endpointSecurityProperties,
+            McpSecurityErrorResponseWriter errorResponseWriter
     ) throws Exception {
+        McpEndpointGuardFilter endpointGuardFilter = new McpEndpointGuardFilter(
+                endpointSecurityProperties,
+                metadataExtractor,
+                errorResponseWriter
+        );
         McpBearerTokenAuthenticationFilter bearerTokenAuthenticationFilter =
-                new McpBearerTokenAuthenticationFilter(tokenService, metadataExtractor);
+                new McpBearerTokenAuthenticationFilter(tokenService, metadataExtractor, errorResponseWriter);
         http.securityMatcher(MCP_ENDPOINT)
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -55,18 +62,14 @@ public class McpSecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
                 .exceptionHandling(exceptionHandling -> exceptionHandling
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.setStatus(401);
-                            response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter().write("{\"error\":\"unauthorized\"}");
-                        })
-                        .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            response.setStatus(403);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            response.getWriter().write("{\"error\":\"forbidden\"}");
-                        })
+                        .authenticationEntryPoint((request, response, authException) ->
+                                errorResponseWriter.unauthorized(response,
+                                        metadataExtractor.extract(request).requestId(), "invalid_token"))
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                errorResponseWriter.forbidden(response,
+                                        metadataExtractor.extract(request).requestId(), "FORBIDDEN", "MCP 请求无权访问"))
                 )
+                .addFilterBefore(endpointGuardFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(bearerTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

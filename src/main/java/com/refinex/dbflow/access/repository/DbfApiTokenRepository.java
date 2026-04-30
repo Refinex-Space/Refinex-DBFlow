@@ -3,6 +3,7 @@ package com.refinex.dbflow.access.repository;
 import com.refinex.dbflow.access.entity.DbfApiToken;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -28,4 +29,22 @@ public interface DbfApiTokenRepository extends JpaRepository<DbfApiToken, Long> 
      * @return API Token 元数据
      */
     Optional<DbfApiToken> findByTokenHash(String tokenHash);
+
+    /**
+     * 按状态统计 Token 数量。
+     *
+     * @param status Token 状态
+     * @return Token 数量
+     */
+    long countByStatus(String status);
+
+    /**
+     * 统计指定状态和过期时间窗口内的 Token 数量。
+     *
+     * @param status Token 状态
+     * @param from   过期时间起点
+     * @param to     过期时间终点
+     * @return Token 数量
+     */
+    long countByStatusAndExpiresAtBetween(String status, Instant from, Instant to);
 }

@@ -18,7 +18,9 @@ Harness Powers lifecycle:
 
 ## Active Plans
 
-No active plans.
+- [2026-04-30 Admin Real Data](exec-plans/active/2026-04-30-admin-real-data.md) -
+  Active; remove remaining prototype/mock data from `/admin`, wire overview/config/shell to real server-side
+  view models, and verify redaction, empty states, permissions, and admin regressions.
 
 ## Completed Plans
 

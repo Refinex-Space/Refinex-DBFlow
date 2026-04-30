@@ -5,18 +5,18 @@
 <section>
     <div class="page-head">
         <div><h1>总览</h1>
-            <p class="muted">近 24 小时网关安全、执行和健康摘要。</p></div>
+            <p class="muted" th:text="${overview.windowLabel}">最近 24 小时网关安全、执行和健康摘要。</p></div>
         <div class="actions">
             <select class="select">
-                <option>全部环境</option>
-                <option>billing-core / prod</option>
-                <option>risk-lab / staging</option>
+                <option th:each="option : ${overview.environmentOptions}" th:text="${option.label}"
+                        th:value="${option.value}">全部环境
+                </option>
             </select>
-            <button class="btn" type="button">刷新</button>
+            <a class="btn" th:href="@{/admin}">刷新</a>
         </div>
     </div>
     <div class="metric-grid">
-        <div class="metric" th:each="metric : ${metrics}">
+        <div class="metric" th:each="metric : ${overview.metrics}">
             <div class="label" th:text="${metric.label}">SQL 请求</div>
             <div class="value"
                  th:classappend="${metric.tone == 'bad'} ? ' danger-text' : (${metric.tone == 'warn'} ? ' warn-text' : '')"
@@ -38,21 +38,25 @@
                         <th>项目/环境</th>
                         <th>Risk</th>
                         <th>Decision</th>
+                        <th>SQL Hash</th>
                         <th></th>
                     </tr>
                     </thead>
-                    <tbody>
-                    <tr th:each="row : ${auditRows}">
+                    <tbody th:if="${!overview.recentAuditRows.isEmpty()}">
+                    <tr th:each="row : ${overview.recentAuditRows}">
                         <td class="mono" th:text="${#strings.substring(row.time, 11)}">15:45:12</td>
-                        <td th:text="${row.user}">admin.refinex</td>
-                        <td th:text="${row.project + '/' + row.env}">billing-core/prod</td>
-                        <td><span
-                                th:class="'status ' + (${row.risk == 'CRITICAL'} ? 'bad' : (${row.risk == 'HIGH'} ? 'warn' : (${row.risk == 'LOW'} ? 'ok' : 'neutral')))"
-                                th:text="${row.risk}">LOW</span></td>
-                        <td><span
-                                th:class="'status ' + (${row.decision == 'EXECUTED'} ? 'ok' : (${row.decision == 'POLICY_DENIED'} ? 'bad' : 'warn'))"
-                                th:text="${row.decision}">EXECUTED</span></td>
+                        <td th:text="${row.user}">user</td>
+                        <td th:text="${row.project + '/' + row.env}">project/env</td>
+                        <td><span th:class="'status ' + ${row.riskTone}" th:text="${row.risk}">LOW</span></td>
+                        <td><span th:class="'status ' + ${row.decisionTone}" th:text="${row.decision}">EXECUTED</span>
+                        </td>
+                        <td class="mono" th:text="${row.sqlHash}">sha256:</td>
                         <td><a class="btn text" th:href="@{/admin/audit/{id}(id=${row.id})}">详情</a></td>
+                    </tr>
+                    </tbody>
+                    <tbody th:if="${overview.recentAuditRows.isEmpty()}">
+                    <tr>
+                        <td colspan="7">当前暂无审计事件。</td>
                     </tr>
                     </tbody>
                 </table>
@@ -61,11 +65,14 @@
         <div class="panel">
             <div class="panel-head"><h2>需要关注</h2><a class="btn text"
                                                         th:href="@{/admin/policies/dangerous}">危险策略</a></div>
-            <div class="panel-body small-list">
-                <div class="small-row" th:each="item : ${attentionItems}">
+            <div class="panel-body small-list" th:if="${!overview.attentionItems.isEmpty()}">
+                <div class="small-row" th:each="item : ${overview.attentionItems}">
                     <span th:text="${item.label}">DROP TABLE 被拒绝</span>
                     <a th:href="${item.href}"><span th:class="'decision ' + ${item.tone}" th:text="${item.status}">POLICY_DENIED</span></a>
                 </div>
+            </div>
+            <div class="panel-body small-list" th:if="${overview.attentionItems.isEmpty()}">
+                <div class="small-row"><span>当前无需要关注的运行时事项。</span><span class="decision ok">OK</span></div>
             </div>
         </div>
     </div>

@@ -1,17 +1,22 @@
 package com.refinex.dbflow.admin;
 
+import com.refinex.dbflow.access.service.ConfiguredEnvironmentView;
+import com.refinex.dbflow.access.service.ProjectEnvironmentCatalogService;
 import com.refinex.dbflow.audit.service.*;
 import com.refinex.dbflow.config.DangerousDdlDecision;
 import com.refinex.dbflow.config.DangerousDdlOperation;
 import com.refinex.dbflow.config.DbflowProperties;
 import com.refinex.dbflow.observability.DbflowHealthService;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -50,25 +55,41 @@ public class AdminOperationsViewService {
     private final DbflowProperties dbflowProperties;
 
     /**
+     * 项目环境配置目录服务。
+     */
+    private final ProjectEnvironmentCatalogService catalogService;
+
+    /**
      * DBFlow 运维健康服务。
      */
     private final DbflowHealthService healthService;
+
+    /**
+     * Spring 环境属性。
+     */
+    private final Environment springEnvironment;
 
     /**
      * 创建管理端运维页面视图服务。
      *
      * @param auditQueryService 审计查询服务
      * @param dbflowProperties  DBFlow 配置属性
+     * @param catalogService    项目环境配置目录服务
      * @param healthService     DBFlow 运维健康服务
+     * @param springEnvironment Spring 环境属性
      */
     public AdminOperationsViewService(
             AuditQueryService auditQueryService,
             DbflowProperties dbflowProperties,
-            DbflowHealthService healthService
+            ProjectEnvironmentCatalogService catalogService,
+            DbflowHealthService healthService,
+            Environment springEnvironment
     ) {
         this.auditQueryService = Objects.requireNonNull(auditQueryService);
         this.dbflowProperties = Objects.requireNonNull(dbflowProperties);
+        this.catalogService = Objects.requireNonNull(catalogService);
         this.healthService = Objects.requireNonNull(healthService);
+        this.springEnvironment = Objects.requireNonNull(springEnvironment);
     }
 
     /**
@@ -143,6 +164,151 @@ public class AdminOperationsViewService {
                 displayText(detail.confirmationId()),
                 failureReason(detail)
         );
+    }
+
+    /**
+     * 创建配置查看页视图。
+     *
+     * @return 配置查看页视图
+     */
+    public ConfigPageView configPage() {
+        List<ConfiguredEnvironmentView> environments = catalogService.listConfiguredEnvironments();
+        return new ConfigPageView(
+                configSourceLabel(),
+                environments.stream().map(this::toConfigRow).toList(),
+                environments.isEmpty() ? "当前未配置 dbflow.projects。" : ""
+        );
+    }
+
+    /**
+     * 将配置环境转换为配置页行。
+     *
+     * @param environment 环境配置视图
+     * @return 配置页行
+     */
+    private ConfigRow toConfigRow(ConfiguredEnvironmentView environment) {
+        JdbcParts jdbcParts = parseJdbcParts(environment.jdbcUrl());
+        return new ConfigRow(
+                environment.projectKey(),
+                environment.projectName(),
+                environment.environmentKey(),
+                environment.environmentName(),
+                environment.projectKey() + "/" + environment.environmentKey(),
+                jdbcParts.type(),
+                jdbcParts.host(),
+                jdbcParts.port(),
+                jdbcParts.schema(),
+                displayText(environment.username()),
+                hikariLimits(),
+                environment.metadataPresent() ? "已同步" : "未同步"
+        );
+    }
+
+    /**
+     * 解析 JDBC URL 的安全展示字段。
+     *
+     * @param jdbcUrl JDBC URL
+     * @return 安全展示字段
+     */
+    private JdbcParts parseJdbcParts(String jdbcUrl) {
+        if (!StringUtils.hasText(jdbcUrl)) {
+            return new JdbcParts("unknown", "-", "-", "-");
+        }
+        String normalized = jdbcUrl.trim();
+        if (normalized.startsWith("jdbc:mysql:")) {
+            return parseUriJdbc(normalized, "mysql");
+        }
+        if (normalized.startsWith("jdbc:h2:")) {
+            return parseH2Jdbc(normalized);
+        }
+        return new JdbcParts("unknown", "-", "-", "-");
+    }
+
+    /**
+     * 解析 URI 形态的 JDBC URL。
+     *
+     * @param jdbcUrl JDBC URL
+     * @param type    数据库类型
+     * @return 安全展示字段
+     */
+    private JdbcParts parseUriJdbc(String jdbcUrl, String type) {
+        try {
+            URI uri = URI.create(stripJdbcQuery(jdbcUrl).substring("jdbc:".length()));
+            String schema = uri.getPath();
+            if (StringUtils.hasText(schema) && schema.startsWith("/")) {
+                schema = schema.substring(1);
+            }
+            return new JdbcParts(
+                    type,
+                    displayText(uri.getHost()),
+                    uri.getPort() < 0 ? "-" : Integer.toString(uri.getPort()),
+                    displayText(schema)
+            );
+        } catch (IllegalArgumentException exception) {
+            return new JdbcParts(type, "解析失败", "-", "-");
+        }
+    }
+
+    /**
+     * 解析 H2 JDBC URL。
+     *
+     * @param jdbcUrl JDBC URL
+     * @return 安全展示字段
+     */
+    private JdbcParts parseH2Jdbc(String jdbcUrl) {
+        String safe = stripJdbcQuery(jdbcUrl);
+        int semicolon = safe.indexOf(';');
+        if (semicolon >= 0) {
+            safe = safe.substring(0, semicolon);
+        }
+        String schema = safe.replaceFirst("^jdbc:h2:", "");
+        return new JdbcParts("h2", "-", "-", displayText(schema));
+    }
+
+    /**
+     * 移除 JDBC URL query 参数，避免展示连接参数。
+     *
+     * @param jdbcUrl JDBC URL
+     * @return 移除 query 后的 URL
+     */
+    private String stripJdbcQuery(String jdbcUrl) {
+        int queryIndex = jdbcUrl.indexOf('?');
+        return queryIndex >= 0 ? jdbcUrl.substring(0, queryIndex) : jdbcUrl;
+    }
+
+    /**
+     * 创建 Hikari 限制摘要。
+     *
+     * @return Hikari 限制摘要
+     */
+    private String hikariLimits() {
+        DbflowProperties.Hikari hikari = dbflowProperties.getDatasourceDefaults().getHikari();
+        List<String> parts = new ArrayList<>();
+        if (hikari.getMaximumPoolSize() != null) {
+            parts.add("maxPool=" + hikari.getMaximumPoolSize());
+        }
+        if (hikari.getMinimumIdle() != null) {
+            parts.add("minIdle=" + hikari.getMinimumIdle());
+        }
+        if (hikari.getConnectionTimeout() != null) {
+            parts.add("connectionTimeout=" + hikari.getConnectionTimeout());
+        }
+        return parts.isEmpty() ? "-" : String.join(" ", parts);
+    }
+
+    /**
+     * 解析配置来源展示文本。
+     *
+     * @return 配置来源展示文本
+     */
+    private String configSourceLabel() {
+        boolean configEnabled = springEnvironment.getProperty("spring.cloud.nacos.config.enabled", Boolean.class, false);
+        boolean discoveryEnabled = springEnvironment.getProperty("spring.cloud.nacos.discovery.enabled", Boolean.class, false);
+        if (!configEnabled && !discoveryEnabled) {
+            return "Local application config";
+        }
+        String namespace = springEnvironment.getProperty("spring.cloud.nacos.config.namespace", "default");
+        return "Nacos enabled namespace=" + namespace;
     }
 
     /**
@@ -636,6 +802,59 @@ public class AdminOperationsViewService {
             String confirmationText,
             String failureReason
     ) {
+    }
+
+    /**
+     * 配置查看页视图。
+     *
+     * @param sourceLabel 配置来源
+     * @param rows        配置行
+     * @param emptyHint   空状态提示
+     */
+    public record ConfigPageView(String sourceLabel, List<ConfigRow> rows, String emptyHint) {
+    }
+
+    /**
+     * 配置页行。
+     *
+     * @param project     项目标识
+     * @param projectName 项目名称
+     * @param env         环境标识
+     * @param envName     环境名称
+     * @param datasource  数据源摘要
+     * @param type        数据库类型
+     * @param host        主机
+     * @param port        端口
+     * @param schema      数据库或 schema
+     * @param username    用户名
+     * @param limits      连接池限制
+     * @param syncStatus  元数据库同步状态
+     */
+    public record ConfigRow(
+            String project,
+            String projectName,
+            String env,
+            String envName,
+            String datasource,
+            String type,
+            String host,
+            String port,
+            String schema,
+            String username,
+            String limits,
+            String syncStatus
+    ) {
+    }
+
+    /**
+     * JDBC URL 安全展示字段。
+     *
+     * @param type   数据库类型
+     * @param host   主机
+     * @param port   端口
+     * @param schema 数据库或 schema
+     */
+    private record JdbcParts(String type, String host, String port, String schema) {
     }
 
     /**

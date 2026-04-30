@@ -6,13 +6,13 @@
     <div class="page-head">
         <div><h1>配置查看</h1>
             <p class="muted">展示脱敏后的项目、环境、数据源和执行限制配置。</p></div>
-        <button class="btn" type="button">刷新配置</button>
+        <a class="btn" th:href="@{/admin/config}">刷新配置</a>
     </div>
     <div class="panel">
-        <div class="panel-head"><h2>生效配置</h2><span class="mono muted">source=nacos:dbflow-targets-prod.yml</span>
+        <div class="panel-head"><h2>生效配置</h2><span class="mono muted" th:text="${configPage.sourceLabel}">Local application config</span>
         </div>
         <div class="table-wrap">
-            <table>
+            <table th:if="${!configPage.rows.isEmpty()}">
                 <thead>
                 <tr>
                     <th>项目</th>
@@ -24,24 +24,30 @@
                     <th>库名</th>
                     <th>用户名</th>
                     <th>执行限制</th>
-                    <th>加载时间</th>
+                    <th>同步状态</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="row : ${configs}">
-                    <td th:text="${row.project}">billing-core</td>
-                    <td th:text="${row.env}">prod</td>
-                    <td th:text="${row.datasource}">mysql8-primary</td>
+                <tr th:each="row : ${configPage.rows}">
+                    <td><span th:text="${row.project}">project</span><br><span class="muted"
+                                                                               th:text="${row.projectName}">Project</span>
+                    </td>
+                    <td><span th:text="${row.env}">env</span><br><span class="muted" th:text="${row.envName}">Env</span>
+                    </td>
+                    <td th:text="${row.datasource}">datasource</td>
                     <td th:text="${row.type}">mysql</td>
-                    <td class="mono" th:text="${row.host}">10.22.8.17</td>
-                    <td th:text="${row.port}">3306</td>
-                    <td th:text="${row.schema}">billing</td>
-                    <td th:text="${row.username}">dbflow_runner</td>
-                    <td class="mono" th:text="${row.limits}">maxRows=1000 timeout=8s fetchSize=200</td>
-                    <td th:text="${row.loadedAt}">2026-04-29 15:30</td>
+                    <td class="mono" th:text="${row.host}">host</td>
+                    <td th:text="${row.port}">port</td>
+                    <td th:text="${row.schema}">schema</td>
+                    <td th:text="${row.username}">username</td>
+                    <td class="mono" th:text="${row.limits}">limits</td>
+                    <td th:text="${row.syncStatus}">已同步</td>
                 </tr>
                 </tbody>
             </table>
+            <div class="empty" th:if="${configPage.rows.isEmpty()}" th:text="${configPage.emptyHint}">
+                当前未配置 dbflow.projects。
+            </div>
         </div>
     </div>
     <div class="notice">配置查看页不展示数据库密码、完整 JDBC URL 或 secret。</div>

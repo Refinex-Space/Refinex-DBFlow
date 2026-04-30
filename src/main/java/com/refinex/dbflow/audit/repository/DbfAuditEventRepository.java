@@ -20,4 +20,11 @@ public interface DbfAuditEventRepository extends JpaRepository<DbfAuditEvent, Lo
      * @return 最近审计事件列表
      */
     List<DbfAuditEvent> findTop20ByUserIdOrderByCreatedAtDesc(Long userId);
+
+    /**
+     * 查询最近 5 条审计事件，用于管理端总览页。
+     *
+     * @return 最近审计事件列表
+     */
+    List<DbfAuditEvent> findTop5ByOrderByCreatedAtDesc();
 }

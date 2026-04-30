@@ -54,4 +54,12 @@ public interface DbfUserEnvGrantRepository extends JpaRepository<DbfUserEnvGrant
      * @return 存在时返回 true
      */
     boolean existsByUserIdAndEnvironmentIdAndStatus(Long userId, Long environmentId, String status);
+
+    /**
+     * 按状态统计用户环境授权数量。
+     *
+     * @param status 授权状态
+     * @return 授权数量
+     */
+    long countByStatus(String status);
 }

@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "dbflow.projects[0].environments[0].name=Development",
         "dbflow.projects[0].environments[0].jdbc-url=jdbc:mysql://127.0.0.1:3306/demo_dev",
         "dbflow.projects[0].environments[0].username=demo_user",
-        "dbflow.projects[0].environments[0].password=${DBFLOW_DEMO_DEV_PASSWORD:}"
+        "dbflow.projects[0].environments[0].password=${DBFLOW_TEST_ENV_PASSWORD:}"
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @EnableConfigurationProperties(DbflowProperties.class)
@@ -84,7 +84,7 @@ class AccessDecisionServiceJpaTests {
         assertThat(environment.metadataPresent()).isTrue();
         assertThat(environment.driverClassName()).isEqualTo("com.mysql.cj.jdbc.Driver");
         assertThat(environment.username()).isEqualTo("demo_user");
-        assertThat(environment.toString()).doesNotContain("DBFLOW_DEMO_DEV_PASSWORD");
+        assertThat(environment.toString()).doesNotContain("DBFLOW_TEST_ENV_PASSWORD");
     }
 
     /**

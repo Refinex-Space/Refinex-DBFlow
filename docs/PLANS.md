@@ -22,6 +22,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-04-30 Deployment Doc Simplification](exec-plans/completed/2026-04-30-deployment-doc-simplification.md) -
+  Completed; simplified deployment docs to a single entrypoint, reduced `.env.example`, added copyable dev YAML, and
+  defaulted dev bootstrap to `admin/admin`.
 - [2026-04-30 Final README](exec-plans/completed/2026-04-30-final-readme.md) -
   Completed; rewrote the root README as the project entrypoint, quick-start guide, safety boundary summary, and
   documentation index.

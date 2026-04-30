@@ -57,6 +57,16 @@ management:
     tags:
       application: ${spring.application.name}
 
-# DBFlow 业务配置不在默认 application.yml 中维护。target datasource、危险策略、初始管理员、
-# MCP Token pepper 和 /mcp 安全策略应来自外部 config/application-dbflow.yml、Nacos dataId
-# refinex-dbflow.yml / refinex-dbflow-nacos.yml，或环境变量；示例见 docs/deployment/。
+# DBFlow 默认配置只服务本地首次启动。target datasource、危险策略和生产密钥应来自外部
+# config/application-dbflow.yml、Nacos dataId refinex-dbflow-nacos.yml，或密钥系统；示例见 docs/deployment/。
+dbflow:
+  # 本地默认 profile 只提供首次登录账号：admin / admin；部署配置仍以 Nacos 或外部 YAML 为准。
+  admin:
+    initial-user:
+      enabled: true
+      username: admin
+      display-name: DBFlow Administrator
+      password: admin
+  security:
+    mcp-token:
+      pepper: dev-only-change-me

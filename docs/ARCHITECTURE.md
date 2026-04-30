@@ -66,9 +66,10 @@ and must be updated as implementation packages are added.
 |   |   +-- harness-manifest.md
 |   +-- deployment/
 |   |   +-- README.md
-|   |   +-- application-dbflow-example.yml
-|   |   +-- metadata-database.md
-|   |   +-- nacos-config.md
+|   |   +-- nacos/
+|   |       +-- dev/
+|   |           +-- application-dbflow.yml
+|   |           +-- refinex-dbflow-nacos.yml
 |   +-- user-guide/
 |   |   +-- admin-guide.md
 |   |   +-- mcp-clients.md
@@ -484,10 +485,10 @@ Current MCP surface:
 
 Sensitive configuration boundary:
 
-- Database passwords may be empty or environment-variable placeholders such as `${DBFLOW_TARGET_PASSWORD}` and
-  `${DBFLOW_DEMO_DEV_PASSWORD:${DBFLOW_TARGET_PASSWORD}}`.
-- Initial administrator password may be supplied through `DBFLOW_ADMIN_INITIAL_PASSWORD` or a secret-managed BCrypt hash
-  through `dbflow.admin.initial-user.password-hash`; no default administrator password is committed.
+- Database passwords may be empty in dev templates or supplied directly through external YAML / secret-managed
+  configuration for the selected project environment.
+- Dev templates initialize `admin/admin` for first login. Non-dev deployments should replace this with managed
+  credentials before exposure beyond local/internal bootstrap.
 - MCP Token plaintext is returned only by `McpTokenIssueResult` at issue time. `dbf_api_tokens` stores only
   `token_hash`, `token_prefix`, status, expiry, revocation time, and last-used metadata.
 - MCP Token hash uses HMAC-SHA-256 with the configured pepper. Token validation must compare hashes and must not log,

@@ -1,0 +1,149 @@
+# Nacos Data ID: refinex-dbflow-nacos.yml
+# Group: DBFLOW_GROUP
+# Format: YAML
+#
+# dev 启动可直接复制本文件到 Nacos。默认管理员：admin / admin。首次登录后请立即修改密码。
+# target project/env 由用户按需添加到 dbflow.projects，不再通过一堆示例环境变量间接配置。
+#
+# 本文件里的“默认”优先指 DBFlow dev 模板默认值；少数 Spring Boot / Hikari 框架默认会在注释中单独说明。
+#
+# dev 默认值速览：
+# - 管理员：admin / admin。
+# - HTTP 监听：127.0.0.1:8080，只允许本机访问。
+# - metadata database：不在本文件配置，默认沿用 src/main/resources/application.yml 的 H2 内存库。
+# - target project/env：默认空，需要用户按需在 dbflow.projects 添加。
+# - DROP_TABLE / DROP_DATABASE：默认 DENY。
+# - TRUNCATE：默认 REQUIRE_CONFIRMATION。
+# - MCP Origin 校验：默认开启，只信任 localhost/127.0.0.1。
+# - MCP request size limit：默认开启，最大 1048576 bytes（1 MiB）。
+# - MCP rate limit：默认开启，单来源 120 requests / 1 minute。
+
+# server：DBFlow Web/Admin/MCP HTTP 服务监听配置。
+# 若完全不配置 server.address，Spring Boot 会监听所有网卡；dev 模板显式收敛到 127.0.0.1。
+server:
+  # 默认 127.0.0.1；只允许本机访问。内网部署时改为内网 IP，或继续保持本机监听并放到反向代理后面。
+  address: 127.0.0.1
+  # 默认 8080；端口冲突时可改，例如 18080。
+  port: 8080
+  # 默认 framework；让 Spring 读取 X-Forwarded-*，便于后续接 Nginx/TLS 反向代理。
+  forward-headers-strategy: framework
+
+# management：Actuator 暴露面。
+# dev 模板只暴露 health、metrics；健康详情默认不公开，避免泄露连接池、数据库等内部信息。
+management:
+  endpoints:
+    web:
+      exposure:
+        # 默认 health,metrics；不要在内网外暴露 env、beans、configprops 等敏感端点。
+        include: health,metrics
+  endpoint:
+    health:
+      # 默认 never；即使调用 /actuator/health，也不返回详细依赖配置。
+      show-details: never
+
+# dbflow：DBFlow 自有配置，包含 target datasource、项目环境、策略、初始化管理员和 MCP 安全边界。
+dbflow:
+  # datasource-defaults：所有 dbflow.projects[].environments[] 可继承的目标库连接默认值。
+  # 这里配置的是“被 MCP 操作的业务库”默认连接参数，不是 DBFlow metadata database。
+  datasource-defaults:
+    # 默认 com.mysql.cj.jdbc.Driver；每个 environment 可用 driver-class-name 单独覆盖。
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 默认 false；为 true 时应用启动会主动连接所有 target database，任一失败会阻断启动。
+    validate-on-startup: false
+    hikari:
+      # 默认 dbflow-target；实际 pool name 会追加 project/env，方便日志和指标定位。
+      pool-name-prefix: dbflow-target
+      # dev 默认 10；为空时使用 Hikari 默认 maximumPoolSize。
+      maximum-pool-size: 10
+      # dev 默认 1；必须小于等于 maximum-pool-size，适合本机低资源启动。
+      minimum-idle: 1
+      # dev 默认 30s；获取连接等待超过该时间会失败。
+      connection-timeout: 30s
+      # dev 默认 10m；空闲连接超过该时间可被回收。
+      idle-timeout: 10m
+      # dev 默认 30m；连接存活超过该时间会被轮换。
+      max-lifetime: 30m
+
+  # projects：DBFlow 可操作的 project/env 清单。
+  # 默认 []，即没有任何 target database。用户直接在 Nacos 维护自己的目标库。
+  # 字段说明：
+  # - key：项目稳定标识，MCP 调用时传 project；全局唯一，必填。
+  # - name：管理端展示名，可选。
+  # - environments[].key：环境稳定标识，MCP 调用时传 env；同一 project 内唯一，必填。
+  # - environments[].name：管理端展示名，可选。
+  # - environments[].jdbc-url：目标库 JDBC URL，必填；禁止在 URL 中带 password 参数。
+  # - environments[].driver-class-name：可选；为空时继承 datasource-defaults.driver-class-name。
+  # - environments[].username/password：目标库账号密码；dev 可明文，内网/生产建议改用 Nacos 加密、环境变量占位或密钥系统。
+  #
+  # 示例：取消注释后改成自己的库。
+  # projects:
+  #   - key: your-project
+  #     name: Your Project
+  #     environments:
+  #       - key: dev
+  #         name: Dev
+  #         jdbc-url: jdbc:mysql://127.0.0.1:3306/your_schema?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+  #         username: your_dbflow_user
+  #         password: your_dbflow_password
+  projects: [ ]
+
+  # policies：SQL 风险策略配置。
+  policies:
+    dangerous-ddl:
+      # defaults：未命中 whitelist 时的高危 DDL 默认处置。
+      # 可选值：DENY、ALLOW、REQUIRE_CONFIRMATION。dev 模板保持保守默认。
+      defaults:
+        # 默认 DENY；DROP TABLE 默认拒绝。
+        DROP_TABLE: DENY
+        # 默认 DENY；DROP DATABASE 默认拒绝。
+        DROP_DATABASE: DENY
+        # 默认 REQUIRE_CONFIRMATION；TRUNCATE 必须先创建确认挑战。
+        TRUNCATE: REQUIRE_CONFIRMATION
+      # whitelist：高危 DDL 例外清单，默认 []。
+      # DROP_DATABASE 只配置 schema-name，不配置 table-name；DROP_TABLE/TRUNCATE 必须配置 table-name。
+      # prod/production 环境额外要求 allow-prod-dangerous-ddl=true，否则即使命中白名单也拒绝。
+      whitelist: [ ]
+
+  # admin.initial-user：应用启动时自动创建或补齐的初始管理员。
+  # dev 默认启用 admin/admin，降低本地首次启动成本；首次登录后请立即修改密码。
+  admin:
+    initial-user:
+      # 默认 true；改为 false 后不会自动创建初始化管理员。
+      enabled: true
+      # 默认 admin；管理端登录用户名。
+      username: admin
+      # 默认 DBFlow Administrator；管理端展示名。
+      display-name: DBFlow Administrator
+      # 默认 admin；仅适合 dev。内网/生产请改强密码，或改用 password-hash。
+      password: admin
+      # 可选；配置 BCrypt hash 后可不配置 password。dev 模板默认不启用。
+      # password-hash:
+
+  # security：DBFlow 安全边界配置。
+  security:
+    # mcp-token.pepper：MCP Token hash 加盐材料，只参与服务端 hash，不会返回客户端。
+    # 默认 dev-only-change-me 仅适合本机开发；生产必须改成随机长字符串，并通过安全配置注入。
+    mcp-token:
+      pepper: dev-only-change-me
+
+    # mcp-endpoint：/mcp Streamable HTTP endpoint 的额外保护。
+    mcp-endpoint:
+      origin:
+        # 默认 true；浏览器型客户端带 Origin 时，必须命中 trusted-origins。
+        enabled: true
+        # 默认仅信任本机访问来源；改域名、端口或反向代理地址后要同步补充。
+        trusted-origins:
+          - http://127.0.0.1:8080
+          - http://localhost:8080
+      request-size:
+        # 默认 true；避免超大请求体压垮 MCP endpoint。
+        enabled: true
+        # 默认 1048576；单位 bytes，即 1 MiB，最低允许 1024。
+        max-bytes: 1048576
+      rate-limit:
+        # 默认 true；使用基础固定窗口限流。
+        enabled: true
+        # 默认 120；同一来源在 window 内最多请求数。
+        max-requests: 120
+        # 默认 1m；固定窗口长度，支持 5s、1m、10m 等 Spring Duration 写法。
+        window: 1m

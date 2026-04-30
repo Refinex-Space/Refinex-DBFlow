@@ -32,7 +32,7 @@ class DbflowPropertiesTests {
         String[] base = {
                 "dbflow.datasource-defaults.driver-class-name=com.mysql.cj.jdbc.Driver",
                 "dbflow.datasource-defaults.username=dbflow_demo",
-                "dbflow.datasource-defaults.password=${DBFLOW_DEMO_PASSWORD:}",
+                "dbflow.datasource-defaults.password=${DBFLOW_TEST_DEFAULT_PASSWORD:}",
                 "dbflow.datasource-defaults.validate-on-startup=false",
                 "dbflow.datasource-defaults.hikari.maximum-pool-size=8",
                 "dbflow.datasource-defaults.hikari.minimum-idle=2",
@@ -45,7 +45,7 @@ class DbflowPropertiesTests {
                 "dbflow.projects[0].environments[0].key=dev",
                 "dbflow.projects[0].environments[0].name=Development",
                 "dbflow.projects[0].environments[0].jdbc-url=jdbc:mysql://127.0.0.1:3306/refinex_demo",
-                "dbflow.projects[0].environments[0].password=${DBFLOW_DEMO_ENV_PASSWORD:}",
+                "dbflow.projects[0].environments[0].password=${DBFLOW_TEST_ENV_PASSWORD:}",
                 "dbflow.policies.dangerous-ddl.whitelist[0].project-key=demo",
                 "dbflow.policies.dangerous-ddl.whitelist[0].environment-key=dev",
                 "dbflow.policies.dangerous-ddl.whitelist[0].schema-name=refinex_demo",

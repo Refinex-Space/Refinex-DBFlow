@@ -59,9 +59,9 @@ result sets.
 | Admin guide          | `docs/user-guide/admin-guide.md`                                                                                                             | Management-side login, user, project/env grant, Token, audit, policy, health, and connection troubleshooting workflows.                                                                                                       |
 | Operator guide       | `docs/user-guide/operator-guide.md`                                                                                                          | Employee Token request, MCP setup, target selection, read-only smoke, confirmation handling, and rejection reason guidance.                                                                                                   |
 | Security/audit guide | `docs/user-guide/security-and-audit.md`                                                                                                      | Explanation of non-black-box AI database operations, audit fields, sensitive-data boundaries, and audit smoke verification.                                                                                                   |
-| Deployment guide     | `docs/deployment/README.md`                                                                                                                  | Executable local empty-environment startup, jar deployment, external MySQL/Nacos configuration, reverse proxy/TLS, intranet access, and preflight checklist.                                                                  |
-| Metadata DB guide    | `docs/deployment/metadata-database.md`                                                                                                       | Clarifies where Flyway metadata migration runs and provides copy-ready MySQL metadata database bootstrap commands.                                                                                                            |
-| Nacos config guide   | `docs/deployment/nacos-config.md`                                                                                                            | Maps current `application-nacos.yml` imports to copy-ready shared and profile-specific Nacos YAML snippets.                                                                                                                   |
+| Deployment guide     | `docs/deployment/README.md`                                                                                                                  | Single deployment entrypoint for Nacos dev startup, local YAML startup, metadata DB notes, project/env configuration, reverse proxy/TLS, and intranet access.                                                                 |
+| Dev local YAML       | `docs/deployment/nacos/dev/application-dbflow.yml`                                                                                           | Copyable local dev config for running without Nacos.                                                                                                                                                                          |
+| Dev Nacos YAML       | `docs/deployment/nacos/dev/refinex-dbflow-nacos.yml`                                                                                         | Copyable Nacos Data ID content for `refinex-dbflow-nacos.yml`.                                                                                                                                                                |
 | Troubleshooting      | `docs/runbooks/troubleshooting.md`                                                                                                           | Executable runbook for startup, Nacos, metadata DB, target DB, Token, MCP connectivity, Origin, rate limit, SQL policy, and SQL execution failures.                                                                           |
 | Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                                                                                          |
 
@@ -103,9 +103,9 @@ When Spring AI MCP APIs, auto-configuration, annotations, starter behavior, or t
 
 Configuration sources and secret boundary:
 
-- Deployment operators should start from [docs/deployment/README.md](deployment/README.md) and copy
-  [application-dbflow-example.yml](deployment/application-dbflow-example.yml) to an external config directory before
-  filling values through environment variables or a secret manager.
+- Deployment operators should start from [docs/deployment/README.md](deployment/README.md). Dev Nacos startup copies
+  [refinex-dbflow-nacos.yml](deployment/nacos/dev/refinex-dbflow-nacos.yml) into Nacos; non-Nacos local startup copies
+  [application-dbflow.yml](deployment/nacos/dev/application-dbflow.yml) into `config/application-dbflow.yml`.
 - MCP client users should start from [docs/user-guide/mcp-clients.md](user-guide/mcp-clients.md) for Codex, Claude,
   OpenCode, and Copilot Streamable HTTP setup. The guide intentionally uses fake Token examples and version notes for
   client-specific configuration fields.
@@ -131,9 +131,8 @@ Configuration sources and secret boundary:
   snapshot, and closes old pools only after a successful swap.
 - Target database pools are created only from `dbflow.projects[*].environments[*]`; the executor registry never falls
   back to the Spring Boot metadata `DataSource`.
-- Database passwords may use environment placeholders such as `${DBFLOW_TARGET_PASSWORD}`,
-  `${DBFLOW_DEMO_DEV_PASSWORD:${DBFLOW_TARGET_PASSWORD}}`, and
-  `${DBFLOW_DEMO_PROD_PASSWORD:${DBFLOW_TARGET_PASSWORD}}`.
+- Target database passwords belong directly in the selected external YAML or a secret-managed configuration source for
+  that environment. The repository no longer expands demo project/env passwords through `.env.example`.
 - Target JDBC URLs must not contain password parameters; passwords belong in the password fields or external secret
   sources so connection pool logs cannot expose them.
 - Shared target pool tuning is configured under `dbflow.datasource-defaults.hikari`, including pool name prefix,
@@ -147,13 +146,10 @@ Configuration sources and secret boundary:
 - Operational logs use `requestId` and `traceId` for correlation. HTTP requests accept `X-Request-Id` and
   `X-Trace-Id`; when `X-Trace-Id` is absent, DBFlow uses the request id as the trace id. Background config reload paths
   generate a `config-reload-*` correlation id when no request context exists.
-- Initial administrator credentials should come from environment variables, local development profile files excluded
-  from source control, or a secret-managed BCrypt hash under `dbflow.admin.initial-user.password-hash`. Generate the
-  hash with
-  `./mvnw -Dtest=AdminPasswordHashGeneratorTests -Ddbflow.generate-admin-password-hash=true -Dsurefire.useFile=false test`
-  after exporting `DBFLOW_ADMIN_INITIAL_PASSWORD`.
-- MCP Token pepper is read from `dbflow.security.mcp-token.pepper`; use an environment variable such as
-  `DBFLOW_MCP_TOKEN_PEPPER` or a secret-managed external configuration source. No default pepper value is committed.
+- Dev deployment YAML initializes `admin/admin` for first login. Administrators should change the password immediately
+  after login and use managed credentials for non-dev deployments.
+- MCP Token pepper is read from `dbflow.security.mcp-token.pepper`. Dev templates use `dev-only-change-me`; non-dev
+  deployments must replace it through Nacos YAML or a secret-managed configuration source.
 - MCP endpoint protection is configured under `dbflow.security.mcp-endpoint.*`. Local/LAN deployments may add trusted
   browser origins with `origin.trusted-origins`; non-browser MCP clients that omit `Origin` remain accepted. Request
   size and basic rate limiting are enabled by default and should be tightened per deployment profile.

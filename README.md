@@ -72,35 +72,31 @@ java -version
 
 ## 常用命令
 
-| 任务                  | 命令                                                                                                                                                                 |
-|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 安装依赖到本地缓存           | `./mvnw dependency:go-offline`                                                                                                                                     |
-| 运行测试                | `./mvnw test`                                                                                                                                                      |
-| 构建 jar              | `./mvnw -DskipTests package`                                                                                                                                       |
-| 本地启动                | `./mvnw spring-boot:run`                                                                                                                                           |
-| 启用 Nacos profile 启动 | `SPRING_PROFILES_ACTIVE=nacos DBFLOW_NACOS_SERVER_ADDR=127.0.0.1:8848 ./mvnw spring-boot:run`                                                                      |
-| 生成初始管理员 BCrypt hash | `DBFLOW_ADMIN_INITIAL_PASSWORD='change-me' ./mvnw -Dtest=AdminPasswordHashGeneratorTests -Ddbflow.generate-admin-password-hash=true -Dsurefire.useFile=false test` |
-| 校验 Harness 控制面      | `python3 scripts/check_harness.py`                                                                                                                                 |
+| 任务                  | 命令                                                            |
+|---------------------|---------------------------------------------------------------|
+| 安装依赖到本地缓存           | `./mvnw dependency:go-offline`                                |
+| 运行测试                | `./mvnw test`                                                 |
+| 构建 jar              | `./mvnw -DskipTests package`                                  |
+| 本地启动                | `./mvnw spring-boot:run`                                      |
+| 启用 Nacos profile 启动 | `set -a; source .env.example; set +a; ./mvnw spring-boot:run` |
+| 校验 Harness 控制面      | `python3 scripts/check_harness.py`                            |
 
 `./mvnw test` 在没有 Docker runtime 的机器上会自动跳过 Testcontainers 集成测试；这不是失败。
-表格中的 `change-me` 只用于说明命令形态；真实初始管理员密码建议按
-[部署手册](docs/deployment/README.md) 的 `read -rsp` 方式输入，避免进入 shell history。
 
 ## 配置与密钥边界
 
-仓库提供 [.env.example](.env.example) 和
-[application-dbflow-example.yml](docs/deployment/application-dbflow-example.yml) 作为模板。真实密码、Token、Token
-pepper、Nacos
-密码、数据库连接密钥必须放在环境变量、systemd `EnvironmentFile`、Nacos 加密能力、Vault/KMS 或其它密钥系统中，不能提交到仓库。
+仓库提供 [.env.example](.env.example) 启动 `nacos` profile，业务配置直接维护在
+[docs/deployment/nacos/dev/refinex-dbflow-nacos.yml](docs/deployment/nacos/dev/refinex-dbflow-nacos.yml) 对应的 Nacos
+Data ID 中。真实生产数据库密码、Token、Token pepper、Nacos 密码必须放在受控配置或密钥系统中，不能提交到仓库。
 
 关键边界：
 
 - `V1__create_metadata_schema.sql` 只在 DBFlow metadata database 执行，不在任何 target project database 执行。
 - JDBC URL 不应包含 `password=` 参数。
 - MCP Token 明文只在管理端颁发成功时展示一次；服务端只保存 hash 和元数据。
-- `DBFLOW_ADMIN_INITIAL_PASSWORD_HASH` 推荐用测试辅助命令生成；BCrypt hash 含 `$`，写入 shell/systemd 时要用单引号保护。
-- 默认 `application.yml` 只负责本地最小启动；target datasource、危险策略、管理员引导、Token pepper 和 MCP 安全策略应通过外部配置或
-  Nacos 管理。
+- dev 配置默认初始化 `admin/admin`；首次登录后应立即修改密码。
+- target datasource、危险策略、管理员引导、Token pepper 和 MCP 安全策略应通过 Nacos YAML 或本地
+  `config/application-dbflow.yml` 管理。
 
 ## MCP 工具面
 
@@ -125,25 +121,27 @@ pepper、Nacos
 
 按角色阅读：
 
-| 角色     | 起点                                                                                                                               |
-|--------|----------------------------------------------------------------------------------------------------------------------------------|
-| 部署/运维  | [部署手册](docs/deployment/README.md), [元数据库说明](docs/deployment/metadata-database.md), [Nacos 配置说明](docs/deployment/nacos-config.md) |
-| 管理员    | [管理员手册](docs/user-guide/admin-guide.md)                                                                                          |
-| 员工/操作者 | [员工使用手册](docs/user-guide/operator-guide.md), [MCP 客户端手册](docs/user-guide/mcp-clients.md)                                         |
-| 安全/审计  | [安全与审计说明](docs/user-guide/security-and-audit.md), [审计/观测说明](docs/OBSERVABILITY.md)                                               |
-| 排障人员   | [故障排查 Runbook](docs/runbooks/troubleshooting.md)                                                                                 |
-| 开发者    | [架构说明](docs/ARCHITECTURE.md), [Java 开发规范](docs/references/java-development-standards.md), [执行计划索引](docs/PLANS.md)                |
-| 产品/设计  | [后台管理原型说明](docs/prototypes/admin/README.md), [后台 HTML 原型](docs/prototypes/admin/index.html)                                      |
+| 角色     | 起点                                                                                                                |
+|--------|-------------------------------------------------------------------------------------------------------------------|
+| 部署/运维  | [部署手册](docs/deployment/README.md), [Nacos dev YAML](docs/deployment/nacos/dev/refinex-dbflow-nacos.yml)           |
+| 管理员    | [管理员手册](docs/user-guide/admin-guide.md)                                                                           |
+| 员工/操作者 | [员工使用手册](docs/user-guide/operator-guide.md), [MCP 客户端手册](docs/user-guide/mcp-clients.md)                          |
+| 安全/审计  | [安全与审计说明](docs/user-guide/security-and-audit.md), [审计/观测说明](docs/OBSERVABILITY.md)                                |
+| 排障人员   | [故障排查 Runbook](docs/runbooks/troubleshooting.md)                                                                  |
+| 开发者    | [架构说明](docs/ARCHITECTURE.md), [Java 开发规范](docs/references/java-development-standards.md), [执行计划索引](docs/PLANS.md) |
+| 产品/设计  | [后台管理原型说明](docs/prototypes/admin/README.md), [后台 HTML 原型](docs/prototypes/admin/index.html)                       |
 
 关键文档：
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - 当前模块地图、架构边界和已实现能力。
 - [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) - 测试、运行、观测、日志、指标和安全边界。
-- [docs/deployment/README.md](docs/deployment/README.md) - 从空环境启动、本地 YAML、MySQL、Nacos、TLS、内网访问限制。
-- [docs/deployment/metadata-database.md](docs/deployment/metadata-database.md) - Flyway metadata schema 应在哪个
-  database 执行。
-- [docs/deployment/nacos-config.md](docs/deployment/nacos-config.md) - 当前 `application-nacos.yml` import 对应的 Nacos
-  YAML 模板。
+- [docs/deployment/README.md](docs/deployment/README.md) - Nacos dev 启动、本地 YAML、元数据库、project/env、TLS、内网访问限制。
+- [docs/deployment/nacos/dev/application-dbflow.yml](docs/deployment/nacos/dev/application-dbflow.yml) - 不接 Nacos
+  时可复制到
+  `config/application-dbflow.yml` 的 dev 配置。
+- [docs/deployment/nacos/dev/refinex-dbflow-nacos.yml](docs/deployment/nacos/dev/refinex-dbflow-nacos.yml) - 可直接复制到
+  Nacos
+  Data ID 的 dev 配置。
 - [docs/user-guide/mcp-clients.md](docs/user-guide/mcp-clients.md) - Codex、Claude、OpenCode、Copilot MCP 配置和 smoke
   prompt。
 - [docs/user-guide/admin-guide.md](docs/user-guide/admin-guide.md) - 登录、用户、授权、Token、审计、策略、连接排查。
@@ -161,7 +159,7 @@ pepper、Nacos
 +-- src/main/resources/db/migration/    # DBFlow metadata database Flyway migration
 +-- src/main/resources/templates/admin/ # Thymeleaf 管理端页面
 +-- src/main/resources/static/          # 管理端静态资源
-+-- docs/deployment/                    # 部署、元数据库、Nacos 和示例配置
++-- docs/deployment/                    # 部署说明和可复制 dev 配置
 +-- docs/user-guide/                    # 管理员、员工、MCP 客户端、安全审计手册
 +-- docs/runbooks/                      # 可执行排障手册
 +-- docs/exec-plans/                    # Harness specs、active plans、completed plans

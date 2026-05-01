@@ -5,6 +5,7 @@ import com.refinex.dbflow.access.repository.*;
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.common.ErrorCode;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,7 +80,7 @@ public class AccessService {
      * @param self 当前 Bean 的 Spring AOP 代理实例
      */
     @Autowired
-    public void setSelf(AccessService self) {
+    public void setSelf(@Lazy AccessService self) {
         this.self = self;
     }
 

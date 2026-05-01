@@ -1,9 +1,6 @@
 package com.refinex.dbflow.admin.controller;
 
-import com.refinex.dbflow.admin.command.CreateUserCommand;
-import com.refinex.dbflow.admin.command.GrantEnvironmentCommand;
-import com.refinex.dbflow.admin.command.IssueTokenCommand;
-import com.refinex.dbflow.admin.command.UpdateProjectGrantsCommand;
+import com.refinex.dbflow.admin.command.*;
 import com.refinex.dbflow.admin.service.AdminAccessManagementService;
 import com.refinex.dbflow.admin.service.AdminOperationsViewService;
 import com.refinex.dbflow.admin.service.AdminOverviewViewService;
@@ -11,20 +8,14 @@ import com.refinex.dbflow.admin.service.AdminShellViewService;
 import com.refinex.dbflow.admin.view.GrantFilter;
 import com.refinex.dbflow.admin.view.TokenFilter;
 import com.refinex.dbflow.admin.view.UserFilter;
-import com.refinex.dbflow.audit.dto.AuditQueryCriteria;
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.security.properties.AdminSecurityProperties;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -418,56 +409,19 @@ public class AdminHomeController {
     /**
      * 显示审计列表页。
      *
-     * @param from           创建时间起点
-     * @param to             创建时间终点
-     * @param userId         用户主键
-     * @param project        项目标识
-     * @param env            环境标识
-     * @param risk           风险级别
-     * @param decision       决策
-     * @param sqlHash        SQL hash
-     * @param tool           工具名称
-     * @param page           页码
-     * @param size           每页条数
-     * @param sort           排序字段
-     * @param direction      排序方向
+     * @param filter         审计查询筛选条件
      * @param model          页面模型
      * @param authentication 当前认证信息
      * @return 审计列表页模板
      */
     @GetMapping("/admin/audit")
     public String audit(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
-            @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) String project,
-            @RequestParam(required = false) String env,
-            @RequestParam(required = false) String risk,
-            @RequestParam(required = false) String decision,
-            @RequestParam(required = false) String sqlHash,
-            @RequestParam(required = false) String tool,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size,
-            @RequestParam(required = false) String sort,
-            @RequestParam(required = false) String direction,
+            @ModelAttribute AuditQueryFilter filter,
             Model model,
             Authentication authentication) {
         addCommonModel(model, authentication, "audit",
                 "route=/admin/audit · template=admin/audit-list.html · fragment=auditFilterBar + auditTable + pagination");
-        model.addAttribute("auditPage", operationsViewService.auditPage(new AuditQueryCriteria(
-                from,
-                to,
-                userId,
-                project,
-                env,
-                risk,
-                decision,
-                sqlHash,
-                tool,
-                page,
-                size,
-                sort,
-                direction)));
+        model.addAttribute("auditPage", operationsViewService.auditPage(filter.toCriteria()));
         return "admin/audit-list";
     }
 

@@ -14,6 +14,7 @@ import com.refinex.dbflow.common.ErrorCode;
 import com.refinex.dbflow.security.token.McpTokenIssueResult;
 import com.refinex.dbflow.security.token.McpTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -119,7 +120,7 @@ public class AdminAccessManagementService {
      * @param self 当前 Bean 的 Spring AOP 代理实例
      */
     @Autowired
-    public void setSelf(AdminAccessManagementService self) {
+    public void setSelf(@Lazy AdminAccessManagementService self) {
         this.self = self;
     }
 

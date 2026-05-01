@@ -127,21 +127,21 @@ class AuditQueryServiceTests {
      */
     @Test
     void shouldFilterAuditEventsBySupportedFields() {
-        AuditQueryCriteria criteria = new AuditQueryCriteria(
-                baseTime.plusSeconds(150),
-                baseTime.plusSeconds(240),
-                firstUser.getId(),
-                "demo",
-                "prod",
-                "HIGH",
-                "FAILED",
-                "hash-update",
-                "dbflow_explain_sql",
-                0,
-                10,
-                "createdAt",
-                "desc"
-        );
+        AuditQueryCriteria criteria = AuditQueryCriteria.builder()
+                .from(baseTime.plusSeconds(150))
+                .to(baseTime.plusSeconds(240))
+                .userId(firstUser.getId())
+                .projectKey("demo")
+                .environmentKey("prod")
+                .riskLevel("HIGH")
+                .decision("FAILED")
+                .sqlHash("hash-update")
+                .tool("dbflow_explain_sql")
+                .page(0)
+                .size(10)
+                .sort("createdAt")
+                .direction("desc")
+                .build();
 
         AuditEventPageResponse<AuditEventSummary> page = auditQueryService.query(criteria);
 
@@ -164,14 +164,18 @@ class AuditQueryServiceTests {
      */
     @Test
     void shouldPageAndSortAuditEvents() {
-        AuditQueryCriteria firstPageCriteria = new AuditQueryCriteria(
-                null, null, null, null, null, null, null, null, null,
-                0, 2, "createdAt", "desc"
-        );
-        AuditQueryCriteria secondPageCriteria = new AuditQueryCriteria(
-                null, null, null, null, null, null, null, null, null,
-                1, 2, "createdAt", "desc"
-        );
+        AuditQueryCriteria firstPageCriteria = AuditQueryCriteria.builder()
+                .page(0)
+                .size(2)
+                .sort("createdAt")
+                .direction("desc")
+                .build();
+        AuditQueryCriteria secondPageCriteria = AuditQueryCriteria.builder()
+                .page(1)
+                .size(2)
+                .sort("createdAt")
+                .direction("desc")
+                .build();
 
         AuditEventPageResponse<AuditEventSummary> firstPage = auditQueryService.query(firstPageCriteria);
         AuditEventPageResponse<AuditEventSummary> secondPage = auditQueryService.query(secondPageCriteria);

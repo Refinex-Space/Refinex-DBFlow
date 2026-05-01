@@ -464,8 +464,8 @@ public class DbfAuditEvent {
             event.tool = this.tool;
             event.operationType = this.operationType;
             event.riskLevel = this.riskLevel;
-            event.status = this.status;
             event.decision = this.decision;
+            event.status = statusOrDefault();
             event.sqlHash = this.sqlHash;
             event.sqlText = this.sqlText;
             event.resultSummary = this.resultSummary;
@@ -474,6 +474,21 @@ public class DbfAuditEvent {
             event.errorMessage = this.errorMessage;
             event.confirmationId = this.confirmationId;
             return event;
+        }
+
+        /**
+         * 解析非空审计状态，兼容只设置 decision 的旧调用路径。
+         *
+         * @return 审计状态
+         */
+        private String statusOrDefault() {
+            if (status != null && !status.isBlank()) {
+                return status;
+            }
+            if (decision != null && !decision.isBlank()) {
+                return decision;
+            }
+            return "UNKNOWN";
         }
     }
 

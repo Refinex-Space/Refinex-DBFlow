@@ -214,21 +214,12 @@ public class AdminOverviewViewService {
      * @return 最近审计行
      */
     private List<RecentAuditRow> recentAuditRows() {
-        AuditEventPageResponse<AuditEventSummary> page = auditQueryService.query(new AuditQueryCriteria(
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                0,
-                RECENT_AUDIT_SIZE,
-                "createdAt",
-                "desc"
-        ));
+        AuditEventPageResponse<AuditEventSummary> page = auditQueryService.query(AuditQueryCriteria.builder()
+                .page(0)
+                .size(RECENT_AUDIT_SIZE)
+                .sort("createdAt")
+                .direction("desc")
+                .build());
         return page.content().stream().map(this::toRecentAuditRow).toList();
     }
 

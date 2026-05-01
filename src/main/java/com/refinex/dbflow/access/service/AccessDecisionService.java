@@ -9,6 +9,7 @@ import com.refinex.dbflow.access.entity.DbfUser;
 import com.refinex.dbflow.access.model.AccessDecisionReason;
 import com.refinex.dbflow.access.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,7 +82,7 @@ public class AccessDecisionService {
      * @param self 当前 Bean 的 Spring AOP 代理实例
      */
     @Autowired
-    public void setSelf(AccessDecisionService self) {
+    public void setSelf(@Lazy AccessDecisionService self) {
         this.self = self;
     }
 

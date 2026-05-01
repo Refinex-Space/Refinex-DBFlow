@@ -329,28 +329,23 @@ public class AdminOperationsViewService {
      */
     private AuditQueryCriteria normalizeCriteria(AuditQueryCriteria criteria) {
         AuditQueryCriteria safeCriteria = criteria == null
-                ? new AuditQueryCriteria(null, null, null, null, null, null, null, null, null,
-                0, DEFAULT_PAGE_SIZE, "createdAt", "desc")
+                ? AuditQueryCriteria.builder()
+                  .page(0)
+                  .size(DEFAULT_PAGE_SIZE)
+                  .sort("createdAt")
+                  .direction("desc")
+                  .build()
                 : criteria;
         int page = safeCriteria.page() == null || safeCriteria.page() < 0 ? 0 : safeCriteria.page();
         int size = safeCriteria.size() == null || safeCriteria.size() <= 0
                 ? DEFAULT_PAGE_SIZE
                 : Math.min(safeCriteria.size(), MAX_PAGE_SIZE);
-        return new AuditQueryCriteria(
-                safeCriteria.from(),
-                safeCriteria.to(),
-                safeCriteria.userId(),
-                safeCriteria.projectKey(),
-                safeCriteria.environmentKey(),
-                safeCriteria.riskLevel(),
-                safeCriteria.decision(),
-                safeCriteria.sqlHash(),
-                safeCriteria.tool(),
-                page,
-                size,
-                textOrDefault(safeCriteria.sort(), "createdAt"),
-                textOrDefault(safeCriteria.direction(), "desc")
-        );
+        return AuditQueryCriteria.from(safeCriteria)
+                .page(page)
+                .size(size)
+                .sort(textOrDefault(safeCriteria.sort(), "createdAt"))
+                .direction(textOrDefault(safeCriteria.direction(), "desc"))
+                .build();
     }
 
     /**

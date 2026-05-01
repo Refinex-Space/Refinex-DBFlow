@@ -650,3 +650,54 @@ skipped tests are Testcontainers MySQL tests because this environment has no val
 `rg -n "public record" src/main/java/com/refinex/dbflow/admin src/main/java/com/refinex/dbflow/mcp src/main/java/com/refinex/dbflow/executor src/main/java/com/refinex/dbflow/observability`;
 remaining records are top-level DTO, view, command, auth, and support records, not nested public records inside
 services/controllers/components/configurations. Completion handoff is ready for `harness-verify`.
+
+## Task 11: Reduce Long Parameter Surfaces
+
+**Files:**
+
+- Create: `src/main/java/com/refinex/dbflow/admin/command/AuditQueryFilter.java`
+- Modify: `src/main/java/com/refinex/dbflow/admin/controller/AdminAuditEventController.java`
+- Modify: `src/main/java/com/refinex/dbflow/admin/controller/AdminHomeController.java`
+- Modify: `src/main/java/com/refinex/dbflow/audit/dto/AuditQueryCriteria.java`
+- Modify: `src/main/java/com/refinex/dbflow/audit/service/AuditQueryService.java`
+- Modify: `src/main/java/com/refinex/dbflow/admin/service/AdminOverviewViewService.java`
+- Modify: `src/main/java/com/refinex/dbflow/admin/service/AdminOperationsViewService.java`
+- Modify: `src/main/java/com/refinex/dbflow/executor/support/SqlExecutionResultFactory.java`
+- Modify: `src/main/java/com/refinex/dbflow/access/service/AccessService.java`
+- Modify: `src/main/java/com/refinex/dbflow/access/service/AccessDecisionService.java`
+- Modify: `src/main/java/com/refinex/dbflow/admin/service/AdminAccessManagementService.java`
+- Modify: `src/main/java/com/refinex/dbflow/audit/entity/DbfAuditEvent.java`
+- Modify: SQL executor call sites and focused tests that construct audit query criteria.
+
+**Decision Trace:** Reduces Sonar S107-style method parameter violations without changing routes, query parameter names,
+JSON field names, SQL execution status values, or bounded-result behavior.
+
+- [x] **Step 1: Replace Admin audit request parameter fan-out with a bindable filter object.**
+
+Use a small command object for Spring MVC query binding and keep `AuditQueryCriteria` as the service-layer contract.
+
+- [x] **Step 2: Replace `SqlExecutionResultFactory.create` with a Builder entrypoint.**
+
+Keep result content unchanged while making optional fields explicit at call sites.
+
+- [x] **Step 3: Verify focused behavior and structural scan.**
+
+Run focused admin/audit/executor tests where possible, scan for remaining production methods with more than seven
+parameters, and finish with Harness and whitespace checks.
+
+**Evidence:** Added `AuditQueryFilter` as the Spring MVC query-binding object and changed both audit controller
+entrypoints to accept one model attribute instead of 13 request parameters. Added `AuditQueryCriteria` Builder helpers
+and replaced long constructor use in audit/admin services and focused tests. Replaced
+`SqlExecutionResultFactory.create(...)` with `SqlExecutionResultFactory.builder(...).build()` and migrated SQL executor
+call sites. During focused verification, existing self-proxy setter injection in access/admin services blocked
+application context startup; added `@Lazy` to those self-proxy setter parameters to preserve AOP proxy calls while
+avoiding eager circular creation. Ran
+`./mvnw -Dtest=AdminAuditEventControllerTests,AdminOperationsPageControllerTests,AuditQueryServiceTests test`; 13 tests
+passed, 0 failures, 0 errors, 0 skipped. The first full `./mvnw test` then exposed one existing audit-builder gap where
+`DbfAuditEvent.builder()` could persist a null `status` when legacy callers only set `decision`; added a non-null
+fallback that preserves explicit `status`, then uses `decision`, then `"UNKNOWN"`. Final verification: `./mvnw test`
+passed with 157 tests, 0 failures, 0 errors, 10 skipped; the skipped tests are Testcontainers MySQL tests because the
+environment has no valid Docker socket (`/var/run/docker.sock`). `python3 scripts/check_harness.py` passed all 14
+manifest checks. `git diff --check` passed. A production method parameter scan excluding record canonical constructors
+reported no methods over seven parameters. `rg -n "SqlExecutionResultFactory\\.create|new AuditQueryCriteria\\("
+src/main/java src/test/java` only reports the internal `AuditQueryCriteria.Builder.build()` constructor call.

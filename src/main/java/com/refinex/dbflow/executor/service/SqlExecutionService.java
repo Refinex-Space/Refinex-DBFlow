@@ -36,7 +36,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -381,23 +380,12 @@ public class SqlExecutionService {
             SqlClassification classification,
             TruncateConfirmationDecision decision
     ) {
-        return SqlExecutionResultFactory.create(
-                request,
-                classification,
-                false,
-                List.of(),
-                List.of(),
-                false,
-                0L,
-                List.of(),
-                0L,
-                "TRUNCATE 需要服务端二次确认",
-                decision.sqlHash(),
-                true,
-                decision.confirmationId(),
-                decision.expiresAt(),
-                "REQUIRES_CONFIRMATION"
-        );
+        return SqlExecutionResultFactory.builder(request, classification)
+                .statementSummary("TRUNCATE 需要服务端二次确认")
+                .sqlHash(decision.sqlHash())
+                .confirmationRequired(decision.confirmationId(), decision.expiresAt())
+                .status("REQUIRES_CONFIRMATION")
+                .build();
     }
 
     /**
@@ -415,23 +403,11 @@ public class SqlExecutionService {
             String summary,
             String sqlHash
     ) {
-        return SqlExecutionResultFactory.create(
-                request,
-                classification,
-                false,
-                List.of(),
-                List.of(),
-                false,
-                0L,
-                List.of(),
-                0L,
-                summary,
-                sqlHash,
-                false,
-                null,
-                null,
-                STATUS_DRY_RUN
-        );
+        return SqlExecutionResultFactory.builder(request, classification)
+                .statementSummary(summary)
+                .sqlHash(sqlHash)
+                .status(STATUS_DRY_RUN)
+                .build();
     }
 
     /**

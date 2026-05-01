@@ -108,8 +108,14 @@ public class SqlJdbcExecutor {
             List<SqlExecutionWarning> warnings = warnings(statement.getWarnings());
             String summary = "查询返回 " + rows.size() + " 行，truncated=" + truncated
                     + ", durationMillis=" + durationMillis;
-            return SqlExecutionResultFactory.create(request, classification, true, columns, rows, truncated, 0L,
-                    warnings, durationMillis, summary, sqlHash, false, null, null, status);
+            return SqlExecutionResultFactory.builder(request, classification)
+                    .queryResult(columns, rows, truncated)
+                    .warnings(warnings)
+                    .durationMillis(durationMillis)
+                    .statementSummary(summary)
+                    .sqlHash(sqlHash)
+                    .status(status)
+                    .build();
         }
     }
 
@@ -140,8 +146,14 @@ public class SqlJdbcExecutor {
                 + " affectedRows=" + affectedRows
                 + ", warnings=" + warnings.size()
                 + ", durationMillis=" + durationMillis;
-        return SqlExecutionResultFactory.create(request, classification, false, List.of(), List.of(), false,
-                affectedRows, warnings, durationMillis, summary, sqlHash, false, null, null, status);
+        return SqlExecutionResultFactory.builder(request, classification)
+                .affectedRows(affectedRows)
+                .warnings(warnings)
+                .durationMillis(durationMillis)
+                .statementSummary(summary)
+                .sqlHash(sqlHash)
+                .status(status)
+                .build();
     }
 
     /**

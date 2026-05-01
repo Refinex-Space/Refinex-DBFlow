@@ -84,9 +84,7 @@ public class AuditQueryService {
      */
     @Transactional(readOnly = true)
     public AuditEventPageResponse<AuditEventSummary> query(AuditQueryCriteria criteria) {
-        AuditQueryCriteria safeCriteria = criteria == null
-                ? new AuditQueryCriteria(null, null, null, null, null, null, null, null, null, null, null, null, null)
-                : criteria;
+        AuditQueryCriteria safeCriteria = criteria == null ? AuditQueryCriteria.empty() : criteria;
         Pageable pageable = pageable(safeCriteria);
         Page<AuditEventSummary> page = auditEventRepository.findAll(specification(safeCriteria), pageable)
                 .map(this::toSummary);

@@ -53,6 +53,7 @@ class AdminUiControllerTests {
         mockMvc.perform(get("/login"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Refinex-DBFlow Admin")))
+                .andExpect(content().string(containsString("/admin-assets/img/dbflow-logo.svg")))
                 .andExpect(content().string(containsString("name=\"username\"")))
                 .andExpect(content().string(containsString("name=\"password\"")))
                 .andExpect(content().string(containsString("登录后台")));
@@ -68,6 +69,9 @@ class AdminUiControllerTests {
         mockMvc.perform(get("/admin-assets/css/admin.css"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString(".app")));
+        mockMvc.perform(get("/admin-assets/img/dbflow-logo.svg"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("<svg")));
     }
 
     /**
@@ -79,7 +83,6 @@ class AdminUiControllerTests {
     void shouldRenderAdminOverviewForAdmin() throws Exception {
         mockMvc.perform(get("/admin").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("route=/admin")))
                 .andExpect(content().string(containsString("SQL 请求")))
                 .andExpect(content().string(containsString("最近审计事件")));
     }
@@ -92,7 +95,7 @@ class AdminUiControllerTests {
     @Test
     void shouldRenderBaseAdminPagesForAdmin() throws Exception {
         assertAdminPage("/admin/users", "用户管理");
-        assertAdminPage("/admin/grants", "项目环境授权");
+        assertAdminPage("/admin/grants", "项目授权");
         assertAdminPage("/admin/tokens", "Token 管理");
         assertAdminPage("/admin/config", "配置查看");
         assertAdminPage("/admin/policies/dangerous", "危险策略");

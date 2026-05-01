@@ -82,6 +82,22 @@ public class DbfUser {
     }
 
     /**
+     * 启用用户。
+     */
+    public void enable() {
+        this.status = "ACTIVE";
+    }
+
+    /**
+     * 重置管理端密码。
+     *
+     * @param newPasswordHash 新密码 BCrypt hash
+     */
+    public void resetPassword(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+    }
+
+    /**
      * 持久化前补齐时间字段。
      */
     @PrePersist

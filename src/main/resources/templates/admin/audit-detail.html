@@ -73,13 +73,13 @@
             <div class="panel-head"><h2>SQL 文本</h2><span class="muted">已脱敏展示</span></div>
             <div class="panel-body">
                 <div class="sql-box" th:text="${audit.detail.sqlText}">DROP TABLE payment_order</div>
-                <div class="notice" style="margin-top:10px">result_summary 只保存摘要，不保存完整结果集。</div>
+                <div class="notice mt-3">result_summary 只保存摘要，不保存完整结果集。</div>
             </div>
         </div>
         <div class="panel">
             <div class="panel-head"><h2>拒绝/失败原因</h2></div>
             <div class="panel-body">
-                <div class="detail-grid" style="grid-template-columns:1fr 1fr">
+                <div class="detail-grid two">
                     <div class="kv">
                         <div class="k">Status</div>
                         <div class="v" th:text="${audit.detail.status}">DENIED</div>
@@ -92,7 +92,7 @@
                     </div>
                 </div>
                 <div class="sql-box" th:text="${audit.failureReason}">DROP 高危 DDL 未命中 YAML 白名单，默认拒绝</div>
-                <div class="notice" style="margin-top:10px" th:text="${audit.detail.resultSummary}">
+                <div class="notice mt-3" th:text="${audit.detail.resultSummary}">
                     reason=DROP_TABLE_NOT_WHITELISTED
                 </div>
             </div>
@@ -114,7 +114,6 @@
             <div class="small-row"><span class="mono">step 5</span><span>写入审计事件；结果集中不保存完整查询返回。</span>
             </div>
         </div>
-    </div>
     </div>
 </section>
 </body>

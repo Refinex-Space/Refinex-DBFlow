@@ -6,41 +6,33 @@
     <div class="page-head">
         <div><h1>用户管理</h1>
             <p class="muted">管理后台用户及其 Token、环境授权关系。</p></div>
+        <div class="page-toolbar">
+            <button class="btn" data-drawer-open="#userFilterDrawer" type="button">筛选</button>
+            <button class="btn primary" data-drawer-open="#createUserDrawer" type="button">新建用户</button>
+        </div>
     </div>
-    <div class="notice ok" th:if="${successMessage}" th:text="${successMessage}">操作成功</div>
-    <div class="notice bad" th:if="${errorMessage}" th:text="${errorMessage}">操作失败</div>
-    <div class="panel">
-        <div class="panel-head"><h2>创建用户</h2><span
-                class="muted">密码仅以不可逆摘要入库，页面不展示敏感凭据字段。</span></div>
-        <form class="filter-bar compact" method="post" th:action="@{/admin/users}">
-            <div class="field"><label>用户名</label><input class="control" name="username" placeholder="ops.alice"
-                                                           required></div>
-            <div class="field"><label>显示名</label><input class="control" name="displayName" placeholder="Ops Alice"
-                                                           required></div>
-            <div class="field"><label>管理端密码</label><input autocomplete="new-password" class="control" name="password"
-                                                               placeholder="可为空，仅创建 MCP 用户"
-                                                               type="password"></div>
-            <div class="field"><label>角色</label><input class="control" disabled value="ADMIN_SESSION"></div>
-            <button class="btn primary" type="submit">创建用户</button>
-        </form>
+    <div class="notice ok" th:if="${successMessage}" th:text="${successMessage}" hidden>操作成功</div>
+    <div class="notice bad" th:if="${errorMessage}" th:text="${errorMessage}" hidden>操作失败</div>
+
+    <!-- 已激活筛选条 -->
+    <div class="filter-chip-bar"
+         th:if="${param.username != null or param.status != null or param.role != null or param.lastUsed != null}">
+        <span>已应用筛选：</span>
+        <span class="filter-chip" th:if="${param.username != null and !#strings.isEmpty(param.username[0])}">
+            <span class="k">用户名</span><span th:text="${param.username[0]}">x</span>
+        </span>
+        <span class="filter-chip" th:if="${param.status != null and !#strings.isEmpty(param.status[0]) and param.status[0] != '全部'}">
+            <span class="k">状态</span><span th:text="${param.status[0]}">x</span>
+        </span>
+        <span class="spacer"></span>
+        <a class="btn text" th:href="@{/admin/users}">重置</a>
     </div>
+
+    <!-- 主体：用户列表 -->
     <div class="panel">
-        <form class="filter-bar compact" method="get">
-            <div class="field"><label>用户名</label><input class="control" name="username" placeholder="zhang / chen"
-                                                           th:value="${param.username}"></div>
-            <div class="field"><label>状态</label><select class="select" name="status">
-                <option>全部</option>
-                <option>ACTIVE</option>
-                <option>DISABLED</option>
-            </select></div>
-            <div class="field"><label>角色</label><select class="select" disabled name="role">
-                <option>ADMIN_SESSION</option>
-            </select></div>
-            <div class="field"><label>最近使用</label><select class="select" disabled name="lastUsed">
-                <option>由审计统计补齐</option>
-            </select></div>
-            <button class="btn primary" type="submit">筛选</button>
-        </form>
+        <div class="panel-head">
+            <h2>用户列表</h2>
+        </div>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -68,9 +60,21 @@
                     <td>
                         <div class="actions">
                             <a class="btn text" th:href="@{/admin/grants(username=${row.username})}">授权</a>
+                            <!-- 重置密码：弹出内联 modal -->
+                            <button class="btn text"
+                                    th:data-drawer-open="'#resetPwdDrawer-' + ${row.id}"
+                                    type="button">重置密码</button>
+                            <!-- 禁用：仅 ACTIVE 且非初始化管理员可操作 -->
                             <form class="inline-form" method="post"
-                                  th:action="@{/admin/users/{userId}/disable(userId=${row.id})}" th:if="${row.status == 'ACTIVE'}">
+                                  th:action="@{/admin/users/{userId}/disable(userId=${row.id})}"
+                                  th:if="${row.status == 'ACTIVE' and row.username != initialAdminUsername}">
                                 <button class="btn text danger-text" type="submit">禁用</button>
+                            </form>
+                            <!-- 启用：仅 DISABLED 可操作 -->
+                            <form class="inline-form" method="post"
+                                  th:action="@{/admin/users/{userId}/enable(userId=${row.id})}"
+                                  th:if="${row.status == 'DISABLED'}">
+                                <button class="btn text" type="submit">启用</button>
                             </form>
                         </div>
                     </td>
@@ -82,6 +86,100 @@
             </table>
         </div>
     </div>
+
+    <!-- 每用户重置密码弹窗（各自独立 ID） -->
+    <th:block th:each="row : ${users}">
+        <aside aria-hidden="true" class="drawer" th:id="'resetPwdDrawer-' + ${row.id}">
+            <div class="drawer-head">
+                <h2>重置密码 · <span class="muted" th:text="${row.username}">user</span></h2>
+                <button class="btn" data-drawer-close type="button">关闭</button>
+            </div>
+            <form class="drawer-body drawer-form" method="post"
+                  th:action="@{/admin/users/{userId}/reset-password(userId=${row.id})}">
+                <div class="field">
+                    <label>新密码</label>
+                    <input autocomplete="new-password" class="control" name="newPassword"
+                           placeholder="至少 8 位" required type="password">
+                    <span class="field-hint">密码将以不可逆摘要入库，无法查看原文。</span>
+                </div>
+                <div class="drawer-foot">
+                    <button class="btn" data-drawer-close type="button">取消</button>
+                    <button class="btn primary" type="submit">确认重置</button>
+                </div>
+            </form>
+        </aside>
+    </th:block>
+
+    <!-- 抽屉：新建用户 -->
+    <aside aria-hidden="true" class="drawer" id="createUserDrawer">
+        <div class="drawer-head">
+            <h2>新建用户</h2>
+            <button class="btn" data-drawer-close type="button">关闭</button>
+        </div>
+        <form class="drawer-body drawer-form" method="post" th:action="@{/admin/users}">
+            <div class="field">
+                <label>用户名</label>
+                <input class="control" name="username" placeholder="ops.alice" required>
+            </div>
+            <div class="field">
+                <label>显示名</label>
+                <input class="control" name="displayName" placeholder="Ops Alice" required>
+            </div>
+            <div class="field">
+                <label>管理端密码</label>
+                <input autocomplete="new-password" class="control" name="password"
+                       placeholder="可为空，仅创建 MCP 用户" type="password">
+                <span class="field-hint">留空表示仅创建 MCP 用户；密码以不可逆摘要入库。</span>
+            </div>
+            <div class="field">
+                <label>角色</label>
+                <input class="control" disabled value="ADMIN_SESSION">
+                <span class="field-hint">MVP 仅支持 ADMIN_SESSION。</span>
+            </div>
+            <div class="drawer-foot">
+                <button class="btn" data-drawer-close type="button">取消</button>
+                <button class="btn primary" type="submit">创建用户</button>
+            </div>
+        </form>
+    </aside>
+
+    <!-- 抽屉：筛选 -->
+    <aside aria-hidden="true" class="drawer" id="userFilterDrawer">
+        <div class="drawer-head">
+            <h2>筛选用户</h2>
+            <button class="btn" data-drawer-close type="button">关闭</button>
+        </div>
+        <form class="drawer-body drawer-form" method="get">
+            <div class="field">
+                <label>用户名</label>
+                <input class="control" name="username" placeholder="zhang / chen" th:value="${param.username}">
+            </div>
+            <div class="field">
+                <label>状态</label>
+                <select class="select" name="status">
+                    <option>全部</option>
+                    <option>ACTIVE</option>
+                    <option>DISABLED</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>角色</label>
+                <select class="select" disabled name="role">
+                    <option>ADMIN_SESSION</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>最近使用</label>
+                <select class="select" disabled name="lastUsed">
+                    <option>由审计统计补齐</option>
+                </select>
+            </div>
+            <div class="drawer-foot">
+                <a class="btn" th:href="@{/admin/users}">重置</a>
+                <button class="btn primary" type="submit">应用筛选</button>
+            </div>
+        </form>
+    </aside>
 </section>
 </body>
 </html>

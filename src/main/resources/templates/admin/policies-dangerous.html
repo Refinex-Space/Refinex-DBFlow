@@ -6,10 +6,12 @@
     <div class="page-head">
         <div><h1>危险策略</h1>
             <p class="muted">查看高风险 SQL 的白名单、确认要求和拒绝原因。</p></div>
-        <a class="btn" th:href="@{/admin/audit}">查看被拒绝审计</a>
+        <div class="page-toolbar">
+            <a class="btn" th:href="@{/admin/audit(decision='POLICY_DENIED')}">查看被拒绝审计</a>
+        </div>
     </div>
     <div class="panel">
-        <div class="panel-head"><h2>默认高危策略</h2><span class="muted">只读；来源 YAML/Nacos</span></div>
+        <div class="panel-head"><h2>默认高危策略</h2></div>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -33,7 +35,7 @@
         </div>
     </div>
     <div class="panel">
-        <div class="panel-head"><h2>DROP 白名单</h2><span class="muted">不展示 secret，页面不可编辑</span></div>
+        <div class="panel-head"><h2>DROP 白名单</h2></div>
         <div class="notice" th:text="${policyPage.emptyHint}">当前展示 YAML/Nacos 生效白名单。</div>
         <div class="table-wrap">
             <table>
@@ -69,7 +71,7 @@
         </div>
     </div>
     <div class="panel">
-        <div class="panel-head"><h2>固定强化规则</h2><span class="muted">MVP 只读展示</span></div>
+        <div class="panel-head"><h2>固定强化规则</h2></div>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -96,13 +98,13 @@
             </table>
         </div>
     </div>
-    <aside class="drawer" id="policyReasonDrawer">
+    <aside aria-hidden="true" class="drawer" id="policyReasonDrawer">
         <div class="drawer-head"><h2>策略拒绝原因</h2>
             <button class="btn" data-drawer-close type="button">关闭</button>
         </div>
         <div class="drawer-body">
-            <div class="notice" style="margin-bottom:12px">当前策略按服务端强约束执行，客户端不能绕过。</div>
-            <div class="detail-grid" style="grid-template-columns:1fr 1fr">
+            <div class="notice mb-3">当前策略按服务端强约束执行，客户端不能绕过。</div>
+            <div class="detail-grid two">
                 <div class="kv">
                     <div class="k">Reason Code</div>
                     <div class="v mono">DROP_TABLE_NOT_WHITELISTED</div>
@@ -121,7 +123,7 @@
                 </div>
             </div>
             <div class="sql-box">DROP TABLE payment_order</div>
-            <p class="muted" style="margin-top:10px">生产环境 DROP_TABLE 未命中 YAML 白名单，或命中但未配置
+            <p class="muted mt-3">生产环境 DROP_TABLE 未命中 YAML 白名单，或命中但未配置
                 allow-prod-dangerous-ddl=true 时，不会执行 SQL，只写入 policy denied 审计事件。</p>
         </div>
     </aside>

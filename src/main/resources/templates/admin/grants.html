@@ -1,106 +1,247 @@
 <!doctype html>
 <html lang="zh-CN"
-      th:replace="~{admin/fragments/layout :: layout('项目环境授权', 'grants', ${routeHint}, ~{::section})}"
+      th:replace="~{admin/fragments/layout :: layout('项目授权', 'grants', ${routeHint}, ~{::section})}"
       xmlns:th="http://www.thymeleaf.org">
 <body>
 <section>
     <div class="page-head">
-        <div><h1>项目环境授权</h1>
+        <div><h1>项目授权</h1>
             <p class="muted">授权用户访问指定 project/env，作为 SQL 执行前置边界。</p></div>
-    </div>
-    <div class="notice ok" th:if="${successMessage}" th:text="${successMessage}">操作成功</div>
-    <div class="notice bad" th:if="${errorMessage}" th:text="${errorMessage}">操作失败</div>
-    <div class="panel">
-        <div class="panel-head"><h2>授权环境</h2><span class="muted">授权只写入元数据库，不展示目标库连接串或密码。</span>
+        <div class="page-toolbar">
+            <button class="btn" data-drawer-open="#grantFilterDrawer" type="button">筛选</button>
+            <button class="btn primary" data-drawer-open="#createGrantDrawer" type="button">新建授权</button>
         </div>
-        <form class="filter-bar compact" method="post" th:action="@{/admin/grants}">
-            <div class="field">
-                <label>用户</label>
-                <select class="select" name="userId" required>
-                    <option value="">请选择</option>
-                    <option th:each="user : ${userOptions}" th:text="${user.username + ' / ' + user.displayName}"
-                            th:value="${user.id}">ops.alice
-                    </option>
-                </select>
-            </div>
-            <div class="field">
-                <label>项目环境</label>
-                <select class="select" name="target"
-                        onchange="const [p,e]=this.value.split('/'); this.form.projectKey.value=p || ''; this.form.environmentKey.value=e || '';"
-                        required>
-                    <option value="">请选择</option>
-                    <option th:each="env : ${environmentOptions}"
-                            th:text="${env.projectKey + ' / ' + env.environmentKey}"
-                            th:value="${env.projectKey + '/' + env.environmentKey}">billing-core / staging
-                    </option>
-                </select>
-                <input name="projectKey" type="hidden">
-                <input name="environmentKey" type="hidden">
-            </div>
-            <div class="field"><label>授权类型</label><select class="select" name="grantType">
-                <option>READ</option>
-                <option selected>WRITE</option>
-                <option>ADMIN</option>
-            </select></div>
-            <div class="field"><label>状态</label><input class="control" disabled value="ACTIVE"></div>
-            <button class="btn primary" type="submit">授权环境</button>
-        </form>
     </div>
+    <div class="notice ok" th:if="${successMessage}" th:text="${successMessage}" hidden>操作成功</div>
+    <div class="notice bad" th:if="${errorMessage}" th:text="${errorMessage}" hidden>操作失败</div>
+
+    <div class="filter-chip-bar"
+         th:if="${param.username != null or param.projectKey != null or param.environmentKey != null or param.status != null}">
+        <span>已应用筛选：</span>
+        <span class="filter-chip" th:if="${param.username != null and !#strings.isEmpty(param.username[0])}">
+            <span class="k">用户</span><span th:text="${param.username[0]}">x</span>
+        </span>
+        <span class="filter-chip" th:if="${param.projectKey != null and !#strings.isEmpty(param.projectKey[0])}">
+            <span class="k">项目</span><span th:text="${param.projectKey[0]}">x</span>
+        </span>
+        <span class="filter-chip" th:if="${param.environmentKey != null and !#strings.isEmpty(param.environmentKey[0])}">
+            <span class="k">环境</span><span th:text="${param.environmentKey[0]}">x</span>
+        </span>
+        <span class="filter-chip" th:if="${param.status != null and !#strings.isEmpty(param.status[0]) and param.status[0] != '全部'}">
+            <span class="k">状态</span><span th:text="${param.status[0]}">x</span>
+        </span>
+        <span class="spacer"></span>
+        <a class="btn text" th:href="@{/admin/grants}">重置</a>
+    </div>
+
     <div class="panel">
-        <form class="filter-bar compact" method="get">
-            <div class="field"><label>用户</label><input class="control" name="username" placeholder="lin.chen"
-                                                         th:value="${param.username}"></div>
-            <div class="field"><label>项目</label><input class="control" name="projectKey" placeholder="billing-core"
-                                                         th:value="${param.projectKey}"></div>
-            <div class="field"><label>环境</label><input class="control" name="environmentKey" placeholder="staging"
-                                                         th:value="${param.environmentKey}"></div>
-            <div class="field"><label>状态</label><select class="select" name="status">
-                <option>全部</option>
-                <option>ACTIVE</option>
-                <option>REVOKED</option>
-            </select></div>
-            <button class="btn primary" type="submit">筛选</button>
-        </form>
+        <div class="panel-head">
+            <h2>授权列表</h2>
+        </div>
         <div class="table-wrap">
             <table>
                 <thead>
                 <tr>
-                    <th>授权 ID</th>
                     <th>用户</th>
                     <th>项目</th>
-                    <th>环境</th>
-                    <th>类型</th>
-                    <th>状态</th>
-                    <th></th>
+                    <th>已授权环境</th>
+                    <th>操作</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="row : ${grants}">
-                    <td class="mono" th:text="${row.id}">9101</td>
+                <tr th:each="row, rowStat : ${grants}">
                     <td th:text="${row.username}">admin.refinex</td>
-                    <td th:text="${row.projectKey}">billing-core</td>
-                    <td th:text="${row.environmentKey}">prod</td>
-                    <td th:text="${row.grantType}">WRITE</td>
-                    <td><span th:class="'status ' + (${row.status == 'ACTIVE'} ? 'ok' : 'bad')" th:text="${row.status}">ACTIVE</span>
+                    <td class="mono" th:text="${row.projectKey}">billing-core</td>
+                    <td>
+                        <div class="env-tag-list">
+                            <span th:each="env : ${row.environments}"
+                                  th:class="'env-tag ' + (${env.status == 'ACTIVE'} ? 'ok' : 'bad')"
+                                  th:text="${env.environmentKey}">prod</span>
+                        </div>
                     </td>
                     <td>
                         <div class="actions">
+                            <button class="btn text"
+                                    th:data-drawer-open="'#editGrantDrawer-' + ${rowStat.index}"
+                                    type="button">编辑</button>
                             <a class="btn text"
-                               th:href="@{/admin/audit(username=${row.username}, project=${row.projectKey}, env=${row.environmentKey})}">审计</a>
-                            <form class="inline-form" method="post"
-                                  th:action="@{/admin/grants/{grantId}/revoke(grantId=${row.id})}">
-                                <button class="btn text danger-text" type="submit">撤销</button>
-                            </form>
+                               th:href="@{/admin/audit(username=${row.username}, project=${row.projectKey})}">审计</a>
                         </div>
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(grants)}">
-                    <td class="muted" colspan="7">当前筛选条件下没有项目环境授权。</td>
+                    <td class="muted" colspan="4">当前筛选条件下没有项目授权。</td>
                 </tr>
                 </tbody>
             </table>
         </div>
     </div>
+
+    <!-- 每行的「编辑环境」弹窗 -->
+    <th:block th:each="row, rowStat : ${grants}">
+        <aside aria-hidden="true" class="drawer" th:id="'editGrantDrawer-' + ${rowStat.index}">
+            <div class="drawer-head">
+                <h2>编辑授权 · <span class="muted" th:text="${row.username + ' / ' + row.projectKey}">user/proj</span></h2>
+                <button class="btn" data-drawer-close type="button">关闭</button>
+            </div>
+            <form class="drawer-body drawer-form" method="post" th:action="@{/admin/grants/update-project}">
+                <input type="hidden" name="userId" th:value="${row.userId}">
+                <input type="hidden" name="projectKey" th:value="${row.projectKey}">
+
+                <div class="field">
+                    <label>授权类型</label>
+                    <select class="select" name="grantType">
+                        <option th:each="t : ${ {'READ','WRITE','ADMIN'} }"
+                                th:value="${t}"
+                                th:text="${t}"
+                                th:selected="${row.environments != null and !#lists.isEmpty(row.environments) and row.environments[0].grantType == t}">WRITE</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>已授权环境</label>
+                    <span class="field-hint">勾选即授权，取消勾选即撤销。</span>
+                    <div class="checkbox-group">
+                        <th:block th:each="envOpt : ${environmentOptions}" th:if="${envOpt.projectKey == row.projectKey}">
+                            <label class="checkbox-item">
+                                <input name="environmentKeys" type="checkbox"
+                                       th:value="${envOpt.environmentKey}"
+                                       th:checked="${row.environments != null and #lists.contains(row.environments.![environmentKey], envOpt.environmentKey)}">
+                                <span th:text="${envOpt.environmentKey}">dev</span>
+                            </label>
+                        </th:block>
+                    </div>
+                </div>
+
+                <div class="drawer-foot">
+                    <button class="btn" data-drawer-close type="button">取消</button>
+                    <button class="btn primary" type="submit">保存</button>
+                </div>
+            </form>
+        </aside>
+    </th:block>
+
+    <!-- 抽屉：新建授权 -->
+    <aside aria-hidden="true" class="drawer" id="createGrantDrawer">
+        <div class="drawer-head">
+            <h2>新建授权</h2>
+            <button class="btn" data-drawer-close type="button">关闭</button>
+        </div>
+        <form class="drawer-body drawer-form" id="createGrantForm" method="post"
+              th:action="@{/admin/grants/update-project}">
+            <div class="field">
+                <label>用户</label>
+                <select class="select" id="createUserId" name="userId" required>
+                    <option value="">请选择</option>
+                    <option th:each="user : ${userOptions}"
+                            th:text="${user.username + ' / ' + user.displayName}"
+                            th:value="${user.id}">ops.alice
+                    </option>
+                </select>
+            </div>
+            <div class="field">
+                <label>项目</label>
+                <select class="select" id="createProjectKey" name="projectKey" required>
+                    <option value="">请选择</option>
+                    <option th:each="env : ${environmentOptions}"
+                            th:text="${env.projectKey}"
+                            th:value="${env.projectKey}"
+                            th:if="${environmentOptions.indexOf(env) == 0 or environmentOptions[__${environmentOptions.indexOf(env)} - 1__].projectKey != env.projectKey}">billing-core
+                    </option>
+                </select>
+            </div>
+            <div class="field">
+                <label>授权类型</label>
+                <select class="select" name="grantType">
+                    <option>READ</option>
+                    <option selected>WRITE</option>
+                    <option>ADMIN</option>
+                </select>
+            </div>
+            <div class="field" id="createEnvField" style="display:none">
+                <label>环境</label>
+                <div class="checkbox-group" id="createEnvCheckboxes">
+                    <!-- JS 根据选中项目动态渲染 -->
+                </div>
+            </div>
+            <div class="drawer-foot">
+                <button class="btn" data-drawer-close type="button">取消</button>
+                <button class="btn primary" type="submit">授权</button>
+            </div>
+        </form>
+    </aside>
+
+    <!-- 抽屉：筛选授权 -->
+    <aside aria-hidden="true" class="drawer" id="grantFilterDrawer">
+        <div class="drawer-head">
+            <h2>筛选授权</h2>
+            <button class="btn" data-drawer-close type="button">关闭</button>
+        </div>
+        <form class="drawer-body drawer-form" method="get">
+            <div class="field">
+                <label>用户</label>
+                <input class="control" name="username" placeholder="lin.chen" th:value="${param.username}">
+            </div>
+            <div class="field">
+                <label>项目</label>
+                <input class="control" name="projectKey" placeholder="billing-core" th:value="${param.projectKey}">
+            </div>
+            <div class="field">
+                <label>环境</label>
+                <input class="control" name="environmentKey" placeholder="staging" th:value="${param.environmentKey}">
+            </div>
+            <div class="field">
+                <label>状态</label>
+                <select class="select" name="status">
+                    <option>全部</option>
+                    <option>ACTIVE</option>
+                    <option>REVOKED</option>
+                </select>
+            </div>
+            <div class="drawer-foot">
+                <a class="btn" th:href="@{/admin/grants}">重置</a>
+                <button class="btn primary" type="submit">应用筛选</button>
+            </div>
+        </form>
+    </aside>
+
+    <!-- 新建授权：环境选项数据（供 JS 读取） -->
+    <script id="envOptionsData" type="application/json"
+            th:inline="javascript">[[${environmentOptions}]]</script>
+    <script>
+        (function () {
+            const raw = document.getElementById('envOptionsData');
+            if (!raw) return;
+            const envOptions = JSON.parse(raw.textContent || '[]');
+            const projectSel = document.getElementById('createProjectKey');
+            const envField = document.getElementById('createEnvField');
+            const envBoxes = document.getElementById('createEnvCheckboxes');
+            if (!projectSel) return;
+
+            function renderEnvs(projectKey) {
+                envBoxes.innerHTML = '';
+                const filtered = envOptions.filter(e => e.projectKey === projectKey);
+                filtered.forEach(function (e) {
+                    const lbl = document.createElement('label');
+                    lbl.className = 'checkbox-item';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.name = 'environmentKeys';
+                    cb.value = e.environmentKey;
+                    const span = document.createElement('span');
+                    span.textContent = e.environmentKey;
+                    lbl.appendChild(cb);
+                    lbl.appendChild(span);
+                    envBoxes.appendChild(lbl);
+                });
+                envField.style.display = filtered.length ? '' : 'none';
+            }
+
+            projectSel.addEventListener('change', function () {
+                renderEnvs(this.value);
+            });
+        })();
+    </script>
 </section>
 </body>
 </html>

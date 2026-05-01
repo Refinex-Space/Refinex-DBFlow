@@ -6,59 +6,39 @@
     <div class="page-head">
         <div><h1>审计列表</h1>
             <p class="muted">按时间、用户、项目、环境、risk、decision、SQL hash、tool 查询。</p></div>
-    </div>
-    <div class="panel">
-        <form class="filter-bar" method="get">
-            <input name="sort" th:value="${auditPage.sort}" type="hidden">
-            <input name="direction" th:value="${auditPage.direction}" type="hidden">
-            <div class="field"><label>用户 ID</label><input class="control" name="userId" placeholder="1001"
-                                                            th:value="${auditPage.filter.userId}"></div>
-            <div class="field"><label>项目</label><input class="control" name="project" placeholder="billing-core"
-                                                         th:value="${auditPage.filter.project}"></div>
-            <div class="field"><label>环境</label><input class="control" name="env" placeholder="prod"
-                                                         th:value="${auditPage.filter.env}"></div>
-            <div class="field"><label>Risk</label><select class="select" name="risk">
-                <option th:selected="${auditPage.filter.risk == ''}" value="">全部</option>
-                <option th:selected="${auditPage.filter.risk == 'LOW'}" value="LOW">LOW</option>
-                <option th:selected="${auditPage.filter.risk == 'MEDIUM'}" value="MEDIUM">MEDIUM</option>
-                <option th:selected="${auditPage.filter.risk == 'HIGH'}" value="HIGH">HIGH</option>
-                <option th:selected="${auditPage.filter.risk == 'CRITICAL'}" value="CRITICAL">CRITICAL</option>
-            </select></div>
-            <div class="field"><label>Decision</label><select class="select" name="decision">
-                <option th:selected="${auditPage.filter.decision == ''}" value="">全部</option>
-                <option th:selected="${auditPage.filter.decision == 'EXECUTED'}" value="EXECUTED">EXECUTED</option>
-                <option th:selected="${auditPage.filter.decision == 'POLICY_DENIED'}" value="POLICY_DENIED">
-                    POLICY_DENIED
-                </option>
-                <option th:selected="${auditPage.filter.decision == 'REQUIRES_CONFIRMATION'}"
-                        value="REQUIRES_CONFIRMATION">REQUIRES_CONFIRMATION
-                </option>
-                <option th:selected="${auditPage.filter.decision == 'FAILED'}" value="FAILED">FAILED</option>
-            </select></div>
-            <div class="field"><label>SQL Hash</label><input class="control" name="sqlHash" placeholder="sha256:"
-                                                             th:value="${auditPage.filter.sqlHash}"></div>
-            <div class="field"><label>Tool</label><select class="select" name="tool">
-                <option th:selected="${auditPage.filter.tool == ''}" value="">全部</option>
-                <option th:selected="${auditPage.filter.tool == 'dbflow_execute_sql'}" value="dbflow_execute_sql">
-                    dbflow_execute_sql
-                </option>
-                <option th:selected="${auditPage.filter.tool == 'dbflow_explain_sql'}" value="dbflow_explain_sql">
-                    dbflow_explain_sql
-                </option>
-                <option th:selected="${auditPage.filter.tool == 'dbflow_inspect_schema'}" value="dbflow_inspect_schema">
-                    dbflow_inspect_schema
-                </option>
-            </select></div>
-            <div class="field"><label>每页</label><select class="select" name="size">
-                <option th:selected="${auditPage.filter.size == '10'}" value="10">10</option>
-                <option th:selected="${auditPage.filter.size == '20'}" value="20">20</option>
-                <option th:selected="${auditPage.filter.size == '50'}" value="50">50</option>
-            </select></div>
-            <button class="btn primary" type="submit">筛选</button>
-        </form>
-        <div class="notice" th:if="${auditPage.filter.hasActiveFilters}">
-            当前使用过滤条件查询审计事件；可通过清空字段恢复全量列表。
+        <div class="page-toolbar">
+            <button class="btn primary" data-drawer-open="#auditFilterDrawer" type="button">高级筛选</button>
         </div>
+    </div>
+
+    <div class="filter-chip-bar" th:if="${auditPage.filter.hasActiveFilters}">
+        <span>已应用筛选：</span>
+        <span class="filter-chip" th:if="${auditPage.filter.userId != null and !#strings.isEmpty(auditPage.filter.userId)}">
+            <span class="k">用户 ID</span><span th:text="${auditPage.filter.userId}">x</span>
+        </span>
+        <span class="filter-chip" th:if="${auditPage.filter.project != null and !#strings.isEmpty(auditPage.filter.project)}">
+            <span class="k">项目</span><span th:text="${auditPage.filter.project}">x</span>
+        </span>
+        <span class="filter-chip" th:if="${auditPage.filter.env != null and !#strings.isEmpty(auditPage.filter.env)}">
+            <span class="k">环境</span><span th:text="${auditPage.filter.env}">x</span>
+        </span>
+        <span class="filter-chip" th:if="${auditPage.filter.risk != null and !#strings.isEmpty(auditPage.filter.risk)}">
+            <span class="k">Risk</span><span th:text="${auditPage.filter.risk}">x</span>
+        </span>
+        <span class="filter-chip" th:if="${auditPage.filter.decision != null and !#strings.isEmpty(auditPage.filter.decision)}">
+            <span class="k">Decision</span><span th:text="${auditPage.filter.decision}">x</span>
+        </span>
+        <span class="filter-chip" th:if="${auditPage.filter.sqlHash != null and !#strings.isEmpty(auditPage.filter.sqlHash)}">
+            <span class="k">SQL Hash</span><span th:text="${auditPage.filter.sqlHash}">x</span>
+        </span>
+        <span class="filter-chip" th:if="${auditPage.filter.tool != null and !#strings.isEmpty(auditPage.filter.tool)}">
+            <span class="k">Tool</span><span th:text="${auditPage.filter.tool}">x</span>
+        </span>
+        <span class="spacer"></span>
+        <a class="btn text" th:href="@{/admin/audit}">重置</a>
+    </div>
+
+    <div class="panel">
         <div class="table-wrap">
             <table>
                 <thead>
@@ -95,7 +75,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="panel-body actions" style="justify-content:space-between">
+        <div class="panel-body actions actions-between">
             <span class="muted"
                   th:text="'共 ' + ${auditPage.totalElements} + ' 条，当前显示 ' + ${auditPage.firstItem} + '-' + ${auditPage.lastItem} + '，第 ' + (${auditPage.page} + 1) + '/' + (${auditPage.totalPages == 0 ? 1 : auditPage.totalPages}) + ' 页'">共 0 条</span>
             <div class="actions">
@@ -106,6 +86,76 @@
             </div>
         </div>
     </div>
+
+    <!-- 抽屉：高级筛选 -->
+    <aside aria-hidden="true" class="drawer" id="auditFilterDrawer">
+        <div class="drawer-head">
+            <h2>高级筛选</h2>
+            <button class="btn" data-drawer-close type="button">关闭</button>
+        </div>
+        <form class="drawer-body drawer-form" method="get">
+            <input name="sort" th:value="${auditPage.sort}" type="hidden">
+            <input name="direction" th:value="${auditPage.direction}" type="hidden">
+            <div class="field">
+                <label>用户 ID</label>
+                <input class="control" name="userId" placeholder="1001" th:value="${auditPage.filter.userId}">
+            </div>
+            <div class="field">
+                <label>项目</label>
+                <input class="control" name="project" placeholder="billing-core" th:value="${auditPage.filter.project}">
+            </div>
+            <div class="field">
+                <label>环境</label>
+                <input class="control" name="env" placeholder="prod" th:value="${auditPage.filter.env}">
+            </div>
+            <div class="field">
+                <label>Risk</label>
+                <select class="select" name="risk">
+                    <option th:selected="${auditPage.filter.risk == ''}" value="">全部</option>
+                    <option th:selected="${auditPage.filter.risk == 'LOW'}" value="LOW">LOW</option>
+                    <option th:selected="${auditPage.filter.risk == 'MEDIUM'}" value="MEDIUM">MEDIUM</option>
+                    <option th:selected="${auditPage.filter.risk == 'HIGH'}" value="HIGH">HIGH</option>
+                    <option th:selected="${auditPage.filter.risk == 'CRITICAL'}" value="CRITICAL">CRITICAL</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Decision</label>
+                <select class="select" name="decision">
+                    <option th:selected="${auditPage.filter.decision == ''}" value="">全部</option>
+                    <option th:selected="${auditPage.filter.decision == 'EXECUTED'}" value="EXECUTED">EXECUTED</option>
+                    <option th:selected="${auditPage.filter.decision == 'POLICY_DENIED'}" value="POLICY_DENIED">POLICY_DENIED</option>
+                    <option th:selected="${auditPage.filter.decision == 'REQUIRES_CONFIRMATION'}"
+                            value="REQUIRES_CONFIRMATION">REQUIRES_CONFIRMATION</option>
+                    <option th:selected="${auditPage.filter.decision == 'FAILED'}" value="FAILED">FAILED</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>SQL Hash</label>
+                <input class="control" name="sqlHash" placeholder="sha256:" th:value="${auditPage.filter.sqlHash}">
+            </div>
+            <div class="field">
+                <label>Tool</label>
+                <select class="select" name="tool">
+                    <option th:selected="${auditPage.filter.tool == ''}" value="">全部</option>
+                    <option th:selected="${auditPage.filter.tool == 'dbflow_execute_sql'}" value="dbflow_execute_sql">dbflow_execute_sql</option>
+                    <option th:selected="${auditPage.filter.tool == 'dbflow_explain_sql'}" value="dbflow_explain_sql">dbflow_explain_sql</option>
+                    <option th:selected="${auditPage.filter.tool == 'dbflow_inspect_schema'}" value="dbflow_inspect_schema">dbflow_inspect_schema</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>每页</label>
+                <select class="select" name="size">
+                    <option th:selected="${auditPage.filter.size == '10'}" value="10">10</option>
+                    <option th:selected="${auditPage.filter.size == '20'}" value="20">20</option>
+                    <option th:selected="${auditPage.filter.size == '50'}" value="50">50</option>
+                </select>
+            </div>
+            <div class="drawer-foot">
+                <a class="btn" th:href="@{/admin/audit}">重置</a>
+                <button class="btn primary" type="submit">应用筛选</button>
+            </div>
+        </form>
+    </aside>
 </section>
 </body>
 </html>

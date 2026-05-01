@@ -91,8 +91,7 @@ public class AdminAccessManagementService {
             DbfUserEnvGrantRepository grantRepository,
             ProjectEnvironmentCatalogService catalogService,
             McpTokenService tokenService,
-            PasswordEncoder passwordEncoder
-    ) {
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.projectRepository = projectRepository;
@@ -169,6 +168,34 @@ public class AdminAccessManagementService {
     }
 
     /**
+     * 启用用户。
+     *
+     * @param userId 用户主键
+     */
+    @Transactional
+    public void enableUser(Long userId) {
+        DbfUser user = requireUser(userId);
+        user.enable();
+        userRepository.save(user);
+    }
+
+    /**
+     * 重置用户管理端密码。
+     *
+     * @param userId      用户主键
+     * @param newPassword 新明文密码
+     */
+    @Transactional
+    public void resetPassword(Long userId, String newPassword) {
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new DbflowException(ErrorCode.INVALID_REQUEST, "新密码不能为空");
+        }
+        DbfUser user = requireUser(userId);
+        user.resetPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    /**
      * 查询 Token 列表。
      *
      * @param filter Token 筛选条件
@@ -179,7 +206,13 @@ public class AdminAccessManagementService {
         Map<Long, DbfUser> userMap = userRepository.findAll().stream()
                 .collect(Collectors.toMap(DbfUser::getId, Function.identity()));
         return tokenRepository.findAll().stream()
-                .filter(token -> matchesStatus(filter.status(), token.getStatus()))
+                .filter(token -> {
+                    // 默认视图不展示已吊销 Token；显式筛选 REVOKED 或 "全部" 时才显示
+                    if (isBlank(filter.status())) {
+                        return !"REVOKED".equals(token.getStatus());
+                    }
+                    return matchesStatus(filter.status(), token.getStatus());
+                })
                 .filter(token -> matchesUser(filter.username(), userMap.get(token.getUserId())))
                 .sorted(Comparator.comparing(DbfApiToken::getId).reversed())
                 .map(token -> toTokenRow(token, userMap.get(token.getUserId())))
@@ -202,8 +235,7 @@ public class AdminAccessManagementService {
                 user.getUsername(),
                 result.plaintextToken(),
                 result.tokenPrefix(),
-                result.expiresAt()
-        );
+                result.expiresAt());
     }
 
     /**
@@ -249,8 +281,47 @@ public class AdminAccessManagementService {
                         view.projectKey(),
                         view.projectName(),
                         view.environmentKey(),
-                        view.environmentName()
-                ))
+                        view.environmentName()))
+                .toList();
+    }
+
+    /**
+     * 以「用户 × 项目」为维度查询授权分组列表（同一用户同一项目的多个环境合并为一行）。
+     *
+     * @param filter 授权筛选条件
+     * @return 授权分组行列表
+     */
+    @Transactional
+    public List<GrantGroupRow> listGrantGroups(GrantFilter filter) {
+        catalogService.syncConfiguredProjectEnvironments();
+        Map<Long, DbfUser> userMap = userRepository.findAll().stream()
+                .collect(Collectors.toMap(DbfUser::getId, Function.identity()));
+        Map<Long, DbfEnvironment> environmentMap = environmentRepository.findAll().stream()
+                .collect(Collectors.toMap(DbfEnvironment::getId, Function.identity()));
+        Map<Long, DbfProject> projectMap = projectRepository.findAll().stream()
+                .collect(Collectors.toMap(DbfProject::getId, Function.identity()));
+
+        // 先按基础筛选条件过滤单条授权，再组装分组视图
+        return grantRepository.findAll().stream()
+                .map(grant -> toGrantRow(grant, userMap, environmentMap, projectMap))
+                .filter(row -> matches(filter.username(), row.username()))
+                .filter(row -> matches(filter.projectKey(), row.projectKey()))
+                .filter(row -> matches(filter.environmentKey(), row.environmentKey()))
+                .filter(row -> matchesStatus(filter.status(), row.status()))
+                .collect(Collectors.groupingBy(
+                        row -> row.userId() + ":" + row.projectKey(),
+                        LinkedHashMap::new,
+                        Collectors.toList()))
+                .values().stream()
+                .map(rows -> {
+                    GrantRow first = rows.get(0);
+                    List<GrantEnvEntry> envEntries = rows.stream()
+                            .sorted(Comparator.comparing(GrantRow::id))
+                            .map(r -> new GrantEnvEntry(r.id(), r.environmentKey(), r.grantType(), r.status()))
+                            .toList();
+                    return new GrantGroupRow(first.userId(), first.username(), first.projectKey(), envEntries);
+                })
+                .sorted(Comparator.comparing(GrantGroupRow::username).thenComparing(GrantGroupRow::projectKey))
                 .toList();
     }
 
@@ -295,8 +366,7 @@ public class AdminAccessManagementService {
         DbfUserEnvGrant savedGrant = grantRepository.save(DbfUserEnvGrant.active(
                 user.getId(),
                 environment.getId(),
-                required(command.grantType(), "授权类型不能为空")
-        ));
+                required(command.grantType(), "授权类型不能为空")));
         return toGrantRow(savedGrant, userMap(user), environmentMap(environment), projectMap(environment));
     }
 
@@ -309,6 +379,53 @@ public class AdminAccessManagementService {
     public void revokeGrant(Long grantId) {
         if (grantRepository.existsById(grantId)) {
             grantRepository.deleteById(grantId);
+        }
+    }
+
+    /**
+     * 更新某用户在某项目下已授权的环境列表。
+     * <p>
+     * 与目标列表中不再包含的环境对应授权将被撤销；新加入的环境将新建 ACTIVE 授权。
+     *
+     * @param command 更新命令
+     */
+    @Transactional
+    public void updateUserProjectGrants(UpdateProjectGrantsCommand command) {
+        DbfUser user = requireActiveUser(command.userId());
+        catalogService.syncConfiguredProjectEnvironments();
+        DbfProject project = projectRepository.findByProjectKeyAndStatus(
+                required(command.projectKey(), "项目不能为空"), "ACTIVE")
+                .orElseThrow(() -> new DbflowException(ErrorCode.INVALID_REQUEST, "项目不存在或不可用"));
+
+        // 该项目下所有可用环境
+        List<DbfEnvironment> projectEnvironments = environmentRepository
+                .findAll().stream()
+                .filter(env -> Objects.equals(env.getProjectId(), project.getId()))
+                .filter(env -> "ACTIVE".equals(env.getStatus()))
+                .toList();
+
+        // 当前用户在该项目下已有的授权（key：environmentId → grant）
+        Map<Long, DbfUserEnvGrant> existingByEnvId = grantRepository.findAll().stream()
+                .filter(g -> Objects.equals(g.getUserId(), user.getId()))
+                .filter(g -> projectEnvironments.stream()
+                        .anyMatch(e -> Objects.equals(e.getId(), g.getEnvironmentId())))
+                .collect(Collectors.toMap(DbfUserEnvGrant::getEnvironmentId, Function.identity()));
+
+        String grantType = required(command.grantType(), "授权类型不能为空");
+        Set<String> targetEnvKeys = command.environmentKeys() == null
+                ? Set.of()
+                : new HashSet<>(command.environmentKeys());
+
+        for (DbfEnvironment env : projectEnvironments) {
+            boolean wantGrant = targetEnvKeys.contains(env.getEnvironmentKey());
+            DbfUserEnvGrant existing = existingByEnvId.get(env.getId());
+            if (wantGrant && existing == null) {
+                // 新增
+                grantRepository.save(DbfUserEnvGrant.active(user.getId(), env.getId(), grantType));
+            } else if (!wantGrant && existing != null) {
+                // 撤销
+                grantRepository.deleteById(existing.getId());
+            }
         }
     }
 
@@ -336,8 +453,7 @@ public class AdminAccessManagementService {
                 "ADMIN_SESSION",
                 user.getStatus(),
                 grantCount,
-                tokenCount
-        );
+                tokenCount);
     }
 
     /**
@@ -356,8 +472,7 @@ public class AdminAccessManagementService {
                 token.getStatus(),
                 token.getExpiresAt(),
                 token.getLastUsedAt(),
-                null
-        );
+                null);
     }
 
     /**
@@ -373,8 +488,7 @@ public class AdminAccessManagementService {
             DbfUserEnvGrant grant,
             Map<Long, DbfUser> userMap,
             Map<Long, DbfEnvironment> environmentMap,
-            Map<Long, DbfProject> projectMap
-    ) {
+            Map<Long, DbfProject> projectMap) {
         DbfUser user = userMap.get(grant.getUserId());
         DbfEnvironment environment = environmentMap.get(grant.getEnvironmentId());
         DbfProject project = environment == null ? null : projectMap.get(environment.getProjectId());
@@ -385,8 +499,7 @@ public class AdminAccessManagementService {
                 project == null ? "unknown" : project.getProjectKey(),
                 environment == null ? "unknown" : environment.getEnvironmentKey(),
                 grant.getGrantType(),
-                grant.getStatus()
-        );
+                grant.getStatus());
     }
 
     /**
@@ -401,10 +514,9 @@ public class AdminAccessManagementService {
         DbfProject project = projectRepository.findByProjectKeyAndStatus(required(projectKey, "项目不能为空"), "ACTIVE")
                 .orElseThrow(() -> new DbflowException(ErrorCode.INVALID_REQUEST, "项目不存在或不可用"));
         return environmentRepository.findByProjectIdAndEnvironmentKeyAndStatus(
-                        project.getId(),
-                        required(environmentKey, "环境不能为空"),
-                        "ACTIVE"
-                )
+                project.getId(),
+                required(environmentKey, "环境不能为空"),
+                "ACTIVE")
                 .orElseThrow(() -> new DbflowException(ErrorCode.INVALID_REQUEST, "环境不存在或不可用"));
     }
 
@@ -575,24 +687,43 @@ public class AdminAccessManagementService {
     }
 
     /**
+     * 更新用户项目环境授权命令。
+     */
+    public record UpdateProjectGrantsCommand(Long userId, String projectKey, List<String> environmentKeys,
+            String grantType) {
+    }
+
+    /**
      * 用户表格行。
      */
     public record UserRow(Long id, String username, String displayName, String role, String status, long grantCount,
-                          long activeTokenCount) {
+            long activeTokenCount) {
     }
 
     /**
      * Token 表格行；`tokenHash` 永远为空，用于测试防泄漏边界。
      */
     public record TokenRow(Long id, Long userId, String username, String tokenPrefix, String status, Instant expiresAt,
-                           Instant lastUsedAt, String tokenHash) {
+            Instant lastUsedAt, String tokenHash) {
     }
 
     /**
      * 授权表格行。
      */
     public record GrantRow(Long id, Long userId, String username, String projectKey, String environmentKey,
-                           String grantType, String status) {
+            String grantType, String status) {
+    }
+
+    /**
+     * 授权分组行（同一用户×项目合并展示）。
+     */
+    public record GrantGroupRow(Long userId, String username, String projectKey, List<GrantEnvEntry> environments) {
+    }
+
+    /**
+     * 授权分组行内单个环境条目。
+     */
+    public record GrantEnvEntry(Long grantId, String environmentKey, String grantType, String status) {
     }
 
     /**
@@ -605,13 +736,13 @@ public class AdminAccessManagementService {
      * 环境下拉选项。
      */
     public record EnvironmentOption(String projectKey, String projectName, String environmentKey,
-                                    String environmentName) {
+            String environmentName) {
     }
 
     /**
      * Token 一次性展示视图。
      */
     public record IssuedTokenView(Long tokenId, Long userId, String username, String plaintextToken,
-                                  String tokenPrefix, Instant expiresAt) {
+            String tokenPrefix, Instant expiresAt) {
     }
 }

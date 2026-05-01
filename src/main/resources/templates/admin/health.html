@@ -7,22 +7,28 @@
         <div><h1>系统健康</h1>
             <p class="muted">检查管理端、MCP、元数据库、配置源和目标数据源池。</p></div>
         <div class="actions"><span th:class="'status ' + ${healthPage.tone}"
-                                   th:text="${healthPage.overall}">HEALTHY</span><a class="btn primary"
-                                                                                    th:href="@{/admin/health}">刷新健康</a>
+                                   th:text="${healthPage.overall}">HEALTHY</span><a class="btn btn-icon"
+                                                                                    th:href="@{/admin/health}"
+                                                                                    aria-label="刷新健康"
+                                                                                    title="刷新健康"><svg
+                aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline
+                points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path
+                d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg></a>
         </div>
     </div>
-    <div class="notice" style="margin-bottom:12px"
+    <div class="notice mb-3"
          th:text="'共 ' + ${healthPage.totalCount} + ' 个健康检查项，异常 ' + ${healthPage.unhealthyCount} + ' 项；页面不展示数据库密码、完整连接串或 Token。'">
         共 0 个健康检查项
     </div>
     <div class="health-grid">
-        <div class="health-item" th:each="item : ${healthPage.items}">
+        <div class="health-item" th:attr="data-tone=${item.tone}" th:each="item : ${healthPage.items}">
             <div class="health-title">
                 <h3 th:text="${item.name}">应用进程</h3>
                 <span th:class="'status ' + ${item.tone}" th:text="${item.status}">HEALTHY</span>
             </div>
-            <p th:text="${item.description}">v0.1.0-SNAPSHOT，uptime 6h 12m</p>
-            <p class="muted mono" style="margin-top:8px" th:text="${item.component + ' · ' + item.detail}">runtime · JVM
+            <p class="health-item-desc" th:text="${item.description}">v0.1.0-SNAPSHOT，uptime 6h 12m</p>
+            <p class="health-item-meta" th:text="${item.component + ' · ' + item.detail}">runtime · JVM
                 412MB / 1024MB</p>
         </div>
     </div>

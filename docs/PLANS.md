@@ -18,12 +18,17 @@ Harness Powers lifecycle:
 
 ## Active Plans
 
-- [2026-04-30 Admin Real Data](exec-plans/active/2026-04-30-admin-real-data.md) -
-  Active; remove remaining prototype/mock data from `/admin`, wire overview/config/shell to real server-side
-  view models, and verify redaction, empty states, permissions, and admin regressions.
+No active execution plans.
 
 ## Completed Plans
 
+- [2026-04-30 Admin UI Polish](exec-plans/completed/2026-04-30-admin-ui-polish.md) -
+  Completed; deeply polished the Thymeleaf admin frontend with warm-neutral design tokens, first-class light/dark themes,
+  accessible theme controls, responsive shell/layout, branded logo usage, refined login page, and browser-verified UI
+  quality.
+- [2026-04-30 Admin Real Data](exec-plans/completed/2026-04-30-admin-real-data.md) -
+  Completed; removed remaining prototype/mock data from `/admin`, wired overview/config/shell to real server-side
+  view models, and verified redaction, empty states, permissions, and admin regressions.
 - [2026-04-30 Deployment Doc Simplification](exec-plans/completed/2026-04-30-deployment-doc-simplification.md) -
   Completed; simplified deployment docs to a single entrypoint, reduced `.env.example`, added copyable dev YAML, and
   defaulted dev bootstrap to `admin/admin`.

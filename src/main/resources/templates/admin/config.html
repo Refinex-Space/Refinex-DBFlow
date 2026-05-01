@@ -6,7 +6,11 @@
     <div class="page-head">
         <div><h1>配置查看</h1>
             <p class="muted">展示脱敏后的项目、环境、数据源和执行限制配置。</p></div>
-        <a class="btn" th:href="@{/admin/config}">刷新配置</a>
+        <div class="page-toolbar">
+            <a class="btn btn-icon" th:href="@{/admin/config}" aria-label="刷新配置" title="刷新配置">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
+            </a>
+        </div>
     </div>
     <div class="panel">
         <div class="panel-head"><h2>生效配置</h2><span class="mono muted" th:text="${configPage.sourceLabel}">Local application config</span>
@@ -50,7 +54,6 @@
             </div>
         </div>
     </div>
-    <div class="notice">配置查看页不展示数据库密码、完整 JDBC URL 或 secret。</div>
 </section>
 </body>
 </html>

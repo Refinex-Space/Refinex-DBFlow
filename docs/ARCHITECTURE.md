@@ -76,6 +76,7 @@ and must be updated as implementation packages are added.
 |   |   +-- security-and-audit.md
 |   +-- references/
 |   |   +-- java-development-standards.md
+|   |   +-- admin-ui-design-system.md
 |   +-- runbooks/
 |       +-- troubleshooting.md
 +-- src/
@@ -287,6 +288,7 @@ and must be updated as implementation packages are added.
 - Spring AI MCP dependency management is imported through the Spring AI BOM; the WebMVC MCP server starter is active
   and configured for Streamable HTTP at `/mcp`.
 - Development standard baseline: `docs/references/java-development-standards.md` requires Chinese JavaDoc, parameter-complete method comments, field comments, Maven dependency comments, and logging XML comments.
+- Admin UI design baseline: `docs/references/admin-ui-design-system.md` defines the Notion-inspired warm neutral visual system, layout rules, component styling, interaction states, and accessibility floor for management UI work.
 - Maven quality baseline: Java release 21, UTF-8 source/reporting encoding, compiler `-parameters`, JUnit Platform via Surefire, and classpath-based test execution.
 - Metadata persistence baseline: Flyway V1 creates DBFlow metadata tables, JPA entity/repository mappings exist for all
   seven metadata tables, and access/audit/confirmation services cover the first CRUD, status transition, and query

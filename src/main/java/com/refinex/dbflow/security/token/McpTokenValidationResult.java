@@ -1,5 +1,7 @@
 package com.refinex.dbflow.security.token;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.Instant;
 
 /**
@@ -16,5 +18,8 @@ public record McpTokenValidationResult(
         Long userId,
         String tokenPrefix,
         Instant lastUsedAt
-) {
+) implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 }

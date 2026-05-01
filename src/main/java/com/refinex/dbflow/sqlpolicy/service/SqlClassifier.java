@@ -39,32 +39,27 @@ public class SqlClassifier {
     /**
      * LOAD DATA 目标表提取表达式。
      */
-    private static final Pattern LOAD_DATA_TARGET_PATTERN = Pattern.compile(
-            "(?is)\\bINTO\\s+TABLE\\s+(`?\\w+`?(?:\\.`?\\w+`?)?)");
+    private static final Pattern LOAD_DATA_TARGET_PATTERN = Pattern.compile("(?is)\\bINTO\\s+TABLE\\s+(`?\\w+`?(?:\\.`?\\w+`?)?)");
 
     /**
      * GRANT 目标对象提取表达式。
      */
-    private static final Pattern GRANT_TARGET_PATTERN = Pattern.compile(
-            "(?is)\\bON\\s+(`?\\w+`?(?:\\.`?\\w+`?)?|\\*)\\s+TO\\b");
+    private static final Pattern GRANT_TARGET_PATTERN = Pattern.compile("(?is)\\bON\\s+(`?\\w+`?(?:\\.`?\\w+`?)?|\\*)\\s+TO\\b");
 
     /**
      * SHOW 目标表提取表达式。
      */
-    private static final Pattern SHOW_TARGET_PATTERN = Pattern.compile(
-            "(?is)\\bFROM\\s+(`?\\w+`?(?:\\.`?\\w+`?)?)");
+    private static final Pattern SHOW_TARGET_PATTERN = Pattern.compile("(?is)\\bFROM\\s+(`?\\w+`?(?:\\.`?\\w+`?)?)");
 
     /**
      * DROP DATABASE 目标库提取表达式。
      */
-    private static final Pattern DROP_DATABASE_PATTERN = Pattern.compile(
-            "(?is)^\\s*DROP\\s+(?:DATABASE|SCHEMA)\\s+(?:IF\\s+EXISTS\\s+)?(`?\\w+`?)");
+    private static final Pattern DROP_DATABASE_PATTERN = Pattern.compile("(?is)^\\s*DROP\\s+(?:DATABASE|SCHEMA)\\s+(?:IF\\s+EXISTS\\s+)?(`?\\w+`?)");
 
     /**
      * 通用首个对象提取表达式。
      */
-    private static final Pattern FIRST_OBJECT_PATTERN = Pattern.compile(
-            "(?is)^\\s*\\w+(?:\\s+\\w+)?\\s+(?:IF\\s+(?:NOT\\s+)?EXISTS\\s+)?(`?\\w+`?(?:\\.`?\\w+`?)?)");
+    private static final Pattern FIRST_OBJECT_PATTERN = Pattern.compile("(?is)^\\s*\\w+(?:\\s+\\w+)?\\s+(?:IF\\s+(?:NOT\\s+)?EXISTS\\s+)?(`?\\w+`?(?:\\.`?\\w+`?)?)");
 
     /**
      * 对 SQL 文本进行解析和风险分类。
@@ -110,7 +105,7 @@ public class SqlClassifier {
             if (statements.isEmpty()) {
                 return rejectedUnknown(SqlParseStatus.PARSE_FAILED, "未解析到 SQL 语句");
             }
-            return classifyParsedStatement(statements.get(0), normalizedSql);
+            return classifyParsedStatement(statements.getFirst(), normalizedSql);
         } catch (JSQLParserException exception) {
             return classifyParseFailure(normalizedSql);
         }
@@ -125,56 +120,36 @@ public class SqlClassifier {
      */
     private SqlClassification classifyParsedStatement(Statement statement, String sql) {
         Objects.requireNonNull(statement, "statement");
-        if (statement instanceof Select select) {
-            return query(SqlOperation.SELECT, firstTable(select), SqlParseStatus.SUCCESS, "SELECT 查询");
-        }
-        if (statement instanceof ShowColumnsStatement showColumnsStatement) {
-            return query(SqlOperation.SHOW, tableName(showColumnsStatement.getTableName()), SqlParseStatus.SUCCESS,
-                    "SHOW 检查");
-        }
-        if (statement instanceof DescribeStatement describeStatement) {
-            return query(SqlOperation.DESCRIBE, tableName(describeStatement.getTable()), SqlParseStatus.SUCCESS,
-                    "DESCRIBE 检查");
-        }
-        if (statement instanceof ExplainStatement explainStatement) {
-            return query(SqlOperation.EXPLAIN, explainTarget(explainStatement), SqlParseStatus.SUCCESS,
-                    "EXPLAIN 检查");
-        }
-        if (statement instanceof UnsupportedStatement) {
-            return classifyUnsupportedStatement(sql);
-        }
-        if (statement instanceof Insert insert) {
-            return dml(SqlOperation.INSERT, tableName(insert.getTable()), SqlRiskLevel.MEDIUM,
+        return switch (statement) {
+            case Select select -> query(SqlOperation.SELECT, firstTable(select), SqlParseStatus.SUCCESS, "SELECT 查询");
+            case ShowColumnsStatement showColumnsStatement ->
+                    query(SqlOperation.SHOW, tableName(showColumnsStatement.getTableName()), SqlParseStatus.SUCCESS,
+                            "SHOW 检查");
+            case DescribeStatement describeStatement ->
+                    query(SqlOperation.DESCRIBE, tableName(describeStatement.getTable()), SqlParseStatus.SUCCESS,
+                            "DESCRIBE 检查");
+            case ExplainStatement explainStatement ->
+                    query(SqlOperation.EXPLAIN, explainTarget(explainStatement), SqlParseStatus.SUCCESS,
+                            "EXPLAIN 检查");
+            case UnsupportedStatement unsupportedStatement -> classifyUnsupportedStatement(sql);
+            case Insert insert -> dml(SqlOperation.INSERT, tableName(insert.getTable()), SqlRiskLevel.MEDIUM,
                     SqlParseStatus.SUCCESS, false, "INSERT 写入");
-        }
-        if (statement instanceof Update update) {
-            return dml(SqlOperation.UPDATE, tableName(update.getTable()), SqlRiskLevel.MEDIUM,
+            case Update update -> dml(SqlOperation.UPDATE, tableName(update.getTable()), SqlRiskLevel.MEDIUM,
                     SqlParseStatus.SUCCESS, false, "UPDATE 更新");
-        }
-        if (statement instanceof Delete delete) {
-            return dml(SqlOperation.DELETE, tableName(delete.getTable()), SqlRiskLevel.HIGH,
+            case Delete delete -> dml(SqlOperation.DELETE, tableName(delete.getTable()), SqlRiskLevel.HIGH,
                     SqlParseStatus.SUCCESS, false, "DELETE 删除");
-        }
-        if (statement instanceof CreateTable createTable) {
-            return ddl(SqlOperation.CREATE, tableName(createTable.getTable()), SqlRiskLevel.HIGH,
-                    SqlParseStatus.SUCCESS, false, "CREATE TABLE 结构创建");
-        }
-        if (statement instanceof Alter alter) {
-            return ddl(SqlOperation.ALTER, tableName(alter.getTable()), SqlRiskLevel.HIGH,
+            case CreateTable createTable ->
+                    ddl(SqlOperation.CREATE, tableName(createTable.getTable()), SqlRiskLevel.HIGH,
+                            SqlParseStatus.SUCCESS, false, "CREATE TABLE 结构创建");
+            case Alter alter -> ddl(SqlOperation.ALTER, tableName(alter.getTable()), SqlRiskLevel.HIGH,
                     SqlParseStatus.SUCCESS, false, "ALTER TABLE 结构变更");
-        }
-        if (statement instanceof Drop drop) {
-            return classifyDrop(drop);
-        }
-        if (statement instanceof Truncate truncate) {
-            return ddl(SqlOperation.TRUNCATE, tableName(truncate.getTable()), SqlRiskLevel.CRITICAL,
+            case Drop drop -> classifyDrop(drop);
+            case Truncate truncate -> ddl(SqlOperation.TRUNCATE, tableName(truncate.getTable()), SqlRiskLevel.CRITICAL,
                     SqlParseStatus.SUCCESS, false, "TRUNCATE 清空表");
-        }
-        if (statement instanceof Grant grant) {
-            return admin(SqlOperation.GRANT, tableName(grant.getObjectName()), SqlRiskLevel.CRITICAL,
+            case Grant grant -> admin(SqlOperation.GRANT, tableName(grant.getObjectName()), SqlRiskLevel.CRITICAL,
                     SqlParseStatus.SUCCESS, false, "GRANT 授权");
-        }
-        return classifyParseFailure(sql);
+            default -> classifyParseFailure(sql);
+        };
     }
 
     /**
@@ -474,6 +449,9 @@ public class SqlClassifier {
             return SqlTarget.EMPTY;
         }
         String cleaned = cleanIdentifier(value);
+        if (!StringUtils.hasText(cleaned)) {
+            return SqlTarget.EMPTY;
+        }
         int dotIndex = cleaned.lastIndexOf('.');
         if (dotIndex < 0) {
             return new SqlTarget(null, cleaned);

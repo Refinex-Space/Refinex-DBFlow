@@ -5,6 +5,7 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 
 import java.io.Serial;
+import java.util.Objects;
 
 /**
  * MCP Bearer Token 认证结果。
@@ -75,5 +76,32 @@ public class McpAuthenticationToken extends AbstractAuthenticationToken {
      */
     public McpTokenValidationResult getValidationResult() {
         return validationResult;
+    }
+
+    /**
+     * 比较认证结果是否相同。
+     *
+     * @param other 待比较对象
+     * @return 相同时返回 true
+     */
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof McpAuthenticationToken token)) {
+            return false;
+        }
+        return super.equals(other) && Objects.equals(validationResult, token.validationResult);
+    }
+
+    /**
+     * 计算认证结果 hash。
+     *
+     * @return hash 值
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), validationResult);
     }
 }

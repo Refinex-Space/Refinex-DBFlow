@@ -121,8 +121,10 @@ public class McpEndpointGuardFilter extends OncePerRequestFilter {
                     request.getMethod(), metadata.sourceIp(), request.getContentLengthLong(),
                     StringUtils.hasText(request.getHeader(HttpHeaders.ORIGIN)));
             if (!allowedOrigin(request)) {
-                LOGGER.warn("mcp.request.rejected reason=origin-denied sourceIp={} origin={}",
-                        metadata.sourceIp(), normalizeOrigin(request.getHeader(HttpHeaders.ORIGIN)));
+                if (LOGGER.isWarnEnabled()) {
+                    LOGGER.warn("mcp.request.rejected reason=origin-denied sourceIp={} origin={}",
+                            metadata.sourceIp(), normalizeOrigin(request.getHeader(HttpHeaders.ORIGIN)));
+                }
                 errorResponseWriter.forbidden(response, metadata.requestId(), "ORIGIN_DENIED",
                         "Origin 不在 MCP 可信来源列表");
                 return;

@@ -1,7 +1,9 @@
 package com.refinex.dbflow.audit.service;
 
+import com.refinex.dbflow.audit.dto.AuditEventWriteRequest;
+import com.refinex.dbflow.audit.dto.AuditRequestContext;
 import com.refinex.dbflow.audit.entity.DbfAuditEvent;
-import com.refinex.dbflow.observability.DbflowMetricsService;
+import com.refinex.dbflow.observability.service.DbflowMetricsService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;

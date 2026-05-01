@@ -27,6 +27,11 @@
 - 属性注释必须说明字段含义、单位、脱敏要求、默认值或约束之一；实体、配置属性、DTO、枚举字段必须逐项说明。
 - 测试类和测试方法也要注释测试目标，避免测试意图只能从实现里猜。
 - 包级边界稳定后，可以增加 `package-info.java` 说明包职责和依赖方向。
+- 后端包结构采用领域优先、二级语义包组织：`controller`、`service`、`dto`、`model`、`command`、`view`、`support`、`configuration`、
+  `filter`、`properties` 等按职责使用，不把配置类、Filter、DTO、Record、枚举和常量继续平铺在领域根包。
+- 公共 record 必须放在独立顶层文件中；只允许单类私有实现细节继续使用 private nested record。
+- 不使用 wildcard import；生产和测试代码都必须显式导入类型，避免包迁移时隐式依赖扩大。
+- 重复出现的无状态通用能力优先放入 `common.util`，例如文本标准化、敏感文本脱敏、hash、截断等。
 
 方法注释示例：
 

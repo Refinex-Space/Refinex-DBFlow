@@ -1,5 +1,11 @@
 package com.refinex.dbflow.sqlpolicy;
 
+import com.refinex.dbflow.sqlpolicy.dto.SqlClassification;
+import com.refinex.dbflow.sqlpolicy.model.SqlOperation;
+import com.refinex.dbflow.sqlpolicy.model.SqlParseStatus;
+import com.refinex.dbflow.sqlpolicy.model.SqlRiskLevel;
+import com.refinex.dbflow.sqlpolicy.model.SqlStatementType;
+import com.refinex.dbflow.sqlpolicy.service.SqlClassifier;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

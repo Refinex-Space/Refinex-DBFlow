@@ -1,7 +1,10 @@
 package com.refinex.dbflow.executor;
 
+
 import com.refinex.dbflow.common.DbflowException;
-import com.refinex.dbflow.config.DbflowProperties;
+import com.refinex.dbflow.config.properties.DbflowProperties;
+import com.refinex.dbflow.executor.datasource.HikariDataSourceRegistry;
+import com.refinex.dbflow.executor.datasource.ProjectEnvironmentDataSourceRegistry;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

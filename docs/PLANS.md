@@ -18,7 +18,9 @@ Harness Powers lifecycle:
 
 ## Active Plans
 
-No active execution plans.
+- [2026-05-01 Backend Code Organization](exec-plans/active/2026-05-01-backend-code-organization.md) -
+  Active; normalize backend package structure, extract nested public records, consolidate shared utilities, and split
+  selected oversized classes without changing external behavior.
 
 ## Completed Plans
 

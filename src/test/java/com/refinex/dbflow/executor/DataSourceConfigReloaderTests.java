@@ -1,6 +1,10 @@
 package com.refinex.dbflow.executor;
 
-import com.refinex.dbflow.config.DbflowProperties;
+
+import com.refinex.dbflow.config.properties.DbflowProperties;
+import com.refinex.dbflow.executor.datasource.DataSourceConfigReloader;
+import com.refinex.dbflow.executor.datasource.HikariDataSourceRegistry;
+import com.refinex.dbflow.executor.dto.DataSourceReloadResult;
 import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

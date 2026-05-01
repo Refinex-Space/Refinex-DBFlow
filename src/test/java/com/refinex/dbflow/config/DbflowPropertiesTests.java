@@ -1,5 +1,8 @@
 package com.refinex.dbflow.config;
 
+import com.refinex.dbflow.config.model.DangerousDdlDecision;
+import com.refinex.dbflow.config.model.DangerousDdlOperation;
+import com.refinex.dbflow.config.properties.DbflowProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;

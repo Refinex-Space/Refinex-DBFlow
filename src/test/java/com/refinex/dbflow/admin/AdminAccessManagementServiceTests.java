@@ -3,6 +3,11 @@ package com.refinex.dbflow.admin;
 import com.refinex.dbflow.access.repository.DbfApiTokenRepository;
 import com.refinex.dbflow.access.repository.DbfUserEnvGrantRepository;
 import com.refinex.dbflow.access.repository.DbfUserRepository;
+import com.refinex.dbflow.admin.command.CreateUserCommand;
+import com.refinex.dbflow.admin.command.GrantEnvironmentCommand;
+import com.refinex.dbflow.admin.command.IssueTokenCommand;
+import com.refinex.dbflow.admin.service.AdminAccessManagementService;
+import com.refinex.dbflow.admin.view.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -60,20 +65,20 @@ class AdminAccessManagementServiceTests {
      */
     @Test
     void shouldManageUsersTokensAndEnvironmentGrants() {
-        AdminAccessManagementService.UserRow user = managementService.createUser(
-                new AdminAccessManagementService.CreateUserCommand("ops.alice", "Ops Alice", "Admin123456!")
+        UserRow user = managementService.createUser(
+                new CreateUserCommand("ops.alice", "Ops Alice", "Admin123456!")
         );
 
-        AdminAccessManagementService.GrantRow grant = managementService.grantEnvironment(
-                new AdminAccessManagementService.GrantEnvironmentCommand(
+        GrantRow grant = managementService.grantEnvironment(
+                new GrantEnvironmentCommand(
                         user.id(),
                         "billing-core",
                         "staging",
                         "WRITE"
                 )
         );
-        AdminAccessManagementService.IssuedTokenView issuedToken = managementService.issueToken(
-                new AdminAccessManagementService.IssueTokenCommand(user.id(), 7)
+        IssuedTokenView issuedToken = managementService.issueToken(
+                new IssueTokenCommand(user.id(), 7)
         );
 
         assertThat(userRepository.findByUsername("ops.alice")).isPresent();
@@ -85,16 +90,16 @@ class AdminAccessManagementServiceTests {
 
         managementService.revokeGrant(grant.id());
         managementService.revokeToken(issuedToken.tokenId());
-        AdminAccessManagementService.IssuedTokenView reissuedToken = managementService.reissueToken(
-                new AdminAccessManagementService.IssueTokenCommand(user.id(), 14)
+        IssuedTokenView reissuedToken = managementService.reissueToken(
+                new IssueTokenCommand(user.id(), 14)
         );
         managementService.disableUser(user.id());
 
-        List<AdminAccessManagementService.TokenRow> tokens = managementService.listTokens(
-                new AdminAccessManagementService.TokenFilter(null, null)
+        List<TokenRow> tokens = managementService.listTokens(
+                new TokenFilter(null, null)
         );
         assertThat(reissuedToken.plaintextToken()).startsWith("dbf_").isNotEqualTo(issuedToken.plaintextToken());
-        assertThat(tokens).extracting(AdminAccessManagementService.TokenRow::tokenHash).containsOnlyNulls();
+        assertThat(tokens).extracting(TokenRow::tokenHash).containsOnlyNulls();
         assertThat(grantRepository.findById(grant.id())).isEmpty();
         assertThat(userRepository.findByUsername("ops.alice").orElseThrow().getStatus()).isEqualTo("DISABLED");
     }

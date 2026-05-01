@@ -4,22 +4,22 @@
 
 ## Control Plane Artifacts
 
-| Path | Type | Created | Last Verified |
-| --- | --- | --- | --- |
-| AGENTS.md | root-agents | 2026-04-29 | 2026-04-29 |
-| 0-1-PLANS.md | managed-doc | 2026-04-29 | 2026-04-29 |
-| docs/PLANS.md | managed-doc | 2026-04-29 | 2026-04-29 |
-| docs/ARCHITECTURE.md | managed-doc | 2026-04-29 | 2026-04-29 |
-| docs/OBSERVABILITY.md | managed-doc | 2026-04-29 | 2026-04-29 |
-| docs/exec-plans/specs | directory | 2026-04-29 | 2026-04-29 |
-| docs/exec-plans/active | directory | 2026-04-29 | 2026-04-29 |
-| docs/exec-plans/completed | directory | 2026-04-29 | 2026-04-29 |
-| docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md | managed-doc | 2026-04-29 | 2026-04-29 |
-| docs/exec-plans/completed/2026-04-29-harness-control-plane-bootstrap.md | managed-doc | 2026-04-29 | 2026-04-29 |
-| docs/exec-plans/tech-debt-tracker.md | managed-doc | 2026-04-29 | 2026-04-29 |
-| docs/generated/harness-manifest.md | manifest | 2026-04-29 | 2026-04-29 |
-| docs/references | directory | 2026-04-29 | 2026-04-29 |
-| scripts/check_harness.py | script | 2026-04-29 | 2026-04-29 |
+| Path                                                                    | Type        | Created    | Last Verified |
+|-------------------------------------------------------------------------|-------------|------------|---------------|
+| AGENTS.md                                                               | root-agents | 2026-04-29 | 2026-05-01    |
+| 0-1-PLANS.md                                                            | managed-doc | 2026-04-29 | 2026-05-01    |
+| docs/PLANS.md                                                           | managed-doc | 2026-04-29 | 2026-05-01    |
+| docs/ARCHITECTURE.md                                                    | managed-doc | 2026-04-29 | 2026-05-01    |
+| docs/OBSERVABILITY.md                                                   | managed-doc | 2026-04-29 | 2026-05-01    |
+| docs/exec-plans/specs                                                   | directory   | 2026-04-29 | 2026-05-01    |
+| docs/exec-plans/active                                                  | directory   | 2026-04-29 | 2026-05-01    |
+| docs/exec-plans/completed                                               | directory   | 2026-04-29 | 2026-05-01    |
+| docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md      | managed-doc | 2026-04-29 | 2026-05-01    |
+| docs/exec-plans/completed/2026-04-29-harness-control-plane-bootstrap.md | managed-doc | 2026-04-29 | 2026-05-01    |
+| docs/exec-plans/tech-debt-tracker.md                                    | managed-doc | 2026-04-29 | 2026-05-01    |
+| docs/generated/harness-manifest.md                                      | manifest    | 2026-04-29 | 2026-05-01    |
+| docs/references                                                         | directory   | 2026-04-29 | 2026-05-01    |
+| scripts/check_harness.py                                                | script      | 2026-04-29 | 2026-05-01    |
 
 ## Unmanaged Documentation
 

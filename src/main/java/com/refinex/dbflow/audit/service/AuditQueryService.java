@@ -1,9 +1,14 @@
 package com.refinex.dbflow.audit.service;
 
+import com.refinex.dbflow.audit.dto.AuditEventDetail;
+import com.refinex.dbflow.audit.dto.AuditEventPageResponse;
+import com.refinex.dbflow.audit.dto.AuditEventSummary;
+import com.refinex.dbflow.audit.dto.AuditQueryCriteria;
 import com.refinex.dbflow.audit.entity.DbfAuditEvent;
 import com.refinex.dbflow.audit.repository.DbfAuditEventRepository;
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.common.ErrorCode;
+import com.refinex.dbflow.common.util.SensitiveTextSanitizer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -238,7 +243,7 @@ public class AuditQueryService {
                 event.getStatus(),
                 event.getDecision(),
                 event.getSqlHash(),
-                AuditTextSanitizer.sanitize(event.getResultSummary()),
+                SensitiveTextSanitizer.sanitize(event.getResultSummary()),
                 event.getAffectedRows(),
                 event.getCreatedAt()
         );
@@ -267,11 +272,11 @@ public class AuditQueryService {
                 event.getStatus(),
                 event.getDecision(),
                 event.getSqlHash(),
-                AuditTextSanitizer.sanitize(event.getSqlText()),
-                AuditTextSanitizer.sanitize(event.getResultSummary()),
+                SensitiveTextSanitizer.sanitize(event.getSqlText()),
+                SensitiveTextSanitizer.sanitize(event.getResultSummary()),
                 event.getAffectedRows(),
                 event.getErrorCode(),
-                AuditTextSanitizer.sanitize(event.getErrorMessage()),
+                SensitiveTextSanitizer.sanitize(event.getErrorMessage()),
                 event.getConfirmationId(),
                 event.getCreatedAt()
         );

@@ -1,5 +1,6 @@
 package com.refinex.dbflow.observability;
 
+import com.refinex.dbflow.observability.filter.RequestIdFilter;
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;

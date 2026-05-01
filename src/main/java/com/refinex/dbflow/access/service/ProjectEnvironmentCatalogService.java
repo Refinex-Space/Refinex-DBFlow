@@ -1,10 +1,11 @@
 package com.refinex.dbflow.access.service;
 
+import com.refinex.dbflow.access.dto.ConfiguredEnvironmentView;
 import com.refinex.dbflow.access.entity.DbfEnvironment;
 import com.refinex.dbflow.access.entity.DbfProject;
 import com.refinex.dbflow.access.repository.DbfEnvironmentRepository;
 import com.refinex.dbflow.access.repository.DbfProjectRepository;
-import com.refinex.dbflow.config.DbflowProperties;
+import com.refinex.dbflow.config.properties.DbflowProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

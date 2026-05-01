@@ -1,5 +1,6 @@
 package com.refinex.dbflow.executor;
 
+
 import com.refinex.dbflow.access.entity.DbfApiToken;
 import com.refinex.dbflow.access.entity.DbfUser;
 import com.refinex.dbflow.access.service.AccessDecisionService;
@@ -8,9 +9,13 @@ import com.refinex.dbflow.access.service.ProjectEnvironmentCatalogService;
 import com.refinex.dbflow.audit.entity.DbfAuditEvent;
 import com.refinex.dbflow.audit.service.AuditEventWriter;
 import com.refinex.dbflow.audit.service.AuditService;
-import com.refinex.dbflow.config.DbflowProperties;
-import com.refinex.dbflow.sqlpolicy.DangerousDdlPolicyEngine;
-import com.refinex.dbflow.sqlpolicy.SqlClassifier;
+import com.refinex.dbflow.config.properties.DbflowProperties;
+import com.refinex.dbflow.executor.datasource.ProjectEnvironmentDataSourceRegistry;
+import com.refinex.dbflow.executor.dto.SqlExplainRequest;
+import com.refinex.dbflow.executor.dto.SqlExplainResult;
+import com.refinex.dbflow.executor.service.SqlExplainService;
+import com.refinex.dbflow.sqlpolicy.service.DangerousDdlPolicyEngine;
+import com.refinex.dbflow.sqlpolicy.service.SqlClassifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

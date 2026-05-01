@@ -1,7 +1,11 @@
 package com.refinex.dbflow.sqlpolicy;
 
-import com.refinex.dbflow.config.DangerousDdlOperation;
-import com.refinex.dbflow.config.DbflowProperties;
+import com.refinex.dbflow.config.model.DangerousDdlOperation;
+import com.refinex.dbflow.config.properties.DbflowProperties;
+import com.refinex.dbflow.sqlpolicy.dto.DangerousDdlPolicyDecision;
+import com.refinex.dbflow.sqlpolicy.dto.SqlClassification;
+import com.refinex.dbflow.sqlpolicy.model.*;
+import com.refinex.dbflow.sqlpolicy.service.DangerousDdlPolicyEngine;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

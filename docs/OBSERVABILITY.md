@@ -40,7 +40,9 @@ fixed-window source-IP rate limiting, stable sanitized HTTP errors, query-string
 metadata for policy denial, SQL failure, confirmation expiry, and truncated results. Operational logs now carry
 `requestId` and `traceId` through MDC, and key MCP, SQL, policy, config reload, and datasource replacement events use
 stable key/value messages for troubleshooting without logging Token plaintext, database passwords, JDBC URLs, or full
-result sets.
+result sets. Backend packages now use second-level semantic boundaries (`dto`, `model`, `service`, `support`,
+`configuration`, `filter`, and similar), shared text/hash/truncation/sanitization helpers live under `common.util`,
+and production/test Java sources are kept free of wildcard imports.
 
 ## Build & Run
 
@@ -63,6 +65,7 @@ result sets.
 | Dev Nacos YAML       | `docs/deployment/nacos/dev/application-dbflow.yml`                                                                                           | Copyable Nacos Data ID content for `application-dbflow.yml`.                                                                                                                                                                  |
 | Troubleshooting      | `docs/runbooks/troubleshooting.md`                                                                                                           | Executable runbook for startup, Nacos, metadata DB, target DB, Token, MCP connectivity, Origin, rate limit, SQL policy, and SQL execution failures.                                                                           |
 | Validate Harness     | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                                                                                          |
+| Package hygiene      | `rg -n "import .*\\.\\*" src/main/java src/test/java`                                                                                        | No wildcard imports in production or test Java sources.                                                                                                                                                                       |
 
 ## CI Configuration
 

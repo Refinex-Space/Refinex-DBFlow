@@ -3,10 +3,15 @@ package com.refinex.dbflow.observability;
 import com.refinex.dbflow.access.entity.DbfApiToken;
 import com.refinex.dbflow.access.entity.DbfUser;
 import com.refinex.dbflow.access.service.AccessService;
-import com.refinex.dbflow.admin.AdminOperationsViewService;
-import com.refinex.dbflow.audit.service.AuditEventWriteRequest;
+import com.refinex.dbflow.admin.service.AdminOperationsViewService;
+import com.refinex.dbflow.admin.view.HealthItem;
+import com.refinex.dbflow.admin.view.HealthPageView;
+import com.refinex.dbflow.audit.dto.AuditEventWriteRequest;
+import com.refinex.dbflow.audit.dto.AuditRequestContext;
 import com.refinex.dbflow.audit.service.AuditEventWriter;
-import com.refinex.dbflow.audit.service.AuditRequestContext;
+import com.refinex.dbflow.observability.dto.HealthSnapshot;
+import com.refinex.dbflow.observability.service.DbflowHealthService;
+import com.refinex.dbflow.observability.service.DbflowMetricsService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -173,14 +178,14 @@ class OperationalHealthAndMetricsTests {
      */
     @Test
     void shouldReuseSharedHealthServiceForAdminHealthPage() {
-        DbflowHealthService.HealthSnapshot snapshot = healthService.snapshot();
-        AdminOperationsViewService.HealthPageView page = operationsViewService.healthPage();
+        HealthSnapshot snapshot = healthService.snapshot();
+        HealthPageView page = operationsViewService.healthPage();
 
         assertThat(page.overall()).isEqualTo(snapshot.overall());
         assertThat(page.totalCount()).isEqualTo(snapshot.totalCount());
         assertThat(page.unhealthyCount()).isEqualTo(snapshot.unhealthyCount());
         assertThat(page.items())
-                .extracting(AdminOperationsViewService.HealthItem::name)
+                .extracting(HealthItem::name)
                 .contains("元数据库", "MCP Streamable HTTP", "Nacos", "ops-metrics / dev");
     }
 

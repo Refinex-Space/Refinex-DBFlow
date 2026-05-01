@@ -119,17 +119,18 @@ public class TruncateConfirmationService {
         Instant expiresAt = requestedAt.plus(DEFAULT_TTL);
 
         DbfConfirmationChallenge challenge = confirmationService.createPending(
-                request.userId(),
-                request.tokenId(),
-                environment.getId(),
-                request.projectKey(),
-                request.environmentKey(),
-                confirmationId,
-                sqlHash,
-                sqlText,
-                classification.riskLevel().name(),
-                expiresAt
-        );
+                DbfConfirmationChallenge.builder()
+                        .userId(request.userId())
+                        .tokenId(request.tokenId())
+                        .environmentId(environment.getId())
+                        .projectKey(request.projectKey())
+                        .environmentKey(request.environmentKey())
+                        .confirmationId(confirmationId)
+                        .sqlHash(sqlHash)
+                        .sqlText(sqlText)
+                        .riskLevel(classification.riskLevel().name())
+                        .expiresAt(expiresAt)
+                        .buildPending());
         audit(request, "REQUIRES_CONFIRMATION", sqlHash, sqlText, challenge.getConfirmationId(), null, null);
         return new TruncateConfirmationDecision(
                 true,

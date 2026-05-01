@@ -106,45 +106,166 @@ public class DbfConfirmationChallenge {
     private Instant updatedAt;
 
     /**
-     * 创建待确认挑战。
+     * 创建确认挑战构建器。
      *
-     * @param userId         用户主键
-     * @param tokenId        MCP Token 主键
-     * @param environmentId  环境主键
-     * @param projectKey     项目标识
-     * @param environmentKey 环境标识
-     * @param confirmationId 对外确认标识
-     * @param sqlHash        SQL hash
-     * @param sqlText        SQL 原文
-     * @param riskLevel      风险级别
-     * @param expiresAt      过期时间
-     * @return 确认挑战实体
+     * @return 确认挑战构建器
      */
-    public static DbfConfirmationChallenge pending(
-            Long userId,
-            Long tokenId,
-            Long environmentId,
-            String projectKey,
-            String environmentKey,
-            String confirmationId,
-            String sqlHash,
-            String sqlText,
-            String riskLevel,
-            Instant expiresAt
-    ) {
-        DbfConfirmationChallenge challenge = new DbfConfirmationChallenge();
-        challenge.userId = userId;
-        challenge.tokenId = tokenId;
-        challenge.environmentId = environmentId;
-        challenge.projectKey = projectKey;
-        challenge.environmentKey = environmentKey;
-        challenge.confirmationId = confirmationId;
-        challenge.sqlHash = sqlHash;
-        challenge.sqlText = sqlText;
-        challenge.riskLevel = riskLevel;
-        challenge.status = "PENDING";
-        challenge.expiresAt = expiresAt;
-        return challenge;
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * 确认挑战构建器。
+     */
+    public static final class Builder {
+
+        /**
+         * 用户主键。
+         */
+        private Long userId;
+        /**
+         * MCP Token 主键。
+         */
+        private Long tokenId;
+        /**
+         * 环境主键。
+         */
+        private Long environmentId;
+        /**
+         * 项目标识。
+         */
+        private String projectKey;
+        /**
+         * 环境标识。
+         */
+        private String environmentKey;
+        /**
+         * 对外确认标识。
+         */
+        private String confirmationId;
+        /**
+         * SQL hash。
+         */
+        private String sqlHash;
+        /**
+         * SQL 原文。
+         */
+        private String sqlText;
+        /**
+         * 风险级别。
+         */
+        private String riskLevel;
+        /**
+         * 过期时间。
+         */
+        private Instant expiresAt;
+
+        /**
+         * 禁止外部直接实例化。
+         */
+        private Builder() {
+        }
+
+        /**
+         * @param userId 用户主键 @return this
+         */
+        public Builder userId(Long userId) {
+            this.userId = userId;
+            return this;
+        }
+
+        /**
+         * @param tokenId MCP Token 主键 @return this
+         */
+        public Builder tokenId(Long tokenId) {
+            this.tokenId = tokenId;
+            return this;
+        }
+
+        /**
+         * @param environmentId 环境主键 @return this
+         */
+        public Builder environmentId(Long environmentId) {
+            this.environmentId = environmentId;
+            return this;
+        }
+
+        /**
+         * @param projectKey 项目标识 @return this
+         */
+        public Builder projectKey(String projectKey) {
+            this.projectKey = projectKey;
+            return this;
+        }
+
+        /**
+         * @param environmentKey 环境标识 @return this
+         */
+        public Builder environmentKey(String environmentKey) {
+            this.environmentKey = environmentKey;
+            return this;
+        }
+
+        /**
+         * @param confirmationId 对外确认标识 @return this
+         */
+        public Builder confirmationId(String confirmationId) {
+            this.confirmationId = confirmationId;
+            return this;
+        }
+
+        /**
+         * @param sqlHash SQL hash @return this
+         */
+        public Builder sqlHash(String sqlHash) {
+            this.sqlHash = sqlHash;
+            return this;
+        }
+
+        /**
+         * @param sqlText SQL 原文 @return this
+         */
+        public Builder sqlText(String sqlText) {
+            this.sqlText = sqlText;
+            return this;
+        }
+
+        /**
+         * @param riskLevel 风险级别 @return this
+         */
+        public Builder riskLevel(String riskLevel) {
+            this.riskLevel = riskLevel;
+            return this;
+        }
+
+        /**
+         * @param expiresAt 过期时间 @return this
+         */
+        public Builder expiresAt(Instant expiresAt) {
+            this.expiresAt = expiresAt;
+            return this;
+        }
+
+        /**
+         * 构造待确认挑战实体，状态固定为 PENDING。
+         *
+         * @return 确认挑战实体
+         */
+        public DbfConfirmationChallenge buildPending() {
+            DbfConfirmationChallenge challenge = new DbfConfirmationChallenge();
+            challenge.userId = this.userId;
+            challenge.tokenId = this.tokenId;
+            challenge.environmentId = this.environmentId;
+            challenge.projectKey = this.projectKey;
+            challenge.environmentKey = this.environmentKey;
+            challenge.confirmationId = this.confirmationId;
+            challenge.sqlHash = this.sqlHash;
+            challenge.sqlText = this.sqlText;
+            challenge.riskLevel = this.riskLevel;
+            challenge.status = "PENDING";
+            challenge.expiresAt = this.expiresAt;
+            return challenge;
+        }
     }
 
     /**

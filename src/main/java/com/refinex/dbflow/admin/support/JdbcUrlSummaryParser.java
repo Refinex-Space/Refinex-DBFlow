@@ -29,7 +29,7 @@ public final class JdbcUrlSummaryParser {
         }
         String normalized = jdbcUrl.trim();
         if (normalized.startsWith("jdbc:mysql:")) {
-            return parseUriJdbc(normalized, "mysql");
+            return parseUriJdbc(normalized);
         }
         if (normalized.startsWith("jdbc:h2:")) {
             return parseH2Jdbc(normalized);
@@ -41,10 +41,9 @@ public final class JdbcUrlSummaryParser {
      * 解析 URI 形态的 JDBC URL。
      *
      * @param jdbcUrl JDBC URL
-     * @param type    数据库类型
      * @return 安全展示字段
      */
-    private static JdbcParts parseUriJdbc(String jdbcUrl, String type) {
+    private static JdbcParts parseUriJdbc(String jdbcUrl) {
         try {
             URI uri = URI.create(stripJdbcQuery(jdbcUrl).substring("jdbc:".length()));
             String schema = uri.getPath();
@@ -52,13 +51,13 @@ public final class JdbcUrlSummaryParser {
                 schema = schema.substring(1);
             }
             return new JdbcParts(
-                    type,
+                    "mysql",
                     TextUtils.displayText(uri.getHost()),
                     uri.getPort() < 0 ? "-" : Integer.toString(uri.getPort()),
                     TextUtils.displayText(schema)
             );
         } catch (IllegalArgumentException exception) {
-            return new JdbcParts(type, "解析失败", "-", "-");
+            return new JdbcParts("mysql", "解析失败", "-", "-");
         }
     }
 

@@ -4,6 +4,7 @@ import com.refinex.dbflow.access.entity.*;
 import com.refinex.dbflow.access.repository.*;
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.common.ErrorCode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +46,11 @@ public class AccessService {
     private final DbfUserEnvGrantRepository grantRepository;
 
     /**
+     * 自身代理引用，用于通过 Spring AOP 代理调用事务方法，避免 this 直调绕过事务切面。
+     */
+    private AccessService self;
+
+    /**
      * 创建访问控制服务。
      *
      * @param userRepository        用户 repository
@@ -68,6 +74,16 @@ public class AccessService {
     }
 
     /**
+     * 注入自身代理，由 Spring 容器在 Bean 初始化后回调，确保事务切面生效。
+     *
+     * @param self 当前 Bean 的 Spring AOP 代理实例
+     */
+    @Autowired
+    public void setSelf(AccessService self) {
+        this.self = self;
+    }
+
+    /**
      * 创建用户。
      *
      * @param username     用户名
@@ -84,14 +100,13 @@ public class AccessService {
      * 禁用用户。
      *
      * @param userId 用户主键
-     * @return 禁用后的用户实体
      */
     @Transactional
-    public DbfUser disableUser(Long userId) {
+    public void disableUser(Long userId) {
         DbfUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new DbflowException(ErrorCode.INVALID_REQUEST, "用户不存在"));
         user.disable();
-        return userRepository.save(user);
+        userRepository.save(user);
     }
 
     /**
@@ -142,14 +157,13 @@ public class AccessService {
      *
      * @param tokenId   Token 主键
      * @param revokedAt 吊销时间
-     * @return 吊销后的 Token 元数据
      */
     @Transactional
-    public DbfApiToken revokeToken(Long tokenId, Instant revokedAt) {
+    public void revokeToken(Long tokenId, Instant revokedAt) {
         DbfApiToken token = apiTokenRepository.findById(tokenId)
                 .orElseThrow(() -> new DbflowException(ErrorCode.INVALID_REQUEST, "token 不存在"));
         token.revoke(revokedAt);
-        return apiTokenRepository.save(token);
+        apiTokenRepository.save(token);
     }
 
     /**
@@ -196,7 +210,7 @@ public class AccessService {
             String grantType
     ) {
         DbfEnvironment environment = resolveActiveEnvironment(projectKey, environmentKey);
-        return grantEnvironment(userId, environment.getId(), grantType);
+        return self.grantEnvironment(userId, environment.getId(), grantType);
     }
 
     /**
@@ -263,7 +277,7 @@ public class AccessService {
     @Transactional(readOnly = true)
     public boolean hasActiveGrant(Long userId, String projectKey, String environmentKey) {
         DbfEnvironment environment = resolveActiveEnvironment(projectKey, environmentKey);
-        return hasActiveGrant(userId, environment.getId());
+        return self.hasActiveGrant(userId, environment.getId());
     }
 
     /**

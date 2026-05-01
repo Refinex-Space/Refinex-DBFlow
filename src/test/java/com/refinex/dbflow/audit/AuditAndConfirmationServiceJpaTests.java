@@ -68,18 +68,18 @@ class AuditAndConfirmationServiceJpaTests {
         DbfEnvironment environment = createEnvironment("project-confirm", "prod");
         Instant expiresAt = Instant.now().plus(5, ChronoUnit.MINUTES);
 
-        confirmationService.createPending(
-                user.getId(),
-                token.getId(),
-                environment.getId(),
-                "project-confirm",
-                "prod",
-                "confirm-1",
-                "sql-hash-1",
-                "TRUNCATE TABLE orders",
-                "HIGH",
-                expiresAt
-        );
+        confirmationService.createPending(DbfConfirmationChallenge.builder()
+                .userId(user.getId())
+                .tokenId(token.getId())
+                .environmentId(environment.getId())
+                .projectKey("project-confirm")
+                .environmentKey("prod")
+                .confirmationId("confirm-1")
+                .sqlHash("sql-hash-1")
+                .sqlText("TRUNCATE TABLE orders")
+                .riskLevel("HIGH")
+                .expiresAt(expiresAt)
+                .buildPending());
         DbfConfirmationChallenge confirmed = confirmationService.confirm("confirm-1", Instant.now());
 
         assertThat(confirmed.getStatus()).isEqualTo("CONFIRMED");
@@ -94,20 +94,20 @@ class AuditAndConfirmationServiceJpaTests {
     void shouldInsertAuditEvent() {
         DbfUser user = accessService.createUser("erin", "Erin", "hash");
 
-        DbfAuditEvent event = DbfAuditEvent.executed(
-                "req-1",
-                user.getId(),
-                "project-a",
-                "dev",
-                "SELECT",
-                "LOW",
-                "ALLOWED_EXECUTED",
-                "sql-hash-2",
-                "SELECT 1",
-                "1 row",
-                0L
-        );
-        DbfAuditEvent saved = auditService.record(event);
+        DbfAuditEvent event = DbfAuditEvent.builder()
+                .requestId("req-1")
+                .userId(user.getId())
+                .projectKey("project-a")
+                .environmentKey("dev")
+                .operationType("SELECT")
+                .riskLevel("LOW")
+                .decision("ALLOWED_EXECUTED")
+                .sqlHash("sql-hash-2")
+                .sqlText("SELECT 1")
+                .resultSummary("1 row")
+                .affectedRows(0L)
+                .build();
+        DbfAuditEvent saved = auditService.saveAuditEvent(event);
         List<DbfAuditEvent> recent = auditService.findRecentByUser(user.getId());
 
         assertThat(saved.getId()).isNotNull();

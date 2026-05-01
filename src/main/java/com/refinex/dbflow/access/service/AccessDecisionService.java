@@ -8,6 +8,7 @@ import com.refinex.dbflow.access.entity.DbfProject;
 import com.refinex.dbflow.access.entity.DbfUser;
 import com.refinex.dbflow.access.model.AccessDecisionReason;
 import com.refinex.dbflow.access.repository.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +48,11 @@ public class AccessDecisionService {
     private final DbfUserEnvGrantRepository grantRepository;
 
     /**
+     * 自身代理引用，用于通过 Spring AOP 代理调用事务方法，避免 this 直调绕过事务切面。
+     */
+    private AccessDecisionService self;
+
+    /**
      * 创建项目环境访问判断服务。
      *
      * @param userRepository        用户 repository
@@ -70,14 +76,23 @@ public class AccessDecisionService {
     }
 
     /**
-     * 判断用户 Token 是否可以访问指定项目环境。
+     * 注入自身代理，由 Spring 容器在 Bean 初始化后回调，确保事务切面生效。
+     *
+     * @param self 当前 Bean 的 Spring AOP 代理实例
+     */
+    @Autowired
+    public void setSelf(AccessDecisionService self) {
+        this.self = self;
+    }
+
+    /**
+     * 判断用户 Token 是否可以访问指定项目环境，使用当前时间作为判断基准。
      *
      * @param request 访问判断请求
      * @return 访问判断结果
      */
-    @Transactional(readOnly = true)
     public AccessDecision decide(AccessDecisionRequest request) {
-        return decide(request, Instant.now());
+        return self.decide(request, Instant.now());
     }
 
     /**

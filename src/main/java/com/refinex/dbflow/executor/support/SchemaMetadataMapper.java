@@ -86,7 +86,8 @@ public final class SchemaMetadataMapper {
      * @throws SQLException 读取失败时抛出
      */
     public static SchemaIndexMetadata index(ResultSet resultSet) throws SQLException {
-        boolean nonUnique = intValue(resultSet, "NON_UNIQUE") == 1;
+        Integer nonUniqueFlag = intValue(resultSet, "NON_UNIQUE");
+        boolean nonUnique = Integer.valueOf(1).equals(nonUniqueFlag);
         return new SchemaIndexMetadata(
                 resultSet.getString("TABLE_SCHEMA"),
                 resultSet.getString("TABLE_NAME"),

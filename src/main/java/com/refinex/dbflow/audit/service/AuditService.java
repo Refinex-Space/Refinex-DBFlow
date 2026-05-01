@@ -30,13 +30,13 @@ public class AuditService {
     }
 
     /**
-     * 记录审计事件。
+     * 保存审计事件。
      *
      * @param event 审计事件实体
      * @return 已保存审计事件
      */
     @Transactional
-    public DbfAuditEvent record(DbfAuditEvent event) {
+    public DbfAuditEvent saveAuditEvent(DbfAuditEvent event) {
         return auditEventRepository.save(event);
     }
 

@@ -55,11 +55,9 @@ public class ProjectEnvironmentCatalogService {
 
     /**
      * 将 YAML 配置中的项目环境同步为元数据库展示模型。
-     *
-     * @return 同步后的脱敏项目环境视图列表
      */
     @Transactional
-    public List<ConfiguredEnvironmentView> syncConfiguredProjectEnvironments() {
+    public void syncConfiguredProjectEnvironments() {
         for (DbflowProperties.Project configuredProject : dbflowProperties.getProjects()) {
             DbfProject project = projectRepository.findByProjectKey(configuredProject.getKey())
                     .orElseGet(() -> projectRepository.save(DbfProject.create(
@@ -68,17 +66,19 @@ public class ProjectEnvironmentCatalogService {
                             null
                     )));
             for (DbflowProperties.Environment configuredEnvironment : configuredProject.getEnvironments()) {
-                environmentRepository.findByProjectIdAndEnvironmentKey(
+                boolean exists = environmentRepository.findByProjectIdAndEnvironmentKey(
                         project.getId(),
                         configuredEnvironment.getKey()
-                ).orElseGet(() -> environmentRepository.save(DbfEnvironment.create(
-                        project.getId(),
-                        configuredEnvironment.getKey(),
-                        displayName(configuredEnvironment.getName(), configuredEnvironment.getKey())
-                )));
+                ).isPresent();
+                if (!exists) {
+                    environmentRepository.save(DbfEnvironment.create(
+                            project.getId(),
+                            configuredEnvironment.getKey(),
+                            displayName(configuredEnvironment.getName(), configuredEnvironment.getKey())
+                    ));
+                }
             }
         }
-        return listConfiguredEnvironments();
     }
 
     /**

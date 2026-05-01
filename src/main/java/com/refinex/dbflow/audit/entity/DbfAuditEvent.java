@@ -160,226 +160,321 @@ public class DbfAuditEvent {
     private Instant createdAt;
 
     /**
-     * 创建审计事件。
+     * 创建审计事件构建器。
      *
-     * @param requestId      请求标识
-     * @param userId         用户主键
-     * @param projectKey     项目标识
-     * @param environmentKey 环境标识
-     * @param operationType  操作类型
-     * @param riskLevel      风险级别
-     * @param status         执行状态
-     * @param sqlHash        SQL hash
-     * @param sqlText        SQL 原文
-     * @param resultSummary  结果摘要
-     * @param affectedRows   影响行数
-     * @return 审计事件实体
+     * @return 审计事件构建器
      */
-    public static DbfAuditEvent executed(
-            String requestId,
-            Long userId,
-            String projectKey,
-            String environmentKey,
-            String operationType,
-            String riskLevel,
-            String status,
-            String sqlHash,
-            String sqlText,
-            String resultSummary,
-            Long affectedRows
-    ) {
-        DbfAuditEvent event = new DbfAuditEvent();
-        event.requestId = requestId;
-        event.userId = userId;
-        event.projectKey = projectKey;
-        event.environmentKey = environmentKey;
-        event.operationType = operationType;
-        event.riskLevel = riskLevel;
-        event.status = status;
-        event.sqlHash = sqlHash;
-        event.sqlText = sqlText;
-        event.resultSummary = resultSummary;
-        event.affectedRows = affectedRows;
-        return event;
+    public static Builder builder() {
+        return new Builder();
     }
 
     /**
-     * 创建 SQL 执行审计事件。
-     *
-     * @param requestId      请求标识
-     * @param userId         用户主键
-     * @param tokenPrefix    Token 前缀
-     * @param projectKey     项目标识
-     * @param environmentKey 环境标识
-     * @param operationType  操作类型
-     * @param riskLevel      风险级别
-     * @param status         执行状态
-     * @param sqlHash        SQL hash
-     * @param sqlText        SQL 原文
-     * @param resultSummary  结果摘要
-     * @param affectedRows   影响行数
-     * @param errorCode      错误码
-     * @param errorMessage   错误摘要
-     * @return 审计事件实体
+     * 审计事件构建器。
      */
-    public static DbfAuditEvent sqlExecution(
-            String requestId,
-            Long userId,
-            String tokenPrefix,
-            String projectKey,
-            String environmentKey,
-            String operationType,
-            String riskLevel,
-            String status,
-            String sqlHash,
-            String sqlText,
-            String resultSummary,
-            Long affectedRows,
-            String errorCode,
-            String errorMessage
-    ) {
-        DbfAuditEvent event = executed(
-                requestId,
-                userId,
-                projectKey,
-                environmentKey,
-                operationType,
-                riskLevel,
-                status,
-                sqlHash,
-                sqlText,
-                resultSummary,
-                affectedRows
-        );
-        event.tokenPrefix = tokenPrefix;
-        event.errorCode = errorCode;
-        event.errorMessage = errorMessage;
-        return event;
-    }
+    public static final class Builder {
 
-    /**
-     * 创建统一审计事件。
-     *
-     * @param requestId      请求标识
-     * @param userId         用户主键
-     * @param tokenId        Token 元数据主键
-     * @param tokenPrefix    Token 展示前缀
-     * @param projectKey     项目标识
-     * @param environmentKey 环境标识
-     * @param clientName     客户端名称
-     * @param clientVersion  客户端版本
-     * @param userAgent      HTTP User-Agent
-     * @param sourceIp       来源 IP
-     * @param tool           MCP 工具名称
-     * @param operationType  操作类型
-     * @param riskLevel      风险级别
-     * @param status         审计状态
-     * @param decision       审计决策
-     * @param sqlHash        SQL hash
-     * @param sqlText        SQL 原文
-     * @param resultSummary  结果摘要
-     * @param affectedRows   影响行数
-     * @param errorCode      错误码
-     * @param errorMessage   错误摘要
-     * @param confirmationId 确认挑战标识
-     * @return 审计事件实体
-     */
-    public static DbfAuditEvent auditEvent(
-            String requestId,
-            Long userId,
-            Long tokenId,
-            String tokenPrefix,
-            String projectKey,
-            String environmentKey,
-            String clientName,
-            String clientVersion,
-            String userAgent,
-            String sourceIp,
-            String tool,
-            String operationType,
-            String riskLevel,
-            String status,
-            String decision,
-            String sqlHash,
-            String sqlText,
-            String resultSummary,
-            Long affectedRows,
-            String errorCode,
-            String errorMessage,
-            String confirmationId
-    ) {
-        DbfAuditEvent event = new DbfAuditEvent();
-        event.requestId = requestId;
-        event.userId = userId;
-        event.tokenId = tokenId;
-        event.tokenPrefix = tokenPrefix;
-        event.projectKey = projectKey;
-        event.environmentKey = environmentKey;
-        event.clientName = clientName;
-        event.clientVersion = clientVersion;
-        event.userAgent = userAgent;
-        event.sourceIp = sourceIp;
-        event.tool = tool;
-        event.operationType = operationType;
-        event.riskLevel = riskLevel;
-        event.status = status;
-        event.decision = decision;
-        event.sqlHash = sqlHash;
-        event.sqlText = sqlText;
-        event.resultSummary = resultSummary;
-        event.affectedRows = affectedRows;
-        event.errorCode = errorCode;
-        event.errorMessage = errorMessage;
-        event.confirmationId = confirmationId;
-        return event;
-    }
+        /**
+         * 请求标识。
+         */
+        private String requestId;
+        /**
+         * 用户主键。
+         */
+        private Long userId;
+        /**
+         * Token 元数据主键。
+         */
+        private Long tokenId;
+        /**
+         * Token 前缀。
+         */
+        private String tokenPrefix;
+        /**
+         * 项目标识。
+         */
+        private String projectKey;
+        /**
+         * 环境标识。
+         */
+        private String environmentKey;
+        /**
+         * 客户端名称。
+         */
+        private String clientName;
+        /**
+         * 客户端版本。
+         */
+        private String clientVersion;
+        /**
+         * HTTP User-Agent。
+         */
+        private String userAgent;
+        /**
+         * 来源 IP。
+         */
+        private String sourceIp;
+        /**
+         * MCP 工具名称。
+         */
+        private String tool;
+        /**
+         * 操作类型。
+         */
+        private String operationType;
+        /**
+         * 风险级别。
+         */
+        private String riskLevel;
+        /**
+         * 执行状态。
+         */
+        private String status;
+        /**
+         * 审计决策。
+         */
+        private String decision;
+        /**
+         * SQL hash。
+         */
+        private String sqlHash;
+        /**
+         * SQL 原文。
+         */
+        private String sqlText;
+        /**
+         * 结果摘要。
+         */
+        private String resultSummary;
+        /**
+         * 影响行数。
+         */
+        private Long affectedRows;
+        /**
+         * 错误码。
+         */
+        private String errorCode;
+        /**
+         * 错误信息摘要。
+         */
+        private String errorMessage;
+        /**
+         * 确认挑战标识。
+         */
+        private String confirmationId;
 
-    /**
-     * 创建确认挑战审计事件。
-     *
-     * @param requestId      请求标识
-     * @param userId         用户主键
-     * @param tokenPrefix    Token 前缀
-     * @param projectKey     项目标识
-     * @param environmentKey 环境标识
-     * @param status         确认状态
-     * @param sqlHash        SQL hash
-     * @param sqlText        SQL 原文
-     * @param confirmationId 确认挑战标识
-     * @param errorCode      错误码
-     * @param errorMessage   错误摘要
-     * @return 审计事件实体
-     */
-    public static DbfAuditEvent confirmation(
-            String requestId,
-            Long userId,
-            String tokenPrefix,
-            String projectKey,
-            String environmentKey,
-            String status,
-            String sqlHash,
-            String sqlText,
-            String confirmationId,
-            String errorCode,
-            String errorMessage
-    ) {
-        DbfAuditEvent event = new DbfAuditEvent();
-        event.requestId = requestId;
-        event.userId = userId;
-        event.tokenPrefix = tokenPrefix;
-        event.projectKey = projectKey;
-        event.environmentKey = environmentKey;
-        event.operationType = "TRUNCATE";
-        event.riskLevel = "CRITICAL";
-        event.status = status;
-        event.sqlHash = sqlHash;
-        event.sqlText = sqlText;
-        event.resultSummary = "TRUNCATE 确认挑战状态变化";
-        event.affectedRows = 0L;
-        event.confirmationId = confirmationId;
-        event.errorCode = errorCode;
-        event.errorMessage = errorMessage;
-        return event;
+        /**
+         * 禁止外部直接实例化。
+         */
+        private Builder() {
+        }
+
+        /**
+         * @param requestId 请求标识 @return this
+         */
+        public Builder requestId(String requestId) {
+            this.requestId = requestId;
+            return this;
+        }
+
+        /**
+         * @param userId 用户主键 @return this
+         */
+        public Builder userId(Long userId) {
+            this.userId = userId;
+            return this;
+        }
+
+        /**
+         * @param tokenId Token 元数据主键 @return this
+         */
+        public Builder tokenId(Long tokenId) {
+            this.tokenId = tokenId;
+            return this;
+        }
+
+        /**
+         * @param tokenPrefix Token 前缀 @return this
+         */
+        public Builder tokenPrefix(String tokenPrefix) {
+            this.tokenPrefix = tokenPrefix;
+            return this;
+        }
+
+        /**
+         * @param projectKey 项目标识 @return this
+         */
+        public Builder projectKey(String projectKey) {
+            this.projectKey = projectKey;
+            return this;
+        }
+
+        /**
+         * @param environmentKey 环境标识 @return this
+         */
+        public Builder environmentKey(String environmentKey) {
+            this.environmentKey = environmentKey;
+            return this;
+        }
+
+        /**
+         * @param clientName 客户端名称 @return this
+         */
+        public Builder clientName(String clientName) {
+            this.clientName = clientName;
+            return this;
+        }
+
+        /**
+         * @param clientVersion 客户端版本 @return this
+         */
+        public Builder clientVersion(String clientVersion) {
+            this.clientVersion = clientVersion;
+            return this;
+        }
+
+        /**
+         * @param userAgent HTTP User-Agent @return this
+         */
+        public Builder userAgent(String userAgent) {
+            this.userAgent = userAgent;
+            return this;
+        }
+
+        /**
+         * @param sourceIp 来源 IP @return this
+         */
+        public Builder sourceIp(String sourceIp) {
+            this.sourceIp = sourceIp;
+            return this;
+        }
+
+        /**
+         * @param tool MCP 工具名称 @return this
+         */
+        public Builder tool(String tool) {
+            this.tool = tool;
+            return this;
+        }
+
+        /**
+         * @param operationType 操作类型 @return this
+         */
+        public Builder operationType(String operationType) {
+            this.operationType = operationType;
+            return this;
+        }
+
+        /**
+         * @param riskLevel 风险级别 @return this
+         */
+        public Builder riskLevel(String riskLevel) {
+            this.riskLevel = riskLevel;
+            return this;
+        }
+
+        /**
+         * @param status 执行状态 @return this
+         */
+        public Builder status(String status) {
+            this.status = status;
+            return this;
+        }
+
+        /**
+         * @param decision 审计决策 @return this
+         */
+        public Builder decision(String decision) {
+            this.decision = decision;
+            return this;
+        }
+
+        /**
+         * @param sqlHash SQL hash @return this
+         */
+        public Builder sqlHash(String sqlHash) {
+            this.sqlHash = sqlHash;
+            return this;
+        }
+
+        /**
+         * @param sqlText SQL 原文 @return this
+         */
+        public Builder sqlText(String sqlText) {
+            this.sqlText = sqlText;
+            return this;
+        }
+
+        /**
+         * @param resultSummary 结果摘要 @return this
+         */
+        public Builder resultSummary(String resultSummary) {
+            this.resultSummary = resultSummary;
+            return this;
+        }
+
+        /**
+         * @param affectedRows 影响行数 @return this
+         */
+        public Builder affectedRows(Long affectedRows) {
+            this.affectedRows = affectedRows;
+            return this;
+        }
+
+        /**
+         * @param errorCode 错误码 @return this
+         */
+        public Builder errorCode(String errorCode) {
+            this.errorCode = errorCode;
+            return this;
+        }
+
+        /**
+         * @param errorMessage 错误信息摘要 @return this
+         */
+        public Builder errorMessage(String errorMessage) {
+            this.errorMessage = errorMessage;
+            return this;
+        }
+
+        /**
+         * @param confirmationId 确认挑战标识 @return this
+         */
+        public Builder confirmationId(String confirmationId) {
+            this.confirmationId = confirmationId;
+            return this;
+        }
+
+        /**
+         * 构造审计事件实体。
+         *
+         * @return 审计事件实体
+         */
+        public DbfAuditEvent build() {
+            DbfAuditEvent event = new DbfAuditEvent();
+            event.requestId = this.requestId;
+            event.userId = this.userId;
+            event.tokenId = this.tokenId;
+            event.tokenPrefix = this.tokenPrefix;
+            event.projectKey = this.projectKey;
+            event.environmentKey = this.environmentKey;
+            event.clientName = this.clientName;
+            event.clientVersion = this.clientVersion;
+            event.userAgent = this.userAgent;
+            event.sourceIp = this.sourceIp;
+            event.tool = this.tool;
+            event.operationType = this.operationType;
+            event.riskLevel = this.riskLevel;
+            event.status = this.status;
+            event.decision = this.decision;
+            event.sqlHash = this.sqlHash;
+            event.sqlText = this.sqlText;
+            event.resultSummary = this.resultSummary;
+            event.affectedRows = this.affectedRows;
+            event.errorCode = this.errorCode;
+            event.errorMessage = this.errorMessage;
+            event.confirmationId = this.confirmationId;
+            return event;
+        }
     }
 
     /**

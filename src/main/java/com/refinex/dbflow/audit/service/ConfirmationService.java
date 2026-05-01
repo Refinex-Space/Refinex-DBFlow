@@ -35,43 +35,12 @@ public class ConfirmationService {
     /**
      * 创建待确认挑战。
      *
-     * @param userId         用户主键
-     * @param tokenId        MCP Token 主键
-     * @param environmentId  环境主键
-     * @param projectKey     项目标识
-     * @param environmentKey 环境标识
-     * @param confirmationId 对外确认标识
-     * @param sqlHash        SQL hash
-     * @param sqlText        SQL 原文
-     * @param riskLevel      风险级别
-     * @param expiresAt      过期时间
-     * @return 确认挑战实体
+     * @param challenge 已构建的待确认挑战实体
+     * @return 已持久化的确认挑战实体
      */
     @Transactional
-    public DbfConfirmationChallenge createPending(
-            Long userId,
-            Long tokenId,
-            Long environmentId,
-            String projectKey,
-            String environmentKey,
-            String confirmationId,
-            String sqlHash,
-            String sqlText,
-            String riskLevel,
-            Instant expiresAt
-    ) {
-        return confirmationChallengeRepository.save(DbfConfirmationChallenge.pending(
-                userId,
-                tokenId,
-                environmentId,
-                projectKey,
-                environmentKey,
-                confirmationId,
-                sqlHash,
-                sqlText,
-                riskLevel,
-                expiresAt
-        ));
+    public DbfConfirmationChallenge createPending(DbfConfirmationChallenge challenge) {
+        return confirmationChallengeRepository.save(challenge);
     }
 
     /**

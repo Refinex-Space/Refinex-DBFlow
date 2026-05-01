@@ -49,11 +49,6 @@ public class AdminOverviewViewService {
     private static final int RECENT_AUDIT_SIZE = 5;
 
     /**
-     * 关注事项展示数量。
-     */
-    private static final int ATTENTION_SIZE = 5;
-
-    /**
      * pending confirmation 状态。
      */
     private static final String PENDING_STATUS = "PENDING";
@@ -139,21 +134,24 @@ public class AdminOverviewViewService {
         Instant expiringTo = now.plus(TOKEN_EXPIRING_DAYS, ChronoUnit.DAYS);
         List<ConfiguredEnvironmentView> environments = catalogService.listConfiguredEnvironments();
         HealthSnapshot health = healthService.snapshot();
-
-        long sqlRequests = auditEventRepository.count(recentSqlSpec(recentFrom));
-        long policyDenied = auditEventRepository.count(recentDecisionSpec(recentFrom, "POLICY_DENIED"));
-        long pendingConfirmations = confirmationChallengeRepository.countByStatus(PENDING_STATUS);
-        long activeTokens = tokenRepository.countByStatus(ACTIVE_STATUS);
-        long expiringTokens = tokenRepository.countByStatusAndExpiresAtBetween(ACTIVE_STATUS, now, expiringTo);
-        long activeGrants = grantRepository.countByStatus(ACTIVE_STATUS);
-        long prodEnvironments = environments.stream().filter(this::isProductionEnvironment).count();
         List<HealthComponent> unhealthyTargetPools = unhealthyTargetPools(health);
 
+        MetricsInput input = new MetricsInput(
+                auditEventRepository.count(recentSqlSpec(recentFrom)),
+                auditEventRepository.count(recentDecisionSpec(recentFrom)),
+                confirmationChallengeRepository.countByStatus(PENDING_STATUS),
+                tokenRepository.countByStatus(ACTIVE_STATUS),
+                tokenRepository.countByStatusAndExpiresAtBetween(ACTIVE_STATUS, now, expiringTo),
+                grantRepository.countByStatus(ACTIVE_STATUS),
+                environments.size(),
+                environments.stream().filter(this::isProductionEnvironment).count(),
+                unhealthyTargetPools.size()
+        );
+
         return new OverviewPageView(
-                metrics(sqlRequests, policyDenied, pendingConfirmations, activeTokens, expiringTokens, activeGrants,
-                        environments.size(), prodEnvironments, unhealthyTargetPools.size()),
+                metrics(input),
                 recentAuditRows(),
-                attentionItems(policyDenied, pendingConfirmations, expiringTokens, unhealthyTargetPools),
+                attentionItems(input.policyDenied(), input.pendingConfirmations(), input.expiringTokens(), unhealthyTargetPools),
                 environmentOptions(environments),
                 "最近 " + RECENT_WINDOW_HOURS + " 小时网关安全、执行和健康摘要。"
         );
@@ -162,36 +160,52 @@ public class AdminOverviewViewService {
     /**
      * 创建指标卡。
      *
-     * @param sqlRequests          SQL 请求数
-     * @param policyDenied         策略拒绝数
-     * @param pendingConfirmations 待确认数
-     * @param activeTokens         active Token 数
-     * @param expiringTokens       临期 Token 数
-     * @param activeGrants         active 授权数
-     * @param configuredEnvs       配置环境数
-     * @param prodEnvs             生产环境数
-     * @param unhealthyPools       异常连接池数
+     * @param input 指标卡数据
      * @return 指标卡列表
      */
-    private List<MetricCard> metrics(
-            long sqlRequests,
+    private List<MetricCard> metrics(MetricsInput input) {
+        return List.of(
+                new MetricCard("SQL 请求", Long.toString(input.sqlRequests()), "最近 24 小时 execute / explain / inspect", "neutral"),
+                new MetricCard("策略拒绝", Long.toString(input.policyDenied()), "最近 24 小时 POLICY_DENIED", input.policyDenied() > 0 ? "bad" : "neutral"),
+                new MetricCard("待确认", Long.toString(input.pendingConfirmations()), "PENDING confirmation challenge", input.pendingConfirmations() > 0 ? "warn" : "neutral"),
+                new MetricCard("有效 Token", Long.toString(input.activeTokens()), input.expiringTokens() + " 个 7 天内过期", input.expiringTokens() > 0 ? "warn" : "neutral"),
+                new MetricCard("已授权环境", Long.toString(input.activeGrants()), input.configuredEnvs() + " 配置 / " + input.prodEnvs() + " 生产", "neutral"),
+                new MetricCard("异常数据源", Long.toString(input.unhealthyPools()), "DEGRADED / DOWN target-pool", input.unhealthyPools() > 0 ? "warn" : "neutral")
+        );
+    }
+
+    /**
+     * 创建关注事项。
+     *
+     * @param policyDenied         策略拒绝数
+     * @param pendingConfirmations 待确认数
+     * @param expiringTokens       临期 Token 数
+     * @param unhealthyTargetPools 异常目标连接池
+     * @return 关注事项
+     */
+    private List<AttentionItem> attentionItems(
             long policyDenied,
             long pendingConfirmations,
-            long activeTokens,
             long expiringTokens,
-            long activeGrants,
-            long configuredEnvs,
-            long prodEnvs,
-            long unhealthyPools
+            List<HealthComponent> unhealthyTargetPools
     ) {
-        return List.of(
-                new MetricCard("SQL 请求", Long.toString(sqlRequests), "最近 24 小时 execute / explain / inspect", "neutral"),
-                new MetricCard("策略拒绝", Long.toString(policyDenied), "最近 24 小时 POLICY_DENIED", policyDenied > 0 ? "bad" : "neutral"),
-                new MetricCard("待确认", Long.toString(pendingConfirmations), "PENDING confirmation challenge", pendingConfirmations > 0 ? "warn" : "neutral"),
-                new MetricCard("有效 Token", Long.toString(activeTokens), expiringTokens + " 个 7 天内过期", expiringTokens > 0 ? "warn" : "neutral"),
-                new MetricCard("已授权环境", Long.toString(activeGrants), configuredEnvs + " 配置 / " + prodEnvs + " 生产", "neutral"),
-                new MetricCard("异常数据源", Long.toString(unhealthyPools), "DEGRADED / DOWN target-pool", unhealthyPools > 0 ? "warn" : "neutral")
-        );
+        List<AttentionItem> items = new java.util.ArrayList<>();
+        if (policyDenied > 0) {
+            items.add(new AttentionItem("最近 24 小时有 " + policyDenied + " 条策略拒绝", "POLICY_DENIED", "bad",
+                    "/admin/audit?decision=POLICY_DENIED"));
+        }
+        if (pendingConfirmations > 0) {
+            items.add(new AttentionItem("有 " + pendingConfirmations + " 个 SQL 等待确认", "REQUIRES_CONFIRMATION", "warn",
+                    "/admin/audit?decision=REQUIRES_CONFIRMATION"));
+        }
+        if (!unhealthyTargetPools.isEmpty()) {
+            HealthComponent first = unhealthyTargetPools.getFirst();
+            items.add(new AttentionItem(first.name() + " 状态异常", first.status(), first.tone(), "/admin/health"));
+        }
+        if (expiringTokens > 0) {
+            items.add(new AttentionItem(expiringTokens + " 个 Token 7 天内过期", "EXPIRING", "warn", "/admin/tokens?status=ACTIVE"));
+        }
+        return items;
     }
 
     /**
@@ -241,40 +255,16 @@ public class AdminOverviewViewService {
     }
 
     /**
-     * 创建关注事项。
+     * 创建最近决策统计条件。
      *
-     * @param policyDenied         策略拒绝数
-     * @param pendingConfirmations 待确认数
-     * @param expiringTokens       临期 Token 数
-     * @param unhealthyTargetPools 异常目标连接池
-     * @return 关注事项
+     * @param from 起始时间
+     * @return 查询条件
      */
-    private List<AttentionItem> attentionItems(
-            long policyDenied,
-            long pendingConfirmations,
-            long expiringTokens,
-            List<HealthComponent> unhealthyTargetPools
-    ) {
-        List<AttentionItem> items = new java.util.ArrayList<>();
-        if (policyDenied > 0) {
-            items.add(new AttentionItem("最近 24 小时有 " + policyDenied + " 条策略拒绝", "POLICY_DENIED", "bad",
-                    "/admin/audit?decision=POLICY_DENIED"));
-        }
-        if (pendingConfirmations > 0) {
-            items.add(new AttentionItem("有 " + pendingConfirmations + " 个 SQL 等待确认", "REQUIRES_CONFIRMATION", "warn",
-                    "/admin/audit?decision=REQUIRES_CONFIRMATION"));
-        }
-        if (!unhealthyTargetPools.isEmpty()) {
-            HealthComponent first = unhealthyTargetPools.getFirst();
-            items.add(new AttentionItem(first.name() + " 状态异常", first.status(), first.tone(), "/admin/health"));
-        }
-        if (expiringTokens > 0) {
-            items.add(new AttentionItem(expiringTokens + " 个 Token 7 天内过期", "EXPIRING", "warn", "/admin/tokens?status=ACTIVE"));
-        }
-        if (items.size() <= ATTENTION_SIZE) {
-            return items;
-        }
-        return List.copyOf(items.subList(0, ATTENTION_SIZE));
+    private Specification<DbfAuditEvent> recentDecisionSpec(Instant from) {
+        return Specification.allOf(
+                createdAfter(from),
+                (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("decision"), "POLICY_DENIED")
+        );
     }
 
     /**
@@ -326,17 +316,29 @@ public class AdminOverviewViewService {
     }
 
     /**
-     * 创建最近决策统计条件。
+     * 指标卡数据聚合，用于替代超参数方法签名。
      *
-     * @param from     起始时间
-     * @param decision 审计决策
-     * @return 查询条件
+     * @param sqlRequests          SQL 请求数
+     * @param policyDenied         策略拒绝数
+     * @param pendingConfirmations 待确认数
+     * @param activeTokens         active Token 数
+     * @param expiringTokens       临期 Token 数
+     * @param activeGrants         active 授权数
+     * @param configuredEnvs       配置环境数
+     * @param prodEnvs             生产环境数
+     * @param unhealthyPools       异常连接池数
      */
-    private Specification<DbfAuditEvent> recentDecisionSpec(Instant from, String decision) {
-        return Specification.allOf(
-                createdAfter(from),
-                (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("decision"), decision)
-        );
+    private record MetricsInput(
+            long sqlRequests,
+            long policyDenied,
+            long pendingConfirmations,
+            long activeTokens,
+            long expiringTokens,
+            long activeGrants,
+            long configuredEnvs,
+            long prodEnvs,
+            long unhealthyPools
+    ) {
     }
 
     /**

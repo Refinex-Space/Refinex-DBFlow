@@ -13,6 +13,7 @@ import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.common.ErrorCode;
 import com.refinex.dbflow.security.token.McpTokenIssueResult;
 import com.refinex.dbflow.security.token.McpTokenService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +78,11 @@ public class AdminAccessManagementService {
     private final PasswordEncoder passwordEncoder;
 
     /**
+     * 自身代理引用，用于通过 Spring AOP 代理调用事务方法，避免 this 直调绕过事务切面。
+     */
+    private AdminAccessManagementService self;
+
+    /**
      * 创建管理端访问管理服务。
      *
      * @param userRepository        用户 repository
@@ -105,6 +111,16 @@ public class AdminAccessManagementService {
         this.catalogService = catalogService;
         this.tokenService = tokenService;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    /**
+     * 注入自身代理，由 Spring 容器在 Bean 初始化后回调，确保事务切面生效。
+     *
+     * @param self 当前 Bean 的 Spring AOP 代理实例
+     */
+    @Autowired
+    public void setSelf(AdminAccessManagementService self) {
+        this.self = self;
     }
 
     /**
@@ -269,7 +285,7 @@ public class AdminAccessManagementService {
         DbfUser user = requireActiveUser(command.userId());
         tokenRepository.findByUserIdAndStatus(user.getId(), "ACTIVE")
                 .ifPresent(token -> tokenService.revokeActiveToken(user.getId(), Instant.now()));
-        return issueToken(command);
+        return self.issueToken(command);
     }
 
     /**
@@ -319,7 +335,7 @@ public class AdminAccessManagementService {
                         Collectors.toList()))
                 .values().stream()
                 .map(rows -> {
-                    GrantRow first = rows.get(0);
+                    GrantRow first = rows.getFirst();
                     List<GrantEnvEntry> envEntries = rows.stream()
                             .sorted(Comparator.comparing(GrantRow::id))
                             .map(r -> new GrantEnvEntry(r.id(), r.environmentKey(), r.grantType(), r.status()))

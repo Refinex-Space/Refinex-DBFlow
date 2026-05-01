@@ -84,10 +84,9 @@ public class AuditEventWriter {
      * 写入请求已接收事件。
      *
      * @param request 审计写入请求
-     * @return 已保存审计事件
      */
-    public DbfAuditEvent requestReceived(AuditEventWriteRequest request) {
-        return write(request, STATUS_REQUEST_RECEIVED, "REQUEST_RECEIVED");
+    public void requestReceived(AuditEventWriteRequest request) {
+        write(request, STATUS_REQUEST_RECEIVED, "REQUEST_RECEIVED");
     }
 
     /**
@@ -104,10 +103,9 @@ public class AuditEventWriter {
      * 写入需要确认事件。
      *
      * @param request 审计写入请求
-     * @return 已保存审计事件
      */
-    public DbfAuditEvent requiresConfirmation(AuditEventWriteRequest request) {
-        return write(request, STATUS_REQUIRES_CONFIRMATION, "REQUIRES_CONFIRMATION");
+    public void requiresConfirmation(AuditEventWriteRequest request) {
+        write(request, STATUS_REQUIRES_CONFIRMATION, "REQUIRES_CONFIRMATION");
     }
 
     /**
@@ -134,20 +132,18 @@ public class AuditEventWriter {
      * 写入确认成功事件。
      *
      * @param request 审计写入请求
-     * @return 已保存审计事件
      */
-    public DbfAuditEvent confirmationConfirmed(AuditEventWriteRequest request) {
-        return write(request, STATUS_CONFIRMATION_CONFIRMED, "CONFIRMATION_CONFIRMED");
+    public void confirmationConfirmed(AuditEventWriteRequest request) {
+        write(request, STATUS_CONFIRMATION_CONFIRMED, "CONFIRMATION_CONFIRMED");
     }
 
     /**
      * 写入确认过期事件。
      *
      * @param request 审计写入请求
-     * @return 已保存审计事件
      */
-    public DbfAuditEvent confirmationExpired(AuditEventWriteRequest request) {
-        return write(request, STATUS_CONFIRMATION_EXPIRED, "CONFIRMATION_EXPIRED");
+    public void confirmationExpired(AuditEventWriteRequest request) {
+        write(request, STATUS_CONFIRMATION_EXPIRED, "CONFIRMATION_EXPIRED");
     }
 
     /**
@@ -160,30 +156,30 @@ public class AuditEventWriter {
      */
     private DbfAuditEvent write(AuditEventWriteRequest request, String status, String decision) {
         AuditRequestContext context = request.effectiveContext();
-        DbfAuditEvent saved = auditService.record(DbfAuditEvent.auditEvent(
-                valueOrUnknown(request.requestId()),
-                request.userId(),
-                request.tokenId(),
-                truncate(request.tokenPrefix(), 32),
-                valueOrUnknown(request.projectKey()),
-                valueOrUnknown(request.environmentKey()),
-                truncate(valueOrUnknown(context.clientName()), 128),
-                truncate(valueOrUnknown(context.clientVersion()), 64),
-                truncate(valueOrUnknown(context.userAgent()), 255),
-                truncate(valueOrUnknown(context.sourceIp()), 64),
-                truncate(valueOrUnknown(context.tool()), 128),
-                truncate(valueOrUnknown(request.operation()), 64),
-                truncate(valueOrDefault(request.riskLevel(), "LOW"), 32),
-                status,
-                decision,
-                truncate(request.sqlHash(), 128),
-                safeSqlText(request.sqlText()),
-                boundedSummary(request.resultSummary()),
-                request.affectedRows(),
-                truncate(request.errorCode(), 128),
-                boundedSummary(request.errorMessage()),
-                truncate(request.confirmationId(), 64)
-        ));
+        DbfAuditEvent saved = auditService.saveAuditEvent(DbfAuditEvent.builder()
+                .requestId(valueOrUnknown(request.requestId()))
+                .userId(request.userId())
+                .tokenId(request.tokenId())
+                .tokenPrefix(truncate(request.tokenPrefix(), 32))
+                .projectKey(valueOrUnknown(request.projectKey()))
+                .environmentKey(valueOrUnknown(request.environmentKey()))
+                .clientName(truncate(valueOrUnknown(context.clientName()), 128))
+                .clientVersion(truncate(valueOrUnknown(context.clientVersion()), 64))
+                .userAgent(truncate(valueOrUnknown(context.userAgent()), 255))
+                .sourceIp(truncate(valueOrUnknown(context.sourceIp()), 64))
+                .tool(truncate(valueOrUnknown(context.tool()), 128))
+                .operationType(truncate(valueOrUnknown(request.operation()), 64))
+                .riskLevel(truncate(valueOrDefault(request.riskLevel(), "LOW"), 32))
+                .status(status)
+                .decision(decision)
+                .sqlHash(truncate(request.sqlHash(), 128))
+                .sqlText(safeSqlText(request.sqlText()))
+                .resultSummary(boundedSummary(request.resultSummary()))
+                .affectedRows(request.affectedRows())
+                .errorCode(truncate(request.errorCode(), 128))
+                .errorMessage(boundedSummary(request.errorMessage()))
+                .confirmationId(truncate(request.confirmationId(), 64))
+                .build());
         recordMetrics(request, context, decision);
         return saved;
     }

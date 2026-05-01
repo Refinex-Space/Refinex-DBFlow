@@ -126,9 +126,9 @@ public class AuditQueryService {
      */
     private Specification<DbfAuditEvent> specification(AuditQueryCriteria criteria) {
         return Specification.allOf(
-                greaterThanOrEqual("createdAt", criteria.from()),
-                lessThanOrEqual("createdAt", criteria.to()),
-                equal("userId", criteria.userId()),
+                greaterThanOrEqual(criteria.from()),
+                lessThanOrEqual(criteria.to()),
+                equalUserId(criteria.userId()),
                 equalText("projectKey", criteria.projectKey()),
                 equalText("environmentKey", criteria.environmentKey()),
                 equalText("riskLevel", criteria.riskLevel()),
@@ -177,37 +177,34 @@ public class AuditQueryService {
     /**
      * 构建大于等于时间谓词。
      *
-     * @param field 字段名
      * @param value 时间值
      * @return 查询谓词
      */
-    private Specification<DbfAuditEvent> greaterThanOrEqual(String field, Instant value) {
+    private Specification<DbfAuditEvent> greaterThanOrEqual(Instant value) {
         return value == null ? null : (root, query, criteriaBuilder) ->
-                criteriaBuilder.greaterThanOrEqualTo(root.get(field), value);
+                criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), value);
     }
 
     /**
      * 构建小于等于时间谓词。
      *
-     * @param field 字段名
      * @param value 时间值
      * @return 查询谓词
      */
-    private Specification<DbfAuditEvent> lessThanOrEqual(String field, Instant value) {
+    private Specification<DbfAuditEvent> lessThanOrEqual(Instant value) {
         return value == null ? null : (root, query, criteriaBuilder) ->
-                criteriaBuilder.lessThanOrEqualTo(root.get(field), value);
+                criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), value);
     }
 
     /**
-     * 构建数值等值谓词。
+     * 构建 userId 等值谓词。
      *
-     * @param field 字段名
-     * @param value 数值
+     * @param value 用户主键
      * @return 查询谓词
      */
-    private Specification<DbfAuditEvent> equal(String field, Long value) {
+    private Specification<DbfAuditEvent> equalUserId(Long value) {
         return value == null ? null : (root, query, criteriaBuilder) ->
-                criteriaBuilder.equal(root.get(field), value);
+                criteriaBuilder.equal(root.get("userId"), value);
     }
 
     /**

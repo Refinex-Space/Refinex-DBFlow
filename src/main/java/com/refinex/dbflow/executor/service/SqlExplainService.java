@@ -38,6 +38,48 @@ import java.util.Objects;
 public class SqlExplainService {
 
     /**
+     * 执行受控 EXPLAIN。
+     *
+     * @param request EXPLAIN 请求
+     * @return EXPLAIN 结果
+     */
+    @Transactional(noRollbackFor = DbflowException.class)
+    public SqlExplainResult explain(SqlExplainRequest request) {
+        Objects.requireNonNull(request, "request");
+        String sqlText = safeSqlText(request.sql());
+        String sqlHash = StringUtils.hasText(sqlText) ? sqlHash(sqlText) : null;
+        auditEventWriter.requestReceived(auditRequest(request, new ExplainAuditPayload(
+                SqlOperation.UNKNOWN,
+                SqlRiskLevel.LOW,
+                null,
+                sqlHash,
+                sqlText,
+                "EXPLAIN 请求已接收",
+                null,
+                null
+        )));
+        AccessDecision accessDecision = authorize(request);
+        if (!accessDecision.allowed()) {
+            return deny(request, SqlOperation.UNKNOWN, SqlRiskLevel.REJECTED, sqlHash, accessDecision.reason().name(),
+                    "授权拒绝: " + accessDecision.reason().name() + " - " + accessDecision.message());
+        }
+        if (!StringUtils.hasText(sqlText)) {
+            return deny(request, SqlOperation.UNKNOWN, SqlRiskLevel.REJECTED, sqlHash, "EMPTY_SQL", "SQL 不能为空");
+        }
+
+        SqlClassification classification = sqlClassifier.classify(sqlText);
+        if (classification.rejectedByDefault()) {
+            return deny(request, classification.operation(), classification.riskLevel(), sqlHash,
+                    "CLASSIFICATION_REJECTED", "SQL 分类拒绝: " + classification.auditReason());
+        }
+        if (!explainable(classification.operation())) {
+            return deny(request, classification.operation(), SqlRiskLevel.REJECTED, sqlHash, "NOT_EXPLAINABLE",
+                    "EXPLAIN 仅支持 SELECT、INSERT、UPDATE 和 DELETE");
+        }
+        return explainJdbc(request, classification, sqlText, sqlHash);
+    }
+
+    /**
      * SQL hash 算法。
      */
     private static final String SQL_HASH_ALGORITHM = "SHA-256";
@@ -108,37 +150,99 @@ public class SqlExplainService {
     }
 
     /**
-     * 执行受控 EXPLAIN。
+     * 通过 JDBC 读取执行计划。
      *
-     * @param request EXPLAIN 请求
+     * @param request        EXPLAIN 请求
+     * @param classification SQL 分类结果
+     * @param sqlText        SQL 文本
+     * @param sqlHash        SQL hash
      * @return EXPLAIN 结果
      */
-    @Transactional(noRollbackFor = DbflowException.class)
-    public SqlExplainResult explain(SqlExplainRequest request) {
-        Objects.requireNonNull(request, "request");
-        String sqlText = safeSqlText(request.sql());
-        String sqlHash = StringUtils.hasText(sqlText) ? sqlHash(sqlText) : null;
-        auditEventWriter.requestReceived(auditRequest(request, SqlOperation.UNKNOWN, SqlRiskLevel.LOW, sqlHash,
-                sqlText, "EXPLAIN 请求已接收", null, null));
-        AccessDecision accessDecision = authorize(request);
-        if (!accessDecision.allowed()) {
-            return deny(request, SqlOperation.UNKNOWN, SqlRiskLevel.REJECTED, sqlHash, accessDecision.reason().name(),
-                    "授权拒绝: " + accessDecision.reason().name() + " - " + accessDecision.message());
+    private SqlExplainResult explainJdbc(
+            SqlExplainRequest request,
+            SqlClassification classification,
+            String sqlText,
+            String sqlHash
+    ) {
+        long started = System.nanoTime();
+        String explainSql = traditionalExplainSql(sqlText);
+        try (Connection connection = dataSourceRegistry.getDataSource(request.projectKey(), request.environmentKey())
+                .getConnection()) {
+            applySchema(connection, request.schema());
+            String jsonPlanSummary = null;
+            if (supportsPreferredJsonExplain(connection)) {
+                jsonPlanSummary = explainJson(connection, sqlText);
+            }
+            List<SqlExplainPlanRow> planRows = explainTraditional(connection, sqlText);
+            List<SqlExplainAdvice> advice = advice(planRows);
+            long durationMillis = elapsedMillis(started);
+            String format = StringUtils.hasText(jsonPlanSummary) ? "JSON" : "TRADITIONAL";
+            String summary = "EXPLAIN " + classification.operation().name()
+                    + " planRows=" + planRows.size()
+                    + ", advice=" + advice.size()
+                    + ", format=" + format
+                    + ", durationMillis=" + durationMillis;
+            audit(request, new ExplainAuditPayload(
+                    classification.operation(),
+                    SqlRiskLevel.LOW,
+                    AUDIT_STATUS_EXECUTED,
+                    sqlHash,
+                    sqlText,
+                    summary,
+                    null,
+                    null
+            ));
+            return new SqlExplainResult(
+                    request.projectKey(),
+                    request.environmentKey(),
+                    true,
+                    STATUS_EXPLAINED,
+                    classification.operation(),
+                    classification.riskLevel(),
+                    format,
+                    explainSql,
+                    planRows,
+                    advice,
+                    jsonPlanSummary,
+                    durationMillis,
+                    summary,
+                    sqlHash,
+                    null,
+                    null
+            );
+        } catch (SQLException exception) {
+            long durationMillis = elapsedMillis(started);
+            String message = sanitize(exception);
+            String summary = "EXPLAIN 执行失败，durationMillis=" + durationMillis + ", message=" + message;
+            audit(request, new ExplainAuditPayload(
+                    classification.operation(),
+                    classification.riskLevel(),
+                    STATUS_FAILED,
+                    sqlHash,
+                    sqlText,
+                    summary,
+                    exception.getSQLState(),
+                    message
+            ));
+            return new SqlExplainResult(
+                    request.projectKey(),
+                    request.environmentKey(),
+                    false,
+                    STATUS_FAILED,
+                    classification.operation(),
+                    classification.riskLevel(),
+                    "TRADITIONAL",
+                    explainSql,
+                    List.of(),
+                    List.of(),
+                    null,
+                    durationMillis,
+                    summary,
+                    sqlHash,
+                    exception.getSQLState(),
+                    message
+            );
         }
-        if (!StringUtils.hasText(sqlText)) {
-            return deny(request, SqlOperation.UNKNOWN, SqlRiskLevel.REJECTED, sqlHash, "EMPTY_SQL", "SQL 不能为空");
-        }
-
-        SqlClassification classification = sqlClassifier.classify(sqlText);
-        if (classification.rejectedByDefault()) {
-            return deny(request, classification.operation(), classification.riskLevel(), sqlHash,
-                    "CLASSIFICATION_REJECTED", "SQL 分类拒绝: " + classification.auditReason());
-        }
-        if (!explainable(classification.operation())) {
-            return deny(request, classification.operation(), SqlRiskLevel.REJECTED, sqlHash, "NOT_EXPLAINABLE",
-                    "EXPLAIN 仅支持 SELECT、INSERT、UPDATE 和 DELETE");
-        }
-        return explainJdbc(request, classification, sqlText, sqlHash);
     }
 
     /**
@@ -173,83 +277,52 @@ public class SqlExplainService {
     }
 
     /**
-     * 通过 JDBC 读取执行计划。
+     * 创建拒绝结果并审计。
      *
-     * @param request        EXPLAIN 请求
-     * @param classification SQL 分类结果
-     * @param sqlText        SQL 文本
-     * @param sqlHash        SQL hash
-     * @return EXPLAIN 结果
+     * @param request      EXPLAIN 请求
+     * @param operation    SQL 操作
+     * @param riskLevel    风险级别
+     * @param sqlHash      SQL hash
+     * @param errorCode    错误码
+     * @param errorMessage 错误摘要
+     * @return 拒绝结果
      */
-    private SqlExplainResult explainJdbc(
+    private SqlExplainResult deny(
             SqlExplainRequest request,
-            SqlClassification classification,
-            String sqlText,
-            String sqlHash
+            SqlOperation operation,
+            SqlRiskLevel riskLevel,
+            String sqlHash,
+            String errorCode,
+            String errorMessage
     ) {
-        long started = System.nanoTime();
-        String explainSql = traditionalExplainSql(sqlText);
-        try (Connection connection = dataSourceRegistry.getDataSource(request.projectKey(), request.environmentKey())
-                .getConnection()) {
-            applySchema(connection, request.schema());
-            String jsonPlanSummary = null;
-            if (supportsPreferredJsonExplain(connection)) {
-                jsonPlanSummary = explainJson(connection, sqlText);
-            }
-            List<SqlExplainPlanRow> planRows = explainTraditional(connection, sqlText);
-            List<SqlExplainAdvice> advice = advice(planRows);
-            long durationMillis = elapsedMillis(started);
-            String format = StringUtils.hasText(jsonPlanSummary) ? "JSON" : "TRADITIONAL";
-            String summary = "EXPLAIN " + classification.operation().name()
-                    + " planRows=" + planRows.size()
-                    + ", advice=" + advice.size()
-                    + ", format=" + format
-                    + ", durationMillis=" + durationMillis;
-            audit(request, classification.operation(), SqlRiskLevel.LOW, AUDIT_STATUS_EXECUTED, sqlHash, sqlText,
-                    summary, null, null);
-            return new SqlExplainResult(
-                    request.projectKey(),
-                    request.environmentKey(),
-                    true,
-                    STATUS_EXPLAINED,
-                    classification.operation(),
-                    classification.riskLevel(),
-                    format,
-                    explainSql,
-                    planRows,
-                    advice,
-                    jsonPlanSummary,
-                    durationMillis,
-                    summary,
-                    sqlHash,
-                    null,
-                    null
-            );
-        } catch (SQLException exception) {
-            long durationMillis = elapsedMillis(started);
-            String message = sanitize(exception);
-            String summary = "EXPLAIN 执行失败，durationMillis=" + durationMillis + ", message=" + message;
-            audit(request, classification.operation(), classification.riskLevel(), STATUS_FAILED, sqlHash, sqlText,
-                    summary, exception.getSQLState(), message);
-            return new SqlExplainResult(
-                    request.projectKey(),
-                    request.environmentKey(),
-                    false,
-                    STATUS_FAILED,
-                    classification.operation(),
-                    classification.riskLevel(),
-                    "TRADITIONAL",
-                    explainSql,
-                    List.of(),
-                    List.of(),
-                    null,
-                    durationMillis,
-                    summary,
-                    sqlHash,
-                    exception.getSQLState(),
-                    message
-            );
-        }
+        audit(request, new ExplainAuditPayload(
+                operation,
+                riskLevel,
+                STATUS_DENIED,
+                sqlHash,
+                request.sql(),
+                errorMessage,
+                errorCode,
+                errorMessage
+        ));
+        return new SqlExplainResult(
+                request.projectKey(),
+                request.environmentKey(),
+                false,
+                STATUS_DENIED,
+                operation,
+                riskLevel,
+                null,
+                null,
+                List.of(),
+                List.of(),
+                null,
+                0L,
+                errorMessage,
+                sqlHash,
+                errorCode,
+                errorMessage
+        );
     }
 
     /**
@@ -349,77 +422,17 @@ public class SqlExplainService {
         return "EXPLAIN " + sqlText;
     }
 
-
-    /**
-     * 创建拒绝结果并审计。
-     *
-     * @param request      EXPLAIN 请求
-     * @param operation    SQL 操作
-     * @param riskLevel    风险级别
-     * @param sqlHash      SQL hash
-     * @param errorCode    错误码
-     * @param errorMessage 错误摘要
-     * @return 拒绝结果
-     */
-    private SqlExplainResult deny(
-            SqlExplainRequest request,
-            SqlOperation operation,
-            SqlRiskLevel riskLevel,
-            String sqlHash,
-            String errorCode,
-            String errorMessage
-    ) {
-        audit(request, operation, riskLevel, STATUS_DENIED, sqlHash, request.sql(), errorMessage, errorCode,
-                errorMessage);
-        return new SqlExplainResult(
-                request.projectKey(),
-                request.environmentKey(),
-                false,
-                STATUS_DENIED,
-                operation,
-                riskLevel,
-                null,
-                null,
-                List.of(),
-                List.of(),
-                null,
-                0L,
-                errorMessage,
-                sqlHash,
-                errorCode,
-                errorMessage
-        );
-    }
-
     /**
      * 记录 EXPLAIN 审计。
      *
-     * @param request      EXPLAIN 请求
-     * @param operation    SQL 操作
-     * @param riskLevel    风险级别
-     * @param status       审计状态
-     * @param sqlHash      SQL hash
-     * @param sqlText      SQL 原文
-     * @param summary      摘要
-     * @param errorCode    错误码
-     * @param errorMessage 错误摘要
+     * @param request EXPLAIN 请求
+     * @param payload 审计负载
      */
-    private void audit(
-            SqlExplainRequest request,
-            SqlOperation operation,
-            SqlRiskLevel riskLevel,
-            String status,
-            String sqlHash,
-            String sqlText,
-            String summary,
-            String errorCode,
-            String errorMessage
-    ) {
-        AuditEventWriteRequest eventRequest = auditRequest(request, operation, riskLevel, sqlHash, sqlText, summary,
-                errorCode, errorMessage);
-        if (STATUS_DENIED.equals(status)) {
+    private void audit(SqlExplainRequest request, ExplainAuditPayload payload) {
+        AuditEventWriteRequest eventRequest = auditRequest(request, payload);
+        if (STATUS_DENIED.equals(payload.status())) {
             auditEventWriter.policyDenied(eventRequest);
-        } else if (STATUS_FAILED.equals(status)) {
+        } else if (STATUS_FAILED.equals(payload.status())) {
             auditEventWriter.failed(eventRequest);
         } else {
             auditEventWriter.executed(eventRequest);
@@ -429,26 +442,11 @@ public class SqlExplainService {
     /**
      * 创建审计写入请求。
      *
-     * @param request      EXPLAIN 请求
-     * @param operation    SQL 操作
-     * @param riskLevel    风险等级
-     * @param sqlHash      SQL hash
-     * @param sqlText      SQL 原文
-     * @param summary      结果摘要
-     * @param errorCode    错误码
-     * @param errorMessage 错误摘要
+     * @param request EXPLAIN 请求
+     * @param payload 审计负载
      * @return 审计写入请求
      */
-    private AuditEventWriteRequest auditRequest(
-            SqlExplainRequest request,
-            SqlOperation operation,
-            SqlRiskLevel riskLevel,
-            String sqlHash,
-            String sqlText,
-            String summary,
-            String errorCode,
-            String errorMessage
-    ) {
+    private AuditEventWriteRequest auditRequest(SqlExplainRequest request, ExplainAuditPayload payload) {
         return new AuditEventWriteRequest(
                 request.requestId(),
                 request.userId(),
@@ -457,16 +455,40 @@ public class SqlExplainService {
                 request.auditContext(),
                 request.projectKey(),
                 request.environmentKey(),
-                "EXPLAIN_" + operation.name(),
-                auditRiskLevel(riskLevel),
-                safeSqlText(sqlText),
-                sqlHash,
-                summary,
+                "EXPLAIN_" + payload.operation().name(),
+                auditRiskLevel(payload.riskLevel()),
+                safeSqlText(payload.sqlText()),
+                payload.sqlHash(),
+                payload.summary(),
                 0L,
-                errorCode,
-                errorMessage,
+                payload.errorCode(),
+                payload.errorMessage(),
                 null
         );
+    }
+
+    /**
+     * EXPLAIN 审计负载，集中承载内部审计上下文。
+     *
+     * @param operation    SQL 操作
+     * @param riskLevel    风险级别
+     * @param status       审计状态
+     * @param sqlHash      SQL hash
+     * @param sqlText      SQL 原文
+     * @param summary      摘要
+     * @param errorCode    错误码
+     * @param errorMessage 错误摘要
+     */
+    private record ExplainAuditPayload(
+            SqlOperation operation,
+            SqlRiskLevel riskLevel,
+            String status,
+            String sqlHash,
+            String sqlText,
+            String summary,
+            String errorCode,
+            String errorMessage
+    ) {
     }
 
     /**

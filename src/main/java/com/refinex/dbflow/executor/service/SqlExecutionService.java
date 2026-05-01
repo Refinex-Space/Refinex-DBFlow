@@ -8,8 +8,8 @@ import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.common.ErrorCode;
 import com.refinex.dbflow.executor.dto.SqlExecutionRequest;
 import com.refinex.dbflow.executor.dto.SqlExecutionResult;
-import com.refinex.dbflow.executor.dto.SqlExecutionWarning;
 import com.refinex.dbflow.executor.support.SqlExecutionAuditor;
+import com.refinex.dbflow.executor.support.SqlExecutionAuditor.SqlExecutionAuditPayload;
 import com.refinex.dbflow.executor.support.SqlExecutionResultFactory;
 import com.refinex.dbflow.executor.support.SqlJdbcExecutionException;
 import com.refinex.dbflow.executor.support.SqlJdbcExecutor;
@@ -37,7 +37,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -167,14 +166,39 @@ public class SqlExecutionService {
                         result.status(), result.sqlHash(), result.durationMillis(), result.affectedRows(),
                         result.truncated());
                 return result;
+            } catch (DbflowException exception) {
+                recordExecutionDuration(SqlOperation.UNKNOWN.name(), SqlRiskLevel.REJECTED.name(), STATUS_FAILED,
+                        metricsStarted);
+                throw new DbflowException(
+                        exception.getErrorCode(),
+                        executionFailureMessage(request, exception),
+                        exception
+                );
             } catch (RuntimeException exception) {
                 recordExecutionDuration(SqlOperation.UNKNOWN.name(), SqlRiskLevel.REJECTED.name(), STATUS_FAILED,
                         metricsStarted);
-                LOGGER.warn("sql.execution.failed project={} env={} errorType={}",
-                        request.projectKey(), request.environmentKey(), exception.getClass().getSimpleName());
-                throw exception;
+                throw new DbflowException(
+                        ErrorCode.INTERNAL_ERROR,
+                        executionFailureMessage(request, exception),
+                        exception
+                );
             }
         }
+    }
+
+    /**
+     * 构造执行失败上下文消息。
+     *
+     * @param request   执行请求
+     * @param exception 原始异常
+     * @return 带上下文的错误消息
+     */
+    private String executionFailureMessage(SqlExecutionRequest request, RuntimeException exception) {
+        return "SQL 执行流程异常: requestId=" + request.requestId()
+                + ", project=" + request.projectKey()
+                + ", env=" + request.environmentKey()
+                + ", error=" + exception.getClass().getSimpleName()
+                + ", message=" + exception.getMessage();
     }
 
     /**
@@ -236,13 +260,30 @@ public class SqlExecutionService {
         try {
             SqlExecutionResult result = sqlJdbcExecutor.execute(request, classification, sqlText, sqlHash,
                     STATUS_EXECUTED);
-            sqlExecutionAuditor.audit(request, classification.operation(), classification.riskLevel(), STATUS_EXECUTED,
-                    sqlHash, sqlText, result.statementSummary(), result.affectedRows(), null, null);
+            sqlExecutionAuditor.audit(request, new SqlExecutionAuditPayload(
+                    classification.operation(),
+                    classification.riskLevel(),
+                    STATUS_EXECUTED,
+                    sqlHash,
+                    sqlText,
+                    result.statementSummary(),
+                    result.affectedRows(),
+                    null,
+                    null
+            ));
             return result;
         } catch (SqlJdbcExecutionException exception) {
-            sqlExecutionAuditor.audit(request, classification.operation(), classification.riskLevel(), STATUS_FAILED,
-                    sqlHash, sqlText, exception.summary(), 0L, exception.sqlState(),
-                    exception.sanitizedMessage());
+            sqlExecutionAuditor.audit(request, new SqlExecutionAuditPayload(
+                    classification.operation(),
+                    classification.riskLevel(),
+                    STATUS_FAILED,
+                    sqlHash,
+                    sqlText,
+                    exception.summary(),
+                    0L,
+                    exception.sqlState(),
+                    exception.sanitizedMessage()
+            ));
             throw new DbflowException(ErrorCode.INTERNAL_ERROR,
                     "SQL 执行失败: " + exception.sanitizedMessage(), exception.getCause());
         }
@@ -300,9 +341,7 @@ public class SqlExecutionService {
                         Instant.now()
                 )
         );
-        return result(request, classification, false, List.of(), List.of(), false, 0L, List.of(),
-                0L, "TRUNCATE 需要服务端二次确认", decision.sqlHash(), true, decision.confirmationId(),
-                decision.expiresAt(), "REQUIRES_CONFIRMATION");
+        return confirmationRequiredResult(request, classification, decision);
     }
 
     /**
@@ -315,10 +354,84 @@ public class SqlExecutionService {
      */
     private SqlExecutionResult dryRun(SqlExecutionRequest request, SqlClassification classification, String sqlHash) {
         String summary = "dry-run 已完成授权、分类和策略检查，未访问目标库";
-        sqlExecutionAuditor.audit(request, classification.operation(), classification.riskLevel(), STATUS_DRY_RUN,
-                sqlHash, request.sql(), summary, 0L, null, null);
-        return result(request, classification, false, List.of(), List.of(), false, 0L, List.of(),
-                0L, summary, sqlHash, false, null, null, STATUS_DRY_RUN);
+        sqlExecutionAuditor.audit(request, new SqlExecutionAuditPayload(
+                classification.operation(),
+                classification.riskLevel(),
+                STATUS_DRY_RUN,
+                sqlHash,
+                request.sql(),
+                summary,
+                0L,
+                null,
+                null
+        ));
+        return dryRunResult(request, classification, summary, sqlHash);
+    }
+
+    /**
+     * 创建确认需求结果。
+     *
+     * @param request        执行请求
+     * @param classification SQL 分类结果
+     * @param decision       确认决策
+     * @return 确认需求结果
+     */
+    private SqlExecutionResult confirmationRequiredResult(
+            SqlExecutionRequest request,
+            SqlClassification classification,
+            TruncateConfirmationDecision decision
+    ) {
+        return SqlExecutionResultFactory.create(
+                request,
+                classification,
+                false,
+                List.of(),
+                List.of(),
+                false,
+                0L,
+                List.of(),
+                0L,
+                "TRUNCATE 需要服务端二次确认",
+                decision.sqlHash(),
+                true,
+                decision.confirmationId(),
+                decision.expiresAt(),
+                "REQUIRES_CONFIRMATION"
+        );
+    }
+
+    /**
+     * 创建 dry-run 结果。
+     *
+     * @param request        执行请求
+     * @param classification SQL 分类结果
+     * @param summary        执行摘要
+     * @param sqlHash        SQL hash
+     * @return dry-run 结果
+     */
+    private SqlExecutionResult dryRunResult(
+            SqlExecutionRequest request,
+            SqlClassification classification,
+            String summary,
+            String sqlHash
+    ) {
+        return SqlExecutionResultFactory.create(
+                request,
+                classification,
+                false,
+                List.of(),
+                List.of(),
+                false,
+                0L,
+                List.of(),
+                0L,
+                summary,
+                sqlHash,
+                false,
+                null,
+                null,
+                STATUS_DRY_RUN
+        );
     }
 
     /**
@@ -338,52 +451,20 @@ public class SqlExecutionService {
             String sqlHash,
             String summary
     ) {
-        sqlExecutionAuditor.audit(request, operation, riskLevel, STATUS_DENIED, sqlHash, request.sql(), summary, 0L,
-                "DENIED", summary);
+        sqlExecutionAuditor.audit(request, new SqlExecutionAuditPayload(
+                operation,
+                riskLevel,
+                STATUS_DENIED,
+                sqlHash,
+                request.sql(),
+                summary,
+                0L,
+                "DENIED",
+                summary
+        ));
         return SqlExecutionResultFactory.denied(request, operation, riskLevel, sqlHash, summary, STATUS_DENIED);
     }
 
-    /**
-     * 创建执行结果。
-     *
-     * @param request              执行请求
-     * @param classification       SQL 分类结果
-     * @param query                是否查询
-     * @param columns              查询列
-     * @param rows                 查询行
-     * @param truncated            是否截断
-     * @param affectedRows         影响行数
-     * @param warnings             warning 摘要
-     * @param durationMillis       执行耗时
-     * @param statementSummary     语句摘要
-     * @param sqlHash              SQL hash
-     * @param confirmationRequired 是否需要确认
-     * @param confirmationId       确认标识
-     * @param expiresAt            过期时间
-     * @param status               执行状态
-     * @return 执行结果
-     */
-    private SqlExecutionResult result(
-            SqlExecutionRequest request,
-            SqlClassification classification,
-            boolean query,
-            List<String> columns,
-            List<Map<String, Object>> rows,
-            boolean truncated,
-            long affectedRows,
-            List<SqlExecutionWarning> warnings,
-            long durationMillis,
-            String statementSummary,
-            String sqlHash,
-            boolean confirmationRequired,
-            String confirmationId,
-            Instant expiresAt,
-            String status
-    ) {
-        return SqlExecutionResultFactory.create(request, classification, query, columns, rows, truncated, affectedRows,
-                warnings, durationMillis, statementSummary, sqlHash, confirmationRequired, confirmationId, expiresAt,
-                status);
-    }
 
     /**
      * 安全标准化 SQL 文本，允许空值进入授权拒绝审计。

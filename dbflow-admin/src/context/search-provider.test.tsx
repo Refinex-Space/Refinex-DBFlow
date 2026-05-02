@@ -3,7 +3,7 @@ import {render, type RenderResult} from 'vitest-browser-react'
 import {userEvent} from 'vitest/browser'
 import {SearchProvider} from '@/context/search-provider'
 
-const COMMAND_MENU_PLACEHOLDER = 'Type a command or search...'
+const COMMAND_MENU_PLACEHOLDER = '搜索 DBFlow 页面或命令...'
 
 const mocks = vi.hoisted(() => ({
     navigate: vi.fn(),
@@ -69,11 +69,18 @@ describe('SearchProvider and CommandMenu', () => {
         await expect
             .element(getByPlaceholder(COMMAND_MENU_PLACEHOLDER))
             .toBeInTheDocument()
-        await expect.element(getByText('Theme')).toBeInTheDocument()
-        await expect.element(getByText('Light')).toBeInTheDocument()
-        await expect.element(getByText('Dark')).toBeInTheDocument()
-        await expect.element(getByText('System')).toBeInTheDocument()
-        await expect.element(getByText('Dashboard')).toBeInTheDocument()
+        await expect.element(getByText('主题')).toBeInTheDocument()
+        await expect.element(getByText('亮色')).toBeInTheDocument()
+        await expect.element(getByText('暗色')).toBeInTheDocument()
+        await expect.element(getByText('跟随系统')).toBeInTheDocument()
+        await expect.element(getByText('总览')).toBeInTheDocument()
+        await expect.element(getByText('用户管理')).toBeInTheDocument()
+        await expect.element(getByText('项目授权')).toBeInTheDocument()
+        await expect.element(getByText('Token 管理')).toBeInTheDocument()
+        await expect.element(getByText('配置查看')).toBeInTheDocument()
+        await expect.element(getByText('危险策略')).toBeInTheDocument()
+        await expect.element(getByText('审计列表')).toBeInTheDocument()
+        await expect.element(getByText('系统健康')).toBeInTheDocument()
     })
 
     it('does not show the dialog content when search is closed', async () => {
@@ -109,7 +116,7 @@ describe('SearchProvider and CommandMenu', () => {
 
         await openCommandPalette(screen)
 
-        await userEvent.click(screen.getByText('Dashboard'))
+        await userEvent.click(screen.getByText('总览'))
 
         expect(mocks.navigate).toHaveBeenCalledWith({to: '/'})
         await expect
@@ -117,15 +124,15 @@ describe('SearchProvider and CommandMenu', () => {
             .not.toBeInTheDocument()
     })
 
-    it('navigates for nested sidebar items (group with sub-items)', async () => {
+    it('navigates to a DBFlow management route and closes the palette', async () => {
         const screen = await renderWithSearchProvider()
-        const {getByPlaceholder, getByRole} = screen
+        const {getByPlaceholder} = screen
 
         await openCommandPalette(screen)
 
-        await userEvent.click(getByRole('option', {name: 'Settings Account'}))
+        await userEvent.click(screen.getByText('Token 管理'))
 
-        expect(mocks.navigate).toHaveBeenCalledWith({to: '/settings/account'})
+        expect(mocks.navigate).toHaveBeenCalledWith({to: '/tokens'})
         await expect
             .element(getByPlaceholder(COMMAND_MENU_PLACEHOLDER))
             .not.toBeInTheDocument()
@@ -136,7 +143,7 @@ describe('SearchProvider and CommandMenu', () => {
 
         await openCommandPalette(screen)
 
-        await userEvent.click(screen.getByText('Dark'))
+        await userEvent.click(screen.getByText('暗色'))
 
         expect(mocks.setTheme).toHaveBeenCalledWith('dark')
         await expect
@@ -154,8 +161,6 @@ describe('SearchProvider and CommandMenu', () => {
             'zzzz-no-match-xxxx'
         )
 
-        await expect
-            .element(screen.getByText('No results found.'))
-            .toBeInTheDocument()
+        await expect.element(screen.getByText('没有匹配结果。')).toBeInTheDocument()
     })
 })

@@ -1,3 +1,4 @@
+import {useSessionStore} from '@/stores/session-store'
 import {useLayout} from '@/context/layout-provider'
 import {Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail,} from '@/components/ui/sidebar'
 // import { AppTitle } from './app-title'
@@ -8,6 +9,17 @@ import {TeamSwitcher} from './team-switcher'
 
 export function AppSidebar() {
     const {collapsible, variant} = useLayout()
+    const session = useSessionStore((state) => state.session)
+    const username = session?.username ?? 'admin'
+    const displayName = session?.displayName || username
+    const user = {
+        name: displayName,
+        email: session?.shell.adminName
+            ? `${session.shell.adminName} · DBFlow Administrator`
+            : 'DBFlow Administrator',
+        avatar: '/images/favicon.png',
+    }
+
     return (
         <Sidebar collapsible={collapsible} variant={variant}>
             <SidebarHeader>
@@ -23,7 +35,7 @@ export function AppSidebar() {
                 ))}
             </SidebarContent>
             <SidebarFooter>
-                <NavUser user={sidebarData.user}/>
+                <NavUser user={user}/>
             </SidebarFooter>
             <SidebarRail/>
         </Sidebar>

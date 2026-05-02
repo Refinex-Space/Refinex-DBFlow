@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Session Shell Layout](exec-plans/completed/2026-05-02-react-admin-session-shell-layout.md) -
+  Completed; wired the React admin layout to DBFlow session identity and shell metadata, replaced remaining demo
+  profile/team/search text with DBFlow navigation, and verified JSON logout plus build/test/brand gates.
 - [2026-05-02 React Admin Login Page](exec-plans/completed/2026-05-02-react-admin-login-page.md) -
   Completed; replaced the template sign-in demo on `/login` with a DBFlow-specific React + shadcn/ui login page, wired
   Spring Security JSON login/logout with CSRF, and verified failed-login toast plus successful Dashboard access.

@@ -1,5 +1,8 @@
+import {useState} from 'react'
 import {useLocation, useNavigate} from '@tanstack/react-router'
-import {useAuthStore} from '@/stores/auth-store'
+import {toast} from 'sonner'
+import {logout} from '@/api/session'
+import {useSessionStore} from '@/stores/session-store'
 import {ConfirmDialog} from '@/components/confirm-dialog'
 
 interface SignOutDialogProps {
@@ -10,27 +13,39 @@ interface SignOutDialogProps {
 export function SignOutDialog({open, onOpenChange}: SignOutDialogProps) {
     const navigate = useNavigate()
     const location = useLocation()
-    const {auth} = useAuthStore()
+    const clearSession = useSessionStore((state) => state.clearSession)
+    const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-    const handleSignOut = () => {
-        auth.reset()
-        // Preserve current location for redirect after sign-in
-        const currentPath = location.href
-        navigate({
-            to: '/sign-in',
-            search: {redirect: currentPath},
-            replace: true,
-        })
+    const handleSignOut = async () => {
+        setIsLoggingOut(true)
+        try {
+            await logout()
+            clearSession()
+            onOpenChange(false)
+
+            const currentPath = location.href
+            navigate({
+                to: '/login',
+                search: {redirect: currentPath},
+                replace: true,
+            })
+        } catch {
+            toast.error('退出登录失败，请稍后重试')
+        } finally {
+            setIsLoggingOut(false)
+        }
     }
 
     return (
         <ConfirmDialog
             open={open}
             onOpenChange={onOpenChange}
-            title='Sign out'
-            desc='Are you sure you want to sign out? You will need to sign in again to access your account.'
-            confirmText='Sign out'
+            title='退出登录'
+            desc='当前管理端会话将失效，再次访问 DBFlow Admin 需要重新登录。'
+            cancelBtnText='取消'
+            confirmText={isLoggingOut ? '正在退出...' : '退出登录'}
             destructive
+            isLoading={isLoggingOut}
             handleConfirm={handleSignOut}
             className='sm:max-w-sm'
         />

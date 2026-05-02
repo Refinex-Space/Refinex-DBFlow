@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Sidebar IA](exec-plans/completed/2026-05-02-react-admin-sidebar-ia.md) -
+  Completed; replaced imported template sidebar demo data with DBFlow Admin information architecture and verified the
+  React admin build plus sidebar keyword checks.
 - [2026-05-02 React Admin Demo Prune](exec-plans/completed/2026-05-02-react-admin-demo-prune.md) -
   Completed; removed imported demo apps/chats/help/tasks/users pages and routes, preserved reusable shell components,
   rebuilt `/` as a temporary DBFlow Admin dashboard, and verified build/runtime/Harness/Maven/diff gates.

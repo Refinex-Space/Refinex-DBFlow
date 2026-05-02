@@ -18,6 +18,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin API Client](exec-plans/completed/2026-05-02-react-admin-api-client.md) -
+  Completed; added a unified Axios API client for the React admin shell with relative `/admin/api` routing, Spring
+  Security CSRF header support, typed `ApiResult` unwrapping, focused frontend tests, and caller-controlled
+  authentication error handling.
 - [2026-05-02 Admin Token JSON API](exec-plans/completed/2026-05-02-admin-token-json-api.md) -
   Completed; exposed existing MCP Token list, options, issue, revoke, and reissue behavior as administrator-only JSON
   APIs for the React admin shell, kept CSRF-protected mutations, and preserved one-time plaintext Token display

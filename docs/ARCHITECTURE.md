@@ -33,7 +33,9 @@ with configurable trusted Origin validation, request size limits, fixed-window s
 token rejection, stable sanitized HTTP errors, and bounded MCP tool error metadata for denial/failure/expiry/truncation.
 The optional React admin bundle is served under `/admin-next/**` when packaged into the Spring Boot jar: non-resource
 SPA routes forward to `/admin-next/index.html`, while resource-looking paths are treated as static assets and never
-fall back to the SPA HTML.
+fall back to the SPA HTML. The React shell now has a unified Axios API client under `dbflow-admin/src/api/` that uses
+relative `/admin/api` requests, copies Spring Security's `XSRF-TOKEN` cookie into `X-XSRF-TOKEN` for mutations, unwraps
+DBFlow `ApiResult` payloads, and leaves `401` handling to the future session/router layer.
 Operational logs now carry `requestId`/`traceId` MDC fields, and runbook-driven troubleshooting starts from
 `docs/runbooks/troubleshooting.md`. Deployment guidance now lives under `docs/deployment/`, including a runnable
 local empty-environment startup path, jar deployment notes, external MySQL/Nacos configuration, reverse proxy/TLS
@@ -64,6 +66,20 @@ and must be updated as implementation packages are added.
 +-- mvnw.cmd
 +-- .mvn/
 |   +-- wrapper/
++-- dbflow-admin/
+|   +-- package.json
+|   +-- vite.config.ts
+|   +-- src/
+|       +-- api/
+|       +-- components/
+|       +-- context/
+|       +-- features/
+|       +-- hooks/
+|       +-- lib/
+|       +-- routes/
+|       +-- stores/
+|       +-- styles/
+|       +-- types/
 +-- docs/
 |   +-- PLANS.md
 |   +-- ARCHITECTURE.md

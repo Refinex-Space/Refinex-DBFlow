@@ -46,6 +46,9 @@ export default defineConfig({
     build: {
         outDir: 'dist',
     },
+    optimizeDeps: {
+        include: ['@radix-ui/react-checkbox'],
+    },
     test: {
         silent: 'passed-only',
         unstubEnvs: true,

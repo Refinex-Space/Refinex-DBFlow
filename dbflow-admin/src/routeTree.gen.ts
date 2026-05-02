@@ -13,6 +13,7 @@ import {Route as ClerkRouteRouteImport} from './routes/clerk/route'
 import {Route as AuthenticatedRouteRouteImport} from './routes/_authenticated/route'
 import {Route as AuthenticatedIndexRouteImport} from './routes/_authenticated/index'
 import {Route as AuthenticatedUsersRouteImport} from './routes/_authenticated/users'
+import {Route as AuthenticatedGrantsRouteImport} from './routes/_authenticated/grants'
 import {Route as errors503RouteImport} from './routes/(errors)/503'
 import {Route as errors500RouteImport} from './routes/(errors)/500'
 import {Route as errors404RouteImport} from './routes/(errors)/404'
@@ -52,6 +53,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedGrantsRoute = AuthenticatedGrantsRouteImport.update({
+  id: '/grants',
+  path: '/grants',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const errors503Route = errors503RouteImport.update({
@@ -181,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/grants': typeof AuthenticatedGrantsRoute
   '/users': typeof AuthenticatedUsersRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/grants': typeof AuthenticatedGrantsRoute
   '/users': typeof AuthenticatedUsersRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
+  '/_authenticated/grants': typeof AuthenticatedGrantsRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+      | '/grants'
       | '/users'
     | '/errors/$error'
     | '/settings/account'
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+      | '/grants'
       | '/users'
     | '/'
     | '/errors/$error'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
+      | '/_authenticated/grants'
       | '/_authenticated/users'
     | '/_authenticated/'
     | '/_authenticated/errors/$error'
@@ -366,6 +378,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/grants': {
+      id: '/_authenticated/grants'
+      path: '/grants'
+      fullPath: '/grants'
+      preLoaderRoute: typeof AuthenticatedGrantsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/(errors)/503': {
@@ -543,6 +562,7 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
+  AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
@@ -550,6 +570,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
+  AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,

@@ -18,6 +18,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Grants Page](exec-plans/completed/2026-05-02-react-admin-grants-page.md) -
+  Completed; implemented the React `/grants` project/environment authorization page backed by `/admin/api/grants`,
+  including URL-synced filters, grouped environment options, create/edit project grants, revoke actions, empty
+  configuration guidance, and sensitive-data-safe rendering.
 - [2026-05-02 React Admin Users Page](exec-plans/completed/2026-05-02-react-admin-users-page.md) -
   Completed; implemented the React `/users` management page backed by `/admin/api/users`, including URL-synced filters,
   create user Sheet, enable/disable confirmation, reset password dialog, query invalidation, backend error feedback,

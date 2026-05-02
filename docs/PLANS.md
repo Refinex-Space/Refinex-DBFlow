@@ -18,6 +18,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Template Import](exec-plans/completed/2026-05-02-react-admin-template-import.md) -
+  Completed; imported `satnaing/shadcn-admin` into `dbflow-admin/` as a one-time React admin template source, added
+  upstream attribution and generated-directory ignore rules, and verified no Spring Boot backend or Thymeleaf template
+  paths were modified.
 - [2026-05-02 Enterprise Concurrency And Degradation](exec-plans/completed/2026-05-02-enterprise-concurrency-degradation.md) -
   Completed; added single-instance enterprise concurrency governance, traffic-spike degradation, capacity observability,
   and guarded JDK 21 virtual-thread deployment support for DBFlow MCP traffic. Verification: `./mvnw test` passed

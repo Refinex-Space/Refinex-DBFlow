@@ -28,3 +28,10 @@ target/
 
 .env
 !.env.example
+
+# React admin
+dbflow-admin/node_modules/
+dbflow-admin/dist/
+dbflow-admin/.vite/
+dbflow-admin/playwright-report/
+dbflow-admin/test-results/

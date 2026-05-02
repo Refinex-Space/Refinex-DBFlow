@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Demo Prune](exec-plans/completed/2026-05-02-react-admin-demo-prune.md) -
+  Completed; removed imported demo apps/chats/help/tasks/users pages and routes, preserved reusable shell components,
+  rebuilt `/` as a temporary DBFlow Admin dashboard, and verified build/runtime/Harness/Maven/diff gates.
 - [2026-05-02 React Admin Brand Baseline](exec-plans/completed/2026-05-02-react-admin-brand-baseline.md) -
   Completed; renamed the React admin package to `refinex-dbflow-admin`, updated visible baseline branding to DBFlow
   Admin, preserved upstream attribution and demo pages, and verified pnpm install/build plus Harness and diff checks.

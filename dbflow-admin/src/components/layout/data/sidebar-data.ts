@@ -6,19 +6,14 @@ import {
     Construction,
     FileX,
     GalleryVerticalEnd,
-    HelpCircle,
     LayoutDashboard,
-    ListTodo,
     Lock,
-    MessagesSquare,
     Monitor,
-    Package,
     Palette,
     ServerOff,
     Settings,
     ShieldCheck,
     UserCog,
-    Users,
     UserX,
     Wrench,
 } from 'lucide-react'
@@ -58,27 +53,6 @@ export const sidebarData: SidebarData = {
                     icon: LayoutDashboard,
                 },
                 {
-                    title: 'Tasks',
-                    url: '/tasks',
-                    icon: ListTodo,
-                },
-                {
-                    title: 'Apps',
-                    url: '/apps',
-                    icon: Package,
-                },
-                {
-                    title: 'Chats',
-                    url: '/chats',
-                    badge: '3',
-                    icon: MessagesSquare,
-                },
-                {
-                    title: 'Users',
-                    url: '/users',
-                    icon: Users,
-                },
-                {
                     title: 'Secured by Clerk',
                     icon: ClerkLogo,
                     items: [
@@ -89,10 +63,6 @@ export const sidebarData: SidebarData = {
                         {
                             title: 'Sign Up',
                             url: '/clerk/sign-up',
-                        },
-                        {
-                            title: 'User Management',
-                            url: '/clerk/user-management',
                         },
                     ],
                 },
@@ -193,11 +163,6 @@ export const sidebarData: SidebarData = {
                             icon: Monitor,
                         },
                     ],
-                },
-                {
-                    title: 'Help Center',
-                    url: '/help-center',
-                    icon: HelpCircle,
                 },
             ],
         },

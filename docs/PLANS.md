@@ -18,6 +18,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Tokens Page](exec-plans/completed/2026-05-02-react-admin-tokens-page.md) -
+  Completed; implemented the React `/tokens` MCP Token management page backed by `/admin/api/tokens`, including
+  URL-synced filters, safe list rendering, issue/reissue one-time plaintext reveal, revoke confirmation, and
+  storage-boundary verification.
 - [2026-05-02 React Admin Grants Page](exec-plans/completed/2026-05-02-react-admin-grants-page.md) -
   Completed; implemented the React `/grants` project/environment authorization page backed by `/admin/api/grants`,
   including URL-synced filters, grouped environment options, create/edit project grants, revoke actions, empty

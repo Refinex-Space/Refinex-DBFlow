@@ -13,6 +13,7 @@ import {Route as ClerkRouteRouteImport} from './routes/clerk/route'
 import {Route as AuthenticatedRouteRouteImport} from './routes/_authenticated/route'
 import {Route as AuthenticatedIndexRouteImport} from './routes/_authenticated/index'
 import {Route as AuthenticatedUsersRouteImport} from './routes/_authenticated/users'
+import {Route as AuthenticatedTokensRouteImport} from './routes/_authenticated/tokens'
 import {Route as AuthenticatedGrantsRouteImport} from './routes/_authenticated/grants'
 import {Route as errors503RouteImport} from './routes/(errors)/503'
 import {Route as errors500RouteImport} from './routes/(errors)/500'
@@ -53,6 +54,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
+    getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedTokensRoute = AuthenticatedTokensRouteImport.update({
+    id: '/tokens',
+    path: '/tokens',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedGrantsRoute = AuthenticatedGrantsRouteImport.update({
@@ -188,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/grants': typeof AuthenticatedGrantsRoute
+    '/tokens': typeof AuthenticatedTokensRoute
   '/users': typeof AuthenticatedUsersRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByTo {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/grants': typeof AuthenticatedGrantsRoute
+    '/tokens': typeof AuthenticatedTokensRoute
   '/users': typeof AuthenticatedUsersRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
+    '/_authenticated/tokens': typeof AuthenticatedTokensRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -270,6 +279,7 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
       | '/grants'
+      | '/tokens'
       | '/users'
     | '/errors/$error'
     | '/settings/account'
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
       | '/grants'
+      | '/tokens'
       | '/users'
     | '/'
     | '/errors/$error'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/(errors)/500'
     | '/(errors)/503'
       | '/_authenticated/grants'
+      | '/_authenticated/tokens'
       | '/_authenticated/users'
     | '/_authenticated/'
     | '/_authenticated/errors/$error'
@@ -380,6 +392,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+      '/_authenticated/tokens': {
+          id: '/_authenticated/tokens'
+          path: '/tokens'
+          fullPath: '/tokens'
+          preLoaderRoute: typeof AuthenticatedTokensRouteImport
+          parentRoute: typeof AuthenticatedRouteRoute
+      }
     '/_authenticated/grants': {
       id: '/_authenticated/grants'
       path: '/grants'
@@ -563,6 +582,7 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
+    AuthenticatedTokensRoute: typeof AuthenticatedTokensRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
@@ -571,6 +591,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
+    AuthenticatedTokensRoute: AuthenticatedTokensRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,

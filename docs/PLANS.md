@@ -18,6 +18,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 Admin Grant JSON API](exec-plans/completed/2026-05-02-admin-grant-json-api.md) -
+  Completed; exposed existing project/environment grant list, options, create, project-update, and revoke behavior as
+  administrator-only JSON APIs for the React admin shell, preserved Thymeleaf pages, kept CSRF-protected mutations, and
+  verified empty environment-list revocation semantics.
 - [2026-05-02 Admin User JSON API](exec-plans/completed/2026-05-02-admin-user-json-api.md) -
   Completed; exposed existing admin user-management list/filter/create/disable/enable/reset-password behavior as
   administrator-only JSON APIs for the React admin shell, preserved Thymeleaf pages, and kept CSRF required for

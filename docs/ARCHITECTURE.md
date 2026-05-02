@@ -17,7 +17,8 @@ index advice. `dbflow_inspect_schema` and the schema resource now use an authori
 inspection service for schemas, tables, columns, indexes, views, procedures, and functions with bounded results. It
 now has a unified `AuditEventWriter` for request received, policy denied, confirmation-required, executed, failed, and
 confirmation-expired audit events with token id, client metadata, tool name, decision, SQL hash, and bounded summaries.
-It also exposes management-side JSON APIs for audit list/detail, user management, and read-only
+It also exposes management-side JSON APIs for audit list/detail, user management, project/environment grants, and
+read-only
 overview/configuration/dangerous policy/health data, with administrator-only access and sanitized DTOs that exclude
 Token metadata and redact
 password-like text. It now includes a Thymeleaf-based
@@ -118,6 +119,7 @@ and must be updated as implementation packages are added.
 |   |   |   +-- admin/
 |   |   |   |   +-- AdminAccessManagementService.java
 |   |   |   |   +-- AdminAuditEventController.java
+|   |   |   |   +-- AdminGrantApiController.java
 |   |   |   |   +-- AdminHomeController.java
 |   |   |   |   +-- AdminOperationsApiController.java
 |   |   |   |   +-- AdminOperationsViewService.java
@@ -399,6 +401,12 @@ and must be updated as implementation packages are added.
   as the Thymeleaf page. Responses use `ApiResult`, return only the safe `UserRow` projection or operation markers, do
   not expose password hashes or reset-password plaintext, and remain protected by the administrator-only `/admin/api/**`
   rule plus CSRF for mutations.
+- Management grant API baseline: `GET /admin/api/grants`, `GET /admin/api/grants/options`, `POST /admin/api/grants`,
+  `POST /admin/api/grants/update-project`, and `POST /admin/api/grants/{grantId}/revoke` reuse
+  `AdminAccessManagementService` for the same project/environment grant behavior as the Thymeleaf page. Responses use
+  existing safe grant/user/environment projections, omit JDBC URLs and database credentials, and keep mutation requests
+  protected by CSRF. Empty `environmentKeys` in `update-project` intentionally revokes all of that user's grants under
+  the selected project.
 - Management session API baseline: `GET /admin/api/session` returns the current authenticated administrator name,
   roles, and a shell metadata projection from `AdminShellViewService`. The DTO intentionally omits password hashes,
   Token plaintext/hash values, and raw sensitive configuration.
@@ -416,7 +424,7 @@ and must be updated as implementation packages are added.
 | `com.refinex.dbflow.sqlpolicy`     | `sqlpolicy.service`, `sqlpolicy.dto`, `sqlpolicy.model`, `sqlpolicy.support`                                                  | SQL parsing, auditable risk classification, DROP DATABASE / DROP TABLE YAML whitelist decisions, and TRUNCATE server-side confirmation lifecycle.                                                                                                             |
 | `com.refinex.dbflow.executor`      | `executor.datasource`, `executor.dto`, `executor.service`, `executor.support`                                                 | Project/environment scoped target `DataSource` registry, candidate config validation, candidate Hikari pool warmup, atomic registry replacement, controlled bounded JDBC SQL execution, non-mutating EXPLAIN, and authorized `information_schema` inspection. |
 | `com.refinex.dbflow.audit`         | `audit.entity`, `audit.repository`, `audit.service`, `audit.dto`                                                              | Unified audit event writing, bounded result summaries, sanitized admin audit queries, confirmation challenges, audit insertion/query, and confirmation status transitions.                                                                                    |
-| `com.refinex.dbflow.admin`         | `admin.controller`, `admin.service`, `admin.command`, `admin.view`, `admin.support`                                           | Management endpoint surface for users, MCP Tokens, project/environment grants, administrator audit APIs, read-only dangerous policy views, operations health pages, commands, view models, and display helpers.                                               |
+| `com.refinex.dbflow.admin`         | `admin.controller`, `admin.dto`, `admin.service`, `admin.command`, `admin.view`, `admin.support`                              | Management endpoint surface for users, MCP Tokens, project/environment grants, administrator audit APIs, React admin JSON DTOs, read-only dangerous policy views, operations health pages, commands, view models, and display helpers.                        |
 | `com.refinex.dbflow.observability` | `observability.filter`, `observability.service`, `observability.dto`, `observability.configuration`, `observability.support`  | Request id propagation, logging context, Actuator health indicators, shared health DTOs, and Micrometer metrics.                                                                                                                                              |
 
 ## Current Dependency Direction

@@ -1,36 +1,43 @@
-import {createFileRoute} from '@tanstack/react-router'
-import {Header} from '@/components/layout/header'
-import {Main} from '@/components/layout/main'
-import {ProfileDropdown} from '@/components/profile-dropdown'
-import {Search} from '@/components/search'
-import {ThemeSwitch} from '@/components/theme-switch'
+import {z} from 'zod'
+import {createFileRoute, useNavigate, useSearch} from '@tanstack/react-router'
+import {UsersPage, type UsersPageSearch} from '@/features/users'
 
-export const Route = createFileRoute('/_authenticated/users')({
-    component: UsersPlaceholder,
+const searchSchema = z.object({
+    username: z.string().optional(),
+    status: z.string().optional(),
 })
 
-function UsersPlaceholder() {
+export const Route = createFileRoute('/_authenticated/users')({
+    validateSearch: searchSchema,
+    component: UsersRoute,
+})
+
+function UsersRoute() {
+    const search = useSearch({from: '/_authenticated/users'})
+    const navigate = useNavigate()
+
     return (
-        <>
-            <Header>
-                <Search/>
-                <ThemeSwitch/>
-                <ProfileDropdown/>
-            </Header>
-            <Main>
-                <section className='max-w-3xl space-y-3'>
-                    <p className='text-sm font-medium text-muted-foreground'>
-                        Identity and access
-                    </p>
-                    <h1 className='text-2xl font-semibold tracking-tight'>
-                        User Management
-                    </h1>
-                    <p className='text-sm text-muted-foreground'>
-                        DBFlow user management will be rebuilt on this protected route in
-                        the next stage.
-                    </p>
-                </section>
-            </Main>
-        </>
+        <UsersPage
+            search={search}
+            onSearchChange={(nextSearch) =>
+                navigate({
+                    to: '/users',
+                    search: cleanRouteSearch(nextSearch),
+                    replace: true,
+                })
+            }
+        />
     )
+}
+
+function cleanRouteSearch(search: UsersPageSearch): UsersPageSearch {
+    return {
+        username: cleanOptionalString(search.username),
+        status: cleanOptionalString(search.status),
+    }
+}
+
+function cleanOptionalString(value: string | undefined): string | undefined {
+    const text = value?.trim()
+    return text ? text : undefined
 }

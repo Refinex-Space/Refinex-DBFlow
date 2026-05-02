@@ -18,6 +18,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Users Page](exec-plans/completed/2026-05-02-react-admin-users-page.md) -
+  Completed; implemented the React `/users` management page backed by `/admin/api/users`, including URL-synced filters,
+  create user Sheet, enable/disable confirmation, reset password dialog, query invalidation, backend error feedback,
+  and safe user-list rendering without password hash exposure.
 - [2026-05-02 React Admin Overview Dashboard](exec-plans/completed/2026-05-02-react-admin-overview-dashboard.md) -
   Completed; migrated the React admin default Dashboard from the temporary shell page to real `/admin/api/overview`
   data with metrics, recent audit events, attention items, a disabled environment selector, loading, and empty states.

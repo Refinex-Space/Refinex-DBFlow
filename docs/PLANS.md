@@ -18,6 +18,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 Admin Token JSON API](exec-plans/completed/2026-05-02-admin-token-json-api.md) -
+  Completed; exposed existing MCP Token list, options, issue, revoke, and reissue behavior as administrator-only JSON
+  APIs for the React admin shell, kept CSRF-protected mutations, and preserved one-time plaintext Token display
+  boundaries through dedicated safe list DTOs and audit redaction tests.
 - [2026-05-02 Admin Grant JSON API](exec-plans/completed/2026-05-02-admin-grant-json-api.md) -
   Completed; exposed existing project/environment grant list, options, create, project-update, and revoke behavior as
   administrator-only JSON APIs for the React admin shell, preserved Thymeleaf pages, kept CSRF-protected mutations, and

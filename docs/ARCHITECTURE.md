@@ -125,6 +125,7 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- AdminOperationsViewService.java
 |   |   |   |   +-- AdminOverviewApiController.java
 |   |   |   |   +-- AdminSessionViewService.java
+|   |   |   |   +-- AdminTokenApiController.java
 |   |   |   |   +-- AdminUserApiController.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- audit/
@@ -269,6 +270,7 @@ and must be updated as implementation packages are added.
 |           +-- admin/AdminAccessManagementControllerTests.java
 |           +-- admin/AdminAccessManagementServiceTests.java
 |           +-- admin/AdminAuditEventControllerTests.java
+|           +-- admin/AdminTokenApiControllerTests.java
 |           +-- admin/AdminOperationsApiControllerTests.java
 |           +-- admin/AdminOperationsPageControllerTests.java
 |           +-- admin/AdminUiControllerTests.java
@@ -407,6 +409,13 @@ and must be updated as implementation packages are added.
   existing safe grant/user/environment projections, omit JDBC URLs and database credentials, and keep mutation requests
   protected by CSRF. Empty `environmentKeys` in `update-project` intentionally revokes all of that user's grants under
   the selected project.
+- Management Token API baseline: `GET /admin/api/tokens`, `GET /admin/api/tokens/options`, `POST
+  /admin/api/tokens`, `POST /admin/api/tokens/{tokenId}/revoke`, and `POST
+  /admin/api/users/{userId}/tokens/reissue` reuse `AdminAccessManagementService` for the same MCP Token lifecycle
+  behavior as the Thymeleaf page. List responses map to a dedicated safe DTO that exposes only id, user, prefix,
+  status, expiry, and last-used metadata; they do not expose `plaintextToken` or `tokenHash`. Issue and reissue
+  responses may include `plaintextToken` only for the successful one-time response, while revoke returns only an
+  operation marker and keeps mutation requests protected by CSRF.
 - Management session API baseline: `GET /admin/api/session` returns the current authenticated administrator name,
   roles, and a shell metadata projection from `AdminShellViewService`. The DTO intentionally omits password hashes,
   Token plaintext/hash values, and raw sensitive configuration.

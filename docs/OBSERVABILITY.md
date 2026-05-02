@@ -39,7 +39,9 @@ access, and absence of full JDBC URLs, Token prefixes, password hashes, and Toke
 now verifies list/filter/create/disable/enable/reset-password JSON behavior, admin-only access, CSRF-required
 mutations, JSON validation errors, and omission of password hashes and reset-password plaintext. React admin grant API
 coverage now verifies options, list/filter, create, project-level updates including empty environment-list revocation,
-single-grant revoke, CSRF-required mutations, and omission of JDBC connection information.
+single-grant revoke, CSRF-required mutations, and omission of JDBC connection information. React admin Token API
+coverage now verifies issue/list/reissue/revoke JSON behavior, CSRF-required mutations, one-time plaintext Token
+responses, and plaintext/hash omission from list responses and audit rows.
 The Testcontainers
 classes are skipped automatically when the local machine has no Docker runtime. Spring Cloud Alibaba Nacos Config and
 Discovery dependencies are present, and default startup imports the single Nacos Data ID `application-dbflow.yml`.
@@ -388,6 +390,8 @@ under pressure, and `HEAVY_READ` returns degradation notices instead of unbounde
 - `AdminGrantApiControllerTests` covers project/environment grant options, list/filter/create/update-project/revoke
   JSON APIs, empty environment-list revocation semantics, missing-CSRF rejection for mutation, and JDBC connection
   information omission.
+- `AdminTokenApiControllerTests` covers Token issue/list/reissue/revoke JSON APIs, missing-CSRF rejection for mutation,
+  one-time plaintext Token response boundaries, and plaintext/hash omission from list responses and audit rows.
 - `AdminOperationsPageControllerTests` covers audit page filtering and pagination, denied-reason detail rendering,
   page-level secret redaction, read-only dangerous policy rendering, system health rendering, and non-admin rejection
   for operations pages.

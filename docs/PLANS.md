@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Overview Dashboard](exec-plans/completed/2026-05-02-react-admin-overview-dashboard.md) -
+  Completed; migrated the React admin default Dashboard from the temporary shell page to real `/admin/api/overview`
+  data with metrics, recent audit events, attention items, a disabled environment selector, loading, and empty states.
 - [2026-05-02 React Admin DBFlow Components](exec-plans/completed/2026-05-02-react-admin-dbflow-components.md) -
   Completed; added reusable DBFlow admin business components, centralized risk/decision/status/environment badge
   mappings, formatting helpers, and clipboard interaction coverage for the React admin shell.

@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Brand Baseline](exec-plans/completed/2026-05-02-react-admin-brand-baseline.md) -
+  Completed; renamed the React admin package to `refinex-dbflow-admin`, updated visible baseline branding to DBFlow
+  Admin, preserved upstream attribution and demo pages, and verified pnpm install/build plus Harness and diff checks.
 - [2026-05-02 React Admin Template Import](exec-plans/completed/2026-05-02-react-admin-template-import.md) -
   Completed; imported `satnaing/shadcn-admin` into `dbflow-admin/` as a one-time React admin template source, added
   upstream attribution and generated-directory ignore rules, and verified no Spring Boot backend or Thymeleaf template

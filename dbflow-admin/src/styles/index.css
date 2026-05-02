@@ -57,7 +57,25 @@
 }
 
 @utility faded-bottom {
-    @apply after:pointer-events-none after:absolute after:inset-s-0 after:bottom-0 after:hidden after:h-32 after:w-full after:rounded-b-2xl after:bg-[linear-gradient(180deg, transparent_10%,var(--background)_70%)] md:after:block;
+    &::after {
+        pointer-events: none;
+        position: absolute;
+        inset-inline-start: calc(var(--spacing) * 0);
+        bottom: calc(var(--spacing) * 0);
+        display: none;
+        height: calc(var(--spacing) * 32);
+        width: 100%;
+        border-bottom-right-radius: var(--radius-2xl);
+        border-bottom-left-radius: var(--radius-2xl);
+        background: linear-gradient(180deg, transparent 10%, var(--background) 70%);
+        content: '';
+    }
+
+    @media (width >= 48rem) {
+        &::after {
+            display: block;
+        }
+    }
 }
 
 /* styles.css */

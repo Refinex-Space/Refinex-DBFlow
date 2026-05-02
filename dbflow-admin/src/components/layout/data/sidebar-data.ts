@@ -27,25 +27,25 @@ import {type SidebarData} from '../types'
 
 export const sidebarData: SidebarData = {
     user: {
-        name: 'satnaing',
-        email: 'satnaingdev@gmail.com',
+        name: 'DBFlow Admin',
+        email: 'admin@refinex-dbflow.local',
         avatar: '/avatars/shadcn.jpg',
     },
     teams: [
         {
-            name: 'Shadcn Admin',
+            name: 'DBFlow Admin',
             logo: Command,
-            plan: 'Vite + ShadcnUI',
+            plan: 'MCP SQL Gateway',
         },
         {
-            name: 'Acme Inc',
+            name: 'Refinex-DBFlow',
             logo: GalleryVerticalEnd,
-            plan: 'Enterprise',
+            plan: 'Database Control Plane',
         },
         {
-            name: 'Acme Corp.',
+            name: 'Refinex Platform',
             logo: AudioWaveform,
-            plan: 'Startup',
+            plan: 'Internal Console',
         },
     ],
     navGroups: [

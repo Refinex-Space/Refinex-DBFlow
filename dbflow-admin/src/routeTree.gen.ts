@@ -226,7 +226,6 @@ export interface FileRoutesByFullPath {
     '/tasks/': typeof AuthenticatedTasksIndexRoute
     '/users/': typeof AuthenticatedUsersIndexRoute
 }
-
 export interface FileRoutesByTo {
     '/clerk': typeof ClerkAuthenticatedRouteRouteWithChildren
     '/forgot-password': typeof authForgotPasswordRoute
@@ -255,7 +254,6 @@ export interface FileRoutesByTo {
     '/tasks': typeof AuthenticatedTasksIndexRoute
     '/users': typeof AuthenticatedUsersIndexRoute
 }
-
 export interface FileRoutesById {
     __root__: typeof rootRouteImport
     '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
@@ -289,7 +287,6 @@ export interface FileRoutesById {
     '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
     '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
 }
-
 export interface FileRouteTypes {
     fileRoutesByFullPath: FileRoutesByFullPath
     fullPaths:
@@ -382,7 +379,6 @@ export interface FileRouteTypes {
         | '/_authenticated/users/'
     fileRoutesById: FileRoutesById
 }
-
 export interface RootRouteChildren {
     AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
     ClerkRouteRoute: typeof ClerkRouteRouteWithChildren

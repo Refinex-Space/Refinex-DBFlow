@@ -22,6 +22,11 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 Enterprise Concurrency And Degradation](exec-plans/completed/2026-05-02-enterprise-concurrency-degradation.md) -
+  Completed; added single-instance enterprise concurrency governance, traffic-spike degradation, capacity observability,
+  and guarded JDK 21 virtual-thread deployment support for DBFlow MCP traffic. Verification: `./mvnw test` passed
+  191 tests with 0 failures, 0 errors, and 10 skipped; `python3 scripts/check_harness.py` passed; `git diff --check`
+  passed.
 - [2026-05-02 Target Connection Timeout Feedback](exec-plans/completed/2026-05-02-target-connection-timeout-feedback.md) -
   Completed; shortened target datasource connection timeout defaults for interactive MCP failures and documented
   unreachable target database triage.

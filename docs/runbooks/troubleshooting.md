@@ -276,7 +276,36 @@ dbflow:
         window: 1m
 ```
 
-## Scenario 10: SQL Policy Denied
+## Scenario 10: Capacity Busy Or Business Rate Limited
+
+Symptoms:
+
+- MCP tool response `data.status=CAPACITY_REJECTED`。
+- `data.error.code=CAPACITY_REJECTED`。
+- `data.error.reasonCode` 为 `TOKEN_RATE_LIMITED`、`USER_RATE_LIMITED`、`TOOL_RATE_LIMITED`、
+  `TARGET_RATE_LIMITED`、`TOOL_BULKHEAD_FULL`、`TARGET_BULKHEAD_FULL`、`LOCAL_PRESSURE` 或 `TARGET_PRESSURE`。
+- `dbflow_inspect_schema` 返回 `capacity.degraded=true` 或 `notices` 中包含压力态提示。
+
+Steps:
+
+```bash
+curl -s http://localhost:8080/actuator/metrics/dbflow.capacity.requests
+curl -s http://localhost:8080/actuator/metrics/dbflow.capacity.rejections
+curl -s http://localhost:8080/actuator/metrics/dbflow.capacity.degradations
+curl -s http://localhost:8080/actuator/metrics/dbflow.capacity.local.pressure
+curl -s http://localhost:8080/actuator/health
+```
+
+Checks:
+
+- `retryAfterMillis` 表示客户端建议等待时间；AI 客户端应降低频率，不要立即循环重试。
+- `TOKEN_RATE_LIMITED` 或 `USER_RATE_LIMITED`：检查是否单个用户或自动化脚本过快调用。
+- `TOOL_BULKHEAD_FULL`：检查对应能力类别，`EXECUTE` 默认 fail-fast，不建议排长队。
+- `TARGET_BULKHEAD_FULL` 或 `TARGET_PRESSURE`：检查目标 Hikari pool 的 `active`、`total`、`waiting`。
+- `LOCAL_PRESSURE`：检查 JVM memory、近期容量拒绝和全局并发。
+- 如果启用了虚拟线程，同时观察 pinned thread、Hikari waiting 和 `dbflow.capacity.rejections`；虚拟线程不替代容量阈值。
+
+## Scenario 11: SQL Policy Denied
 
 Symptoms:
 
@@ -297,7 +326,7 @@ Checks:
 - `TRUNCATE` 不会直接执行，会创建服务端 confirmation challenge。
 - 日志只记录 `project`、`env`、`operation`、`risk`、`sqlHash`，不要把 SQL 原文复制到工单。
 
-## Scenario 11: SQL Execution Fails
+## Scenario 12: SQL Execution Fails
 
 Symptoms:
 
@@ -319,7 +348,7 @@ Checks:
 - 不要在日志、工单或聊天中粘贴数据库密码、JDBC URL 或完整结果集。
 - 如果是目标库权限、表不存在或语法错误，优先在目标库侧用只读账号复现。
 
-## Scenario 12: Admin Login Or Management Page Access Fails
+## Scenario 13: Admin Login Or Management Page Access Fails
 
 Symptoms:
 

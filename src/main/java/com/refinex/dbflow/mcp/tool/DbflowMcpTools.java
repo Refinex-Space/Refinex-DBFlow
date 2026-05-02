@@ -1,6 +1,11 @@
 package com.refinex.dbflow.mcp.tool;
 
 import com.refinex.dbflow.audit.dto.AuditRequestContext;
+import com.refinex.dbflow.capacity.model.CapacityDecision;
+import com.refinex.dbflow.capacity.model.CapacityRequest;
+import com.refinex.dbflow.capacity.model.McpToolClass;
+import com.refinex.dbflow.capacity.service.CapacityGuardService;
+import com.refinex.dbflow.capacity.support.CapacityPermit;
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.executor.dto.*;
 import com.refinex.dbflow.executor.service.SchemaInspectService;
@@ -23,6 +28,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import static com.refinex.dbflow.mcp.support.McpErrorMetadataFactory.*;
@@ -47,6 +53,11 @@ public class DbflowMcpTools {
      * MCP 访问授权边界服务。
      */
     private final McpAccessBoundaryService accessBoundaryService;
+
+    /**
+     * 容量治理服务。
+     */
+    private final CapacityGuardService capacityGuardService;
 
     /**
      * MCP 目标与策略投影服务。
@@ -83,6 +94,7 @@ public class DbflowMcpTools {
      *
      * @param authenticationContextResolver MCP 认证上下文解析器
      * @param accessBoundaryService         MCP 访问授权边界服务
+     * @param capacityGuardService          容量治理服务
      * @param targetPolicyProjectionService MCP 目标与策略投影服务
      * @param truncateConfirmationService   TRUNCATE 服务端二次确认服务
      * @param sqlExecutionService           受控 SQL 执行服务
@@ -93,6 +105,7 @@ public class DbflowMcpTools {
     public DbflowMcpTools(
             McpAuthenticationContextResolver authenticationContextResolver,
             McpAccessBoundaryService accessBoundaryService,
+            CapacityGuardService capacityGuardService,
             McpTargetPolicyProjectionService targetPolicyProjectionService,
             TruncateConfirmationService truncateConfirmationService,
             SqlExecutionService sqlExecutionService,
@@ -102,6 +115,7 @@ public class DbflowMcpTools {
     ) {
         this.authenticationContextResolver = authenticationContextResolver;
         this.accessBoundaryService = accessBoundaryService;
+        this.capacityGuardService = capacityGuardService;
         this.targetPolicyProjectionService = targetPolicyProjectionService;
         this.truncateConfirmationService = truncateConfirmationService;
         this.sqlExecutionService = sqlExecutionService;
@@ -135,13 +149,32 @@ public class DbflowMcpTools {
                 context,
                 DbflowMcpNames.TOOL_LIST_TARGETS
         );
-        return response(DbflowMcpNames.TOOL_LIST_TARGETS, context, boundary, Map.of(
-                "targets", targetPolicyProjectionService.visibleTargets(
-                        context,
-                        accessBoundaryService,
-                        DbflowMcpNames.TOOL_LIST_TARGETS
-                )
-        ));
+        if (!boundary.allowed()) {
+            return boundaryDenied(DbflowMcpNames.TOOL_LIST_TARGETS, context, boundary);
+        }
+        CapacityDecision capacityDecision = evaluateCapacity(
+                context,
+                DbflowMcpNames.TOOL_LIST_TARGETS,
+                McpToolClass.LIGHT_READ,
+                null,
+                null,
+                null
+        );
+        if (!capacityDecision.allowed()) {
+            return capacityRejected(DbflowMcpNames.TOOL_LIST_TARGETS, context, boundary, capacityDecision,
+                    data("targets", List.of()));
+        }
+        try (CapacityPermit ignored = capacityDecision.permit()) {
+            return response(DbflowMcpNames.TOOL_LIST_TARGETS, context, boundary, data(
+                    "targets", targetPolicyProjectionService.visibleTargets(
+                            context,
+                            accessBoundaryService,
+                            DbflowMcpNames.TOOL_LIST_TARGETS
+                    ),
+                    "capacity", capacityData(capacityDecision),
+                    "notices", notices(false, capacityDecision)
+            ));
+        }
     }
 
     /**
@@ -181,38 +214,57 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_INSPECT_SCHEMA
         );
-        SchemaInspectResult result = schemaInspectService.inspect(new SchemaInspectRequest(
-                context.requestId(),
-                context.userId(),
-                context.tokenId(),
-                context.tokenPrefix(),
+        if (!boundary.allowed()) {
+            return boundaryDenied(DbflowMcpNames.TOOL_INSPECT_SCHEMA, context, boundary,
+                    data("project", project, "env", env, "schema", schema, "table", table));
+        }
+        CapacityDecision capacityDecision = evaluateCapacity(
+                context,
+                DbflowMcpNames.TOOL_INSPECT_SCHEMA,
+                McpToolClass.HEAVY_READ,
                 project,
                 env,
-                schema,
-                table,
-                maxItems == null ? 0 : maxItems
-        ));
-        return response(DbflowMcpNames.TOOL_INSPECT_SCHEMA, context, boundary, data(
-                "project", result.projectKey(),
-                "env", result.environmentKey(),
-                "schema", result.schemaFilter(),
-                "table", result.tableFilter(),
-                "allowed", result.allowed(),
-                "status", result.status(),
-                "maxItems", result.maxItems(),
-                "truncated", result.truncated(),
-                "schemas", schemaData(result.schemas()),
-                "tables", tableData(result.tables()),
-                "columns", columnData(result.columns()),
-                "indexes", indexData(result.indexes()),
-                "views", viewData(result.views()),
-                "routines", routineData(result.routines()),
-                "durationMillis", result.durationMillis(),
-                "errorCode", result.errorCode(),
-                "errorMessage", sanitize(result.errorMessage()),
-                "error", errorData(result.errorCode(), result.errorMessage()),
-                "notices", notices(result.truncated())
-        ));
+                maxItems
+        );
+        if (!capacityDecision.allowed()) {
+            return capacityRejected(DbflowMcpNames.TOOL_INSPECT_SCHEMA, context, boundary, capacityDecision,
+                    data("project", project, "env", env, "schema", schema, "table", table));
+        }
+        try (CapacityPermit ignored = capacityDecision.permit()) {
+            SchemaInspectResult result = schemaInspectService.inspect(new SchemaInspectRequest(
+                    context.requestId(),
+                    context.userId(),
+                    context.tokenId(),
+                    context.tokenPrefix(),
+                    project,
+                    env,
+                    schema,
+                    table,
+                    effectiveMaxItems(maxItems, capacityDecision)
+            ));
+            return response(DbflowMcpNames.TOOL_INSPECT_SCHEMA, context, boundary, data(
+                    "project", result.projectKey(),
+                    "env", result.environmentKey(),
+                    "schema", result.schemaFilter(),
+                    "table", result.tableFilter(),
+                    "allowed", result.allowed(),
+                    "status", result.status(),
+                    "maxItems", result.maxItems(),
+                    "truncated", result.truncated(),
+                    "schemas", schemaData(result.schemas()),
+                    "tables", tableData(result.tables()),
+                    "columns", columnData(result.columns()),
+                    "indexes", indexData(result.indexes()),
+                    "views", viewData(result.views()),
+                    "routines", routineData(result.routines()),
+                    "durationMillis", result.durationMillis(),
+                    "errorCode", result.errorCode(),
+                    "errorMessage", sanitize(result.errorMessage()),
+                    "error", errorData(result.errorCode(), result.errorMessage()),
+                    "capacity", capacityData(capacityDecision),
+                    "notices", notices(result.truncated(), capacityDecision)
+            ));
+        }
     }
 
     /**
@@ -253,8 +305,43 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY
         );
-        return response(DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY, context, boundary,
-                targetPolicyProjectionService.effectivePolicy(project, env, schema, table, operation, boundary));
+        if (!boundary.allowed()) {
+            Map<String, Object> policy = targetPolicyProjectionService.effectivePolicy(
+                    project,
+                    env,
+                    schema,
+                    table,
+                    operation,
+                    boundary
+            );
+            policy.put("error", authorizationErrorData(boundary));
+            return response(DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY, context, boundary, policy);
+        }
+        CapacityDecision capacityDecision = evaluateCapacity(
+                context,
+                DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY,
+                McpToolClass.LIGHT_READ,
+                project,
+                env,
+                null
+        );
+        if (!capacityDecision.allowed()) {
+            return capacityRejected(DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY, context, boundary, capacityDecision,
+                    data("project", project, "env", env, "schema", schema, "table", table, "operation", operation));
+        }
+        try (CapacityPermit ignored = capacityDecision.permit()) {
+            Map<String, Object> policy = targetPolicyProjectionService.effectivePolicy(
+                    project,
+                    env,
+                    schema,
+                    table,
+                    operation,
+                    boundary
+            );
+            policy.put("capacity", capacityData(capacityDecision));
+            policy.put("notices", notices(false, capacityDecision));
+            return response(DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY, context, boundary, policy);
+        }
     }
 
     /**
@@ -293,38 +380,60 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_EXPLAIN_SQL
         );
-        SqlExplainResult result = sqlExplainService.explain(new SqlExplainRequest(
-                context.requestId(),
-                context.userId(),
-                context.tokenId(),
-                context.tokenPrefix(),
+        if (!boundary.allowed()) {
+            return boundaryDenied(DbflowMcpNames.TOOL_EXPLAIN_SQL, context, boundary,
+                    data("project", project, "env", env, "schema", schema, "sqlReceived",
+                            sql != null && !sql.isBlank()));
+        }
+        CapacityDecision capacityDecision = evaluateCapacity(
+                context,
+                DbflowMcpNames.TOOL_EXPLAIN_SQL,
+                McpToolClass.EXPLAIN,
                 project,
                 env,
-                sql,
-                schema,
-                auditContext(context, DbflowMcpNames.TOOL_EXPLAIN_SQL)
-        ));
-        return response(DbflowMcpNames.TOOL_EXPLAIN_SQL, context, boundary, data(
-                "project", result.projectKey(),
-                "env", result.environmentKey(),
-                "schema", schema,
-                "sqlReceived", sql != null && !sql.isBlank(),
-                "allowed", result.allowed(),
-                "status", result.status(),
-                "operation", result.operation().name(),
-                "riskLevel", result.riskLevel().name(),
-                "format", result.format(),
-                "explainSql", result.explainSql(),
-                "planRows", planRowData(result.planRows()),
-                "advice", adviceData(result.advice()),
-                "jsonPlanSummary", result.jsonPlanSummary(),
-                "durationMillis", result.durationMillis(),
-                "statementSummary", result.statementSummary(),
-                "sqlHash", result.sqlHash(),
-                "errorCode", result.errorCode(),
-                "errorMessage", sanitize(result.errorMessage()),
-                "error", errorData(result.errorCode(), result.errorMessage())
-        ));
+                null
+        );
+        if (!capacityDecision.allowed()) {
+            return capacityRejected(DbflowMcpNames.TOOL_EXPLAIN_SQL, context, boundary, capacityDecision,
+                    data("project", project, "env", env, "schema", schema, "sqlReceived",
+                            sql != null && !sql.isBlank()));
+        }
+        try (CapacityPermit ignored = capacityDecision.permit()) {
+            SqlExplainResult result = sqlExplainService.explain(new SqlExplainRequest(
+                    context.requestId(),
+                    context.userId(),
+                    context.tokenId(),
+                    context.tokenPrefix(),
+                    project,
+                    env,
+                    sql,
+                    schema,
+                    auditContext(context, DbflowMcpNames.TOOL_EXPLAIN_SQL)
+            ));
+            return response(DbflowMcpNames.TOOL_EXPLAIN_SQL, context, boundary, data(
+                    "project", result.projectKey(),
+                    "env", result.environmentKey(),
+                    "schema", schema,
+                    "sqlReceived", sql != null && !sql.isBlank(),
+                    "allowed", result.allowed(),
+                    "status", result.status(),
+                    "operation", result.operation().name(),
+                    "riskLevel", result.riskLevel().name(),
+                    "format", result.format(),
+                    "explainSql", result.explainSql(),
+                    "planRows", planRowData(result.planRows()),
+                    "advice", adviceData(result.advice()),
+                    "jsonPlanSummary", result.jsonPlanSummary(),
+                    "durationMillis", result.durationMillis(),
+                    "statementSummary", result.statementSummary(),
+                    "sqlHash", result.sqlHash(),
+                    "errorCode", result.errorCode(),
+                    "errorMessage", sanitize(result.errorMessage()),
+                    "error", errorData(result.errorCode(), result.errorMessage()),
+                    "capacity", capacityData(capacityDecision),
+                    "notices", notices(false, capacityDecision)
+            ));
+        }
     }
 
     /**
@@ -367,8 +476,36 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_EXECUTE_SQL
         );
+        if (!boundary.allowed()) {
+            return boundaryDenied(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
+                    "project", project,
+                    "env", env,
+                    "schema", schema,
+                    "sqlReceived", sql != null && !sql.isBlank(),
+                    "dryRun", Boolean.TRUE.equals(dryRun),
+                    "reason", reason
+            ));
+        }
+        CapacityDecision capacityDecision = evaluateCapacity(
+                context,
+                DbflowMcpNames.TOOL_EXECUTE_SQL,
+                McpToolClass.EXECUTE,
+                project,
+                env,
+                null
+        );
+        if (!capacityDecision.allowed()) {
+            return capacityRejected(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, capacityDecision, data(
+                    "project", project,
+                    "env", env,
+                    "schema", schema,
+                    "sqlReceived", sql != null && !sql.isBlank(),
+                    "dryRun", Boolean.TRUE.equals(dryRun),
+                    "reason", reason
+            ));
+        }
         SqlExecutionResult result;
-        try {
+        try (CapacityPermit ignored = capacityDecision.permit()) {
             result = sqlExecutionService.execute(new SqlExecutionRequest(
                     context.requestId(),
                     context.userId(),
@@ -395,7 +532,8 @@ public class DbflowMcpTools {
                     "truncated", false,
                     "affectedRows", 0L,
                     "status", "FAILED",
-                    "error", errorData("SQL_EXECUTION_FAILED", exception.getMessage())
+                    "error", errorData("SQL_EXECUTION_FAILED", exception.getMessage()),
+                    "capacity", capacityData(capacityDecision)
             ));
         } catch (RuntimeException exception) {
             return response(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
@@ -409,7 +547,8 @@ public class DbflowMcpTools {
                     "truncated", false,
                     "affectedRows", 0L,
                     "status", "FAILED",
-                    "error", errorData("SQL_EXECUTION_FAILED", "SQL 执行失败")
+                    "error", errorData("SQL_EXECUTION_FAILED", "SQL 执行失败"),
+                    "capacity", capacityData(capacityDecision)
             ));
         }
         return response(DbflowMcpNames.TOOL_EXECUTE_SQL, context, boundary, data(
@@ -435,7 +574,8 @@ public class DbflowMcpTools {
                 "confirmationId", result.confirmationId(),
                 "expiresAt", result.expiresAt(),
                 "error", executionError(result),
-                "notices", notices(result.truncated())
+                "capacity", capacityData(capacityDecision),
+                "notices", notices(result.truncated(), capacityDecision)
         ));
     }
 
@@ -477,7 +617,37 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_CONFIRM_SQL
         );
-        if (boundary.allowed()) {
+        if (!boundary.allowed()) {
+            return response(DbflowMcpNames.TOOL_CONFIRM_SQL, context, boundary, data(
+                    "project", project,
+                    "env", env,
+                    "confirmationId", confirmationId,
+                    "sqlReceived", sql != null && !sql.isBlank(),
+                    "reason", reason,
+                    "confirmed", false,
+                    "status", "DENIED",
+                    "error", errorData(boundary.reason(), boundary.message())
+            ));
+        }
+        CapacityDecision capacityDecision = evaluateCapacity(
+                context,
+                DbflowMcpNames.TOOL_CONFIRM_SQL,
+                McpToolClass.EXECUTE,
+                project,
+                env,
+                null
+        );
+        if (!capacityDecision.allowed()) {
+            return capacityRejected(DbflowMcpNames.TOOL_CONFIRM_SQL, context, boundary, capacityDecision, data(
+                    "project", project,
+                    "env", env,
+                    "confirmationId", confirmationId,
+                    "sqlReceived", sql != null && !sql.isBlank(),
+                    "reason", reason,
+                    "confirmed", false
+            ));
+        }
+        try (CapacityPermit ignored = capacityDecision.permit()) {
             TruncateConfirmationDecision decision;
             try {
                 decision = truncateConfirmationService.confirm(
@@ -504,7 +674,8 @@ public class DbflowMcpTools {
                         "reason", reason,
                         "confirmed", false,
                         "status", code,
-                        "error", errorData(code, exception.getMessage())
+                        "error", errorData(code, exception.getMessage()),
+                        "capacity", capacityData(capacityDecision)
                 ));
             }
             return response(DbflowMcpNames.TOOL_CONFIRM_SQL, context, boundary, data(
@@ -516,19 +687,11 @@ public class DbflowMcpTools {
                     "confirmed", decision.confirmed(),
                     "status", decision.status(),
                     "sqlHash", decision.sqlHash(),
-                    "riskLevel", decision.riskLevel().name()
+                    "riskLevel", decision.riskLevel().name(),
+                    "capacity", capacityData(capacityDecision),
+                    "notices", notices(false, capacityDecision)
             ));
         }
-        return response(DbflowMcpNames.TOOL_CONFIRM_SQL, context, boundary, data(
-                "project", project,
-                "env", env,
-                "confirmationId", confirmationId,
-                "sqlReceived", sql != null && !sql.isBlank(),
-                "reason", reason,
-                "confirmed", false,
-                "status", "DENIED",
-                "error", errorData(boundary.reason(), boundary.message())
-        ));
     }
 
     /**
@@ -547,6 +710,130 @@ public class DbflowMcpTools {
             Map<String, Object> data
     ) {
         return skeleton(surface, context, boundary, data);
+    }
+
+    /**
+     * 创建授权拒绝响应。
+     *
+     * @param surface  MCP 暴露面名称
+     * @param context  MCP 认证上下文
+     * @param boundary MCP 授权边界结果
+     * @return MCP skeleton 响应
+     */
+    private DbflowMcpSkeletonResponse boundaryDenied(
+            String surface,
+            McpAuthenticationContext context,
+            McpAuthorizationBoundary boundary
+    ) {
+        return boundaryDenied(surface, context, boundary, data());
+    }
+
+    /**
+     * 创建带基础字段的授权拒绝响应。
+     *
+     * @param surface  MCP 暴露面名称
+     * @param context  MCP 认证上下文
+     * @param boundary MCP 授权边界结果
+     * @param values   基础响应字段
+     * @return MCP skeleton 响应
+     */
+    private DbflowMcpSkeletonResponse boundaryDenied(
+            String surface,
+            McpAuthenticationContext context,
+            McpAuthorizationBoundary boundary,
+            Map<String, Object> values
+    ) {
+        values.put("status", "DENIED");
+        values.put("error", authorizationErrorData(boundary));
+        return response(surface, context, boundary, values);
+    }
+
+    /**
+     * 创建兼容 MCP tool 既有协议的授权错误数据。
+     *
+     * @param boundary MCP 授权边界结果
+     * @return 授权错误数据
+     */
+    private Map<String, Object> authorizationErrorData(McpAuthorizationBoundary boundary) {
+        if ("AUTHENTICATION_REQUIRED".equals(boundary.reason())) {
+            return errorData(boundary.reason(), boundary.message());
+        }
+        return errorData("POLICY_DENIED", boundary.message());
+    }
+
+    /**
+     * 创建容量治理拒绝响应。
+     *
+     * @param surface          MCP 暴露面名称
+     * @param context          MCP 认证上下文
+     * @param boundary         MCP 授权边界结果
+     * @param capacityDecision 容量治理决策
+     * @param values           基础响应字段
+     * @return MCP skeleton 响应
+     */
+    private DbflowMcpSkeletonResponse capacityRejected(
+            String surface,
+            McpAuthenticationContext context,
+            McpAuthorizationBoundary boundary,
+            CapacityDecision capacityDecision,
+            Map<String, Object> values
+    ) {
+        values.put("allowed", false);
+        values.put("status", "CAPACITY_REJECTED");
+        values.put("error", capacityError(capacityDecision));
+        values.put("capacity", capacityData(capacityDecision));
+        values.put("notices", notices(false, capacityDecision));
+        return response(surface, context, boundary, values);
+    }
+
+    /**
+     * 执行容量治理评估。
+     *
+     * @param context       MCP 认证上下文
+     * @param tool          MCP 工具名称
+     * @param toolClass     MCP 工具容量分级
+     * @param project       项目标识
+     * @param env           环境标识
+     * @param requestedSize 客户端请求条目数
+     * @return 容量治理决策
+     */
+    private CapacityDecision evaluateCapacity(
+            McpAuthenticationContext context,
+            String tool,
+            McpToolClass toolClass,
+            String project,
+            String env,
+            Integer requestedSize
+    ) {
+        return capacityGuardService.evaluate(new CapacityRequest(
+                context.requestId(),
+                context.userId(),
+                context.tokenId(),
+                tool,
+                toolClass,
+                project,
+                env,
+                requestedSize
+        ));
+    }
+
+    /**
+     * 计算容量降级后的最大条目数。
+     *
+     * @param requested        客户端请求条目数
+     * @param capacityDecision 容量治理决策
+     * @return 实际传入服务层的条目数
+     */
+    private int effectiveMaxItems(Integer requested, CapacityDecision capacityDecision) {
+        int requestedValue = requested == null ? 0 : requested;
+        Integer override = capacityDecision.maxItemsOverride();
+        if (override == null) {
+            return requestedValue;
+        }
+        if (requestedValue <= 0) {
+            return override;
+        }
+        return Math.min(requestedValue, override);
     }
 
     /**

@@ -137,6 +137,38 @@ java -jar target/refinex-dbflow-0.1.0-SNAPSHOT.jar
 - 不要提交真实数据库密码、MCP Token、Token pepper 或 Nacos 密码。
 - 生产应把 `admin/admin` 改成受管管理员账号，并轮换 `dbflow.security.mcp-token.pepper`。
 
+### 单实例容量治理
+
+DBFlow 默认按单实例内网部署设计容量保护。`dbflow.security.mcp-endpoint.*` 先做 Origin、request size 和来源 IP
+粗保护；通过认证和授权后，`dbflow.capacity.*` 会继续按 Token、用户、工具类别、target project/env 做限流和并发
+bulkhead。流量突增时：
+
+- `EXECUTE` 和 `EXPLAIN` 默认快速返回容量拒绝，不排长队。
+- `HEAVY_READ` 默认降级，把 schema inspect 之类的 `maxItems` 下调到 50。
+- 响应会带 `error.reasonCode`、`retryAfterMillis` 和 `notices`，客户端应按提示稍后重试。
+- 管理端健康页会显示“容量治理”，Actuator metrics 暴露 `dbflow.capacity.*` 指标。
+
+建议先保持模板默认值，压测 100 个逻辑用户混合调用后再调整 `global-max-concurrent`、`EXECUTE.max-concurrent`、
+`per-token-max-concurrent` 和目标 Hikari `maximum-pool-size`。容量上限不要大于目标库和 metadata database 能承受的连接预算。
+
+### Tomcat 与虚拟线程
+
+模板显式配置了 `server.tomcat.threads.max`、`server.tomcat.max-connections` 和 `server.tomcat.accept-count`。反向代理的
+`client_max_body_size` 应与 `dbflow.security.mcp-endpoint.request-size.max-bytes` 对齐，避免代理和应用层限制不一致。
+
+JDK 21 虚拟线程保持 opt-in：
+
+```yaml
+spring:
+  threads:
+    virtual:
+      enabled: true
+```
+
+虚拟线程可以降低请求线程占用，但不会放大 Hikari pool、SQL timeout、bulkhead 或限流阈值。启用前同时压测
+`spring.threads.virtual.enabled=false` 和 `true`，并观察 pinned thread、目标池 waiting、`dbflow.capacity.rejections`
+和 SQL duration。
+
 Nginx 反向代理示例：
 
 ```nginx

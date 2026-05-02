@@ -119,17 +119,23 @@ Do not run UPDATE, DELETE, TRUNCATE, DROP, or ALTER.
 
 常见拒绝和处理方式：
 
-| 现象                        | 常见原因                        | 处理                                         |
-|---------------------------|-----------------------------|--------------------------------------------|
-| `401` / `UNAUTHENTICATED` | Token 缺失、格式错误、未知、过期或已吊销     | 检查 Authorization header；需要时请管理员重新颁发 Token。 |
-| `403` / `FORBIDDEN`       | 没有目标 project/env 授权         | 请管理员在 `/admin/grants` 授权。                  |
-| `ORIGIN_DENIED`           | 浏览器型客户端 Origin 未配置为可信来源     | 提供客户端 Origin 给管理员。                         |
-| `RATE_LIMITED`            | 请求过快或共享出口触发限流               | 降低频率，等待窗口恢复；批量任务不要走交互式 MCP。                |
-| `REQUEST_TOO_LARGE`       | SQL 或请求体超过限制                | 缩小请求，不要上传大结果或长脚本。                          |
-| `POLICY_DENIED`           | DROP、prod 危险 DDL、未白名单表等策略拒绝 | 查看返回 reason；需要变更配置时走审批。                    |
-| `SQL_PARSE_FAILED`        | SQL 语法错误、多语句或不支持的语句形态       | 改成单条明确 SQL，先 explain。                      |
-| `CONFIRMATION_EXPIRED`    | confirmationId 过期或已消费       | 重新发起确认流程。                                  |
-| `TRUNCATED` notice        | 结果超过服务端 max rows            | 加更精确条件或分页查询。                               |
+| 现象                        | 常见原因                        | 处理                                                  |
+|---------------------------|-----------------------------|-----------------------------------------------------|
+| `401` / `UNAUTHENTICATED` | Token 缺失、格式错误、未知、过期或已吊销     | 检查 Authorization header；需要时请管理员重新颁发 Token。          |
+| `403` / `FORBIDDEN`       | 没有目标 project/env 授权         | 请管理员在 `/admin/grants` 授权。                           |
+| `ORIGIN_DENIED`           | 浏览器型客户端 Origin 未配置为可信来源     | 提供客户端 Origin 给管理员。                                  |
+| `RATE_LIMITED`            | 请求过快或共享出口触发限流               | 降低频率，等待窗口恢复；批量任务不要走交互式 MCP。                         |
+| `REQUEST_TOO_LARGE`       | SQL 或请求体超过限制                | 缩小请求，不要上传大结果或长脚本。                                   |
+| `CAPACITY_REJECTED`       | 单实例容量治理拒绝本次 MCP tool 调用     | 查看 `error.reasonCode` 和 `retryAfterMillis`，降低频率后重试。 |
+| `TOKEN_RATE_LIMITED`      | 当前 Token 调用频率超过服务端上限        | 等待 `retryAfterMillis`，不要让同一 Token 承担批量任务。           |
+| `TOOL_BULKHEAD_FULL`      | 某类能力并发已满，常见于 EXECUTE 尖峰     | 写操作默认快速失败；稍后重试，避免并发提交多条变更 SQL。                      |
+| `TARGET_BULKHEAD_FULL`    | 某个 project/env 并发已满         | 稍后重试；如果只影响一个目标库，换其他授权目标不会被同一 target 限制阻塞。           |
+| `TARGET_PRESSURE`         | 目标库连接池 active/waiting 达到阈值  | 等待目标库恢复；优先减少大查询和 EXPLAIN。                           |
+| capacity `notice`         | 服务端处于压力态但允许降级返回             | 只读元数据可能被下调 `maxItems`；需要更精确过滤或稍后再查。                 |
+| `POLICY_DENIED`           | DROP、prod 危险 DDL、未白名单表等策略拒绝 | 查看返回 reason；需要变更配置时走审批。                             |
+| `SQL_PARSE_FAILED`        | SQL 语法错误、多语句或不支持的语句形态       | 改成单条明确 SQL，先 explain。                               |
+| `CONFIRMATION_EXPIRED`    | confirmationId 过期或已消费       | 重新发起确认流程。                                           |
+| `TRUNCATED` notice        | 结果超过服务端 max rows            | 加更精确条件或分页查询。                                        |
 
 拒绝不是“系统坏了”。它通常说明身份、授权、策略或确认链路正在按预期保护数据库。
 

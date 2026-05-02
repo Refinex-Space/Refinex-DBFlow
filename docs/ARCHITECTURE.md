@@ -35,6 +35,11 @@ guidance, intranet access restrictions, and a secret-safe example YAML. MCP clie
 `docs/user-guide/mcp-clients.md`, covering Codex, Claude, OpenCode, and Copilot Streamable HTTP configuration and
 first-use smoke prompts. Administrator, operator, and security/audit guides now live under `docs/user-guide/`, covering
 management UI operations, employee MCP usage, and the audit value of non-black-box AI database access.
+The MCP execution chain now includes an in-process `capacity` domain for single-instance enterprise deployment:
+after MCP authentication and authorization, but before target datasource lookup and SQL work, DBFlow enforces Token,
+user, tool-class, and target project/env rate limits and semaphore bulkheads. Capacity decisions protect resources;
+they do not grant authorization, bypass SQL policy, or weaken audit. Under pressure, write and EXPLAIN paths fail fast,
+while heavy reads return bounded degradation notices.
 The architecture below records the approved target design
 from
 [docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md](exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md)
@@ -135,6 +140,13 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- ApiResult.java
 |   |   |   |   +-- DbflowException.java
 |   |   |   |   +-- ErrorCode.java
+|   |   |   |   +-- package-info.java
+|   |   |   +-- capacity/
+|   |   |   |   +-- configuration/
+|   |   |   |   +-- model/
+|   |   |   |   +-- properties/
+|   |   |   |   +-- service/
+|   |   |   |   +-- support/
 |   |   |   |   +-- package-info.java
 |   |   |   +-- config/
 |   |   |   |   +-- DangerousDdlDecision.java

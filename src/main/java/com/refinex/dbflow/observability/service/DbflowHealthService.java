@@ -2,6 +2,9 @@ package com.refinex.dbflow.observability.service;
 
 import com.refinex.dbflow.access.dto.ConfiguredEnvironmentView;
 import com.refinex.dbflow.access.service.ProjectEnvironmentCatalogService;
+import com.refinex.dbflow.capacity.model.McpToolClass;
+import com.refinex.dbflow.capacity.properties.CapacityProperties;
+import com.refinex.dbflow.capacity.service.SystemPressureService;
 import com.refinex.dbflow.common.util.SensitiveTextSanitizer;
 import com.refinex.dbflow.executor.datasource.ProjectEnvironmentDataSourceRegistry;
 import com.refinex.dbflow.observability.dto.HealthComponent;
@@ -45,6 +48,16 @@ public class DbflowHealthService {
     private final ProjectEnvironmentDataSourceRegistry targetRegistry;
 
     /**
+     * 容量治理配置。
+     */
+    private final CapacityProperties capacityProperties;
+
+    /**
+     * 系统压力判断服务。
+     */
+    private final SystemPressureService pressureService;
+
+    /**
      * Spring 环境属性。
      */
     private final Environment springEnvironment;
@@ -55,17 +68,23 @@ public class DbflowHealthService {
      * @param metadataDataSource 元数据库数据源
      * @param catalogService     项目环境目录服务
      * @param targetRegistry     目标库数据源注册表
+     * @param capacityProperties 容量治理配置
+     * @param pressureService    系统压力判断服务
      * @param springEnvironment  Spring 环境属性
      */
     public DbflowHealthService(
             DataSource metadataDataSource,
             ProjectEnvironmentCatalogService catalogService,
             ProjectEnvironmentDataSourceRegistry targetRegistry,
+            CapacityProperties capacityProperties,
+            SystemPressureService pressureService,
             Environment springEnvironment
     ) {
         this.metadataDataSource = Objects.requireNonNull(metadataDataSource);
         this.catalogService = Objects.requireNonNull(catalogService);
         this.targetRegistry = Objects.requireNonNull(targetRegistry);
+        this.capacityProperties = Objects.requireNonNull(capacityProperties);
+        this.pressureService = Objects.requireNonNull(pressureService);
         this.springEnvironment = Objects.requireNonNull(springEnvironment);
     }
 
@@ -80,7 +99,9 @@ public class DbflowHealthService {
         items.add(mcpEndpointReadiness());
         items.add(metadataDatabase());
         items.add(nacos());
-        items.addAll(targetDatasourceRegistry().components());
+        TargetDatasourceHealth targetHealth = targetDatasourceRegistry();
+        items.add(capacityHealth(targetHealth.components()));
+        items.addAll(targetHealth.components());
         long unhealthy = items.stream().filter(HealthComponent::unhealthy).count();
         String overall = unhealthy == 0 ? "HEALTHY" : "DEGRADED";
         return new HealthSnapshot(overall, toneForHealth(overall), items.size(), unhealthy, List.copyOf(items));
@@ -150,6 +171,35 @@ public class DbflowHealthService {
     }
 
     /**
+     * 创建容量治理健康项。
+     *
+     * @param targetComponents 目标连接池健康项
+     * @return 健康项
+     */
+    public HealthComponent capacityHealth(List<HealthComponent> targetComponents) {
+        if (!capacityProperties.isEnabled()) {
+            return new HealthComponent("容量治理", "capacity", "DISABLED",
+                    "容量治理已关闭", "dbflow.capacity.enabled=false", "neutral");
+        }
+        boolean localPressure = pressureService.currentLocalPressure();
+        long busyTargets = targetComponents.stream()
+                .filter(component -> "target-pool".equals(component.component()))
+                .filter(component -> "BUSY".equalsIgnoreCase(component.status()))
+                .count();
+        String status = localPressure || busyTargets > 0 ? "BUSY" : "HEALTHY";
+        String detail = "localPressure=" + localPressure
+                + " targetBusy=" + busyTargets
+                + " globalMaxConcurrent=" + capacityProperties.getBulkhead().getGlobalMaxConcurrent()
+                + " executeMaxConcurrent="
+                + capacityProperties.getBulkhead().getClasses()
+                .get(McpToolClass.EXECUTE)
+                .getMaxConcurrent();
+        return new HealthComponent("容量治理", "capacity", status,
+                status.equals("BUSY") ? "容量治理检测到压力态" : "容量治理已启用且未检测到压力态",
+                detail, toneForHealth(status));
+    }
+
+    /**
      * 创建目标数据源注册表健康分组。
      *
      * @return 目标数据源健康分组
@@ -183,7 +233,7 @@ public class DbflowHealthService {
                     environmentView.environmentKey()
             );
             if (dataSource instanceof HikariDataSource hikariDataSource) {
-                String status = hikariDataSource.isClosed() ? "DOWN" : "HEALTHY";
+                String status = targetPoolStatus(hikariDataSource);
                 return new HealthComponent(name, "target-pool", status,
                         "Hikari 连接池已注册，driver=" + displayText(environmentView.driverClassName()),
                         hikariDetail(hikariDataSource), toneForHealth(status));
@@ -211,7 +261,44 @@ public class DbflowHealthService {
                 + " active=" + pool.getActiveConnections()
                 + " idle=" + pool.getIdleConnections()
                 + " total=" + pool.getTotalConnections()
-                + " waiting=" + pool.getThreadsAwaitingConnection();
+                + " waiting=" + pool.getThreadsAwaitingConnection()
+                + " pressure=" + hikariPressure(pool);
+    }
+
+    /**
+     * 创建目标连接池健康状态。
+     *
+     * @param dataSource Hikari 数据源
+     * @return 健康状态
+     */
+    private String targetPoolStatus(HikariDataSource dataSource) {
+        if (dataSource.isClosed()) {
+            return "DOWN";
+        }
+        HikariPoolMXBean pool = dataSource.getHikariPoolMXBean();
+        if (pool != null && hikariPressure(pool)) {
+            return "BUSY";
+        }
+        return "HEALTHY";
+    }
+
+    /**
+     * 判断 Hikari 连接池是否达到容量压力阈值。
+     *
+     * @param pool Hikari 连接池 MXBean
+     * @return 达到压力阈值时返回 true
+     */
+    private boolean hikariPressure(HikariPoolMXBean pool) {
+        int waitingThreshold = capacityProperties.getPressure().getTargetPoolWaitingThreshold();
+        if (waitingThreshold > 0 && pool.getThreadsAwaitingConnection() >= waitingThreshold) {
+            return true;
+        }
+        int total = pool.getTotalConnections();
+        if (total <= 0) {
+            return false;
+        }
+        double activeRatio = (double) pool.getActiveConnections() / (double) total;
+        return activeRatio >= capacityProperties.getPressure().getTargetPoolActiveRatioThreshold();
     }
 
     /**
@@ -225,6 +312,7 @@ public class DbflowHealthService {
             case "HEALTHY" -> "ok";
             case "DISABLED" -> "neutral";
             case "DOWN" -> "bad";
+            case "BUSY" -> "warn";
             default -> "warn";
         };
     }

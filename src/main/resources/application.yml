@@ -36,6 +36,10 @@ spring:
   # Flyway 默认读取 classpath:db/migration，本处显式记录元数据库迁移入口。
   flyway:
     locations: classpath:db/migration
+  # JDK 21 虚拟线程保持显式 opt-in。启用前必须完成容量阈值压测和 pinned thread 观察。
+  # threads:
+  #   virtual:
+  #     enabled: true
   # Spring AI MCP Server 固定能力声明。管理员、target datasource、安全策略等运行配置由 Nacos YAML 提供。
   ai:
     mcp:

@@ -226,8 +226,17 @@ Configuration sources and secret boundary:
   rate-limited requests. Responses include a request id but never include Java stack traces, JDBC URLs, database
   passwords, or Token plaintext.
 - MCP tool responses expose stable `error` and `notices` objects for policy denial, SQL execution failure,
-  confirmation expiry, and result truncation. `result_summary` and notices remain bounded; full result sets are not
-  copied into error metadata.
+  confirmation expiry, result truncation, and capacity rejection/degradation. Capacity responses include
+  `error.reasonCode`, optional `retryAfterMillis`, `capacity.status`, `capacity.degraded`, and `notices`; they do not
+  include stack traces, JDBC URLs, passwords, Token plaintext, or full SQL result sets.
+- Capacity governance meters use stable, bounded tag values:
+  `dbflow.capacity.requests{toolClass,decision,reason}`,
+  `dbflow.capacity.rejections{toolClass,reason}`,
+  `dbflow.capacity.degradations{toolClass,reason}`,
+  `dbflow.capacity.rate_limit.exhausted{scope}`,
+  `dbflow.capacity.acquire.duration{toolClass,decision}`, and `dbflow.capacity.local.pressure`. The management health
+  page also renders a sanitized "容量治理" component and marks target pools `BUSY` when Hikari waiting threads or active
+  ratio cross configured thresholds.
 - Troubleshooting starts from [docs/runbooks/troubleshooting.md](runbooks/troubleshooting.md). Use `requestId`,
   `traceId`, and `sqlHash` to correlate MCP client responses, audit events, operational logs, health, and metrics.
 
@@ -271,16 +280,33 @@ python3 scripts/check_harness.py
 
 Expected: Maven tests pass and Harness validation passes. Use `harness-verify` before completion claims.
 
+## Single-Instance Capacity Smoke
+
+Manual smoke for an intranet instance should simulate 100 logical users with a mixed workload such as 60% light read,
+25% heavy read, 10% explain, and 5% execute. Capture these before/after snapshots:
+
+```bash
+curl -s http://localhost:8080/actuator/metrics/dbflow.capacity.requests
+curl -s http://localhost:8080/actuator/metrics/dbflow.capacity.rejections
+curl -s http://localhost:8080/actuator/metrics/dbflow.capacity.degradations
+curl -s http://localhost:8080/actuator/metrics/dbflow.capacity.acquire.duration
+curl -s http://localhost:8080/actuator/health
+```
+
+Expected: one Token cannot consume all capacity, one busy target does not block unrelated targets, `EXECUTE` fails fast
+under pressure, and `HEAVY_READ` returns degradation notices instead of unbounded metadata. Repeat the same smoke with
+`spring.threads.virtual.enabled=true` only after the platform-thread baseline is understood.
+
 ## Current Test Coverage
 
 - `DbflowApplicationTests` verifies the Spring Boot context starts with the local H2 metadata datasource and Flyway
   migration.
 - `ApiResultTests` and `DbflowExceptionTests` cover the current common result/exception primitives.
 - `RequestIdFilterTests` covers incoming and generated request id behavior plus trace id MDC propagation and cleanup.
-- `OperationalHealthAndMetricsTests` covers custom DBFlow health indicators, hidden Actuator health details, minimal
-  Actuator endpoint exposure, management health reuse of the shared health service, admin-only management health access,
-  and Micrometer meter registration for MCP calls, SQL risk distribution, rejection counts, SQL execution duration, and
-  pending confirmation challenges.
+- `OperationalHealthAndMetricsTests` covers custom DBFlow health indicators, capacity health rendering, hidden Actuator
+  health details, minimal Actuator endpoint exposure, management health reuse of the shared health service, admin-only
+  management health access, and Micrometer meter registration for MCP calls, capacity decisions/rejections/rate-limit
+  exhaustion, SQL risk distribution, rejection counts, SQL execution duration, and pending confirmation challenges.
 - `MetadataSchemaMigrationTests` covers all seven metadata tables, token plaintext absence, active token uniqueness,
   grant uniqueness, confirmation challenge token/target/SQL hash binding, audit client/token/tool/decision fields, and
   key audit/schema indexes.

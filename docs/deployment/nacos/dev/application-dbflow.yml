@@ -42,6 +42,21 @@ server:
   port: 8080
   # 默认 framework；让 Spring 读取 X-Forwarded-*，便于后续接 Nginx/TLS 反向代理。
   forward-headers-strategy: framework
+  tomcat:
+    threads:
+      # 默认 200；平台线程模式下限制 Tomcat worker 数。若启用虚拟线程，也不要把容量治理阈值同步放大。
+      max: 200
+    # 默认 8192；单实例内网部署建议按反向代理和文件描述符预算压测后调整。
+    max-connections: 8192
+    # 默认 100；连接已满后的 accept 队列，避免流量尖峰直接打爆进程。
+    accept-count: 100
+
+# JDK 21 虚拟线程为可选项。启用后 Tomcat 请求处理可使用虚拟线程，但 DBFlow 容量治理、Hikari pool、
+# SQL timeout 和 bulkhead 仍然是硬边界；上线前必须同时压测 virtual=false 与 virtual=true。
+# spring:
+#   threads:
+#     virtual:
+#       enabled: true
 
 # management：Actuator 暴露面。
 # dev 模板只暴露 health、metrics；健康详情默认不公开，避免泄露连接池、数据库等内部信息。
@@ -102,6 +117,78 @@ dbflow:
   #         username: your_dbflow_user
   #         password: your_dbflow_password
   projects: [ ]
+
+  # capacity：单实例企业并发治理。它位于 MCP 认证/授权之后、目标库访问和 SQL 执行之前；
+  # 用于保护 DBFlow 进程和目标数据库，不替代授权、SQL policy 或审计。
+  capacity:
+    # 默认 true；关闭后只保留 /mcp 外层 Origin/request-size/source-IP 防护。
+    enabled: true
+    pressure:
+      # 默认 true；基于 JVM、目标 Hikari pool 和拒绝信号判断压力态，不主动探测目标库 SQL。
+      enabled: true
+      # 默认 1；目标连接池出现等待线程即进入 TARGET_PRESSURE。
+      target-pool-waiting-threshold: 1
+      # 默认 0.85；active / total 达到阈值即进入 TARGET_PRESSURE。
+      target-pool-active-ratio-threshold: 0.85
+      # 默认 0.85；JVM used / max 达到阈值即进入 LOCAL_PRESSURE。
+      jvm-memory-used-ratio-threshold: 0.85
+    rate-limit:
+      # 默认每 Token 每分钟 60 次。
+      per-token:
+        max-requests: 60
+        window: 1m
+      # 默认每用户每分钟 120 次。
+      per-user:
+        max-requests: 120
+        window: 1m
+      # 默认按 MCP 能力类别限流；企业内网部署可按实际压测结果调整。
+      per-tool:
+        LIGHT_READ:
+          max-requests: 180
+          window: 1m
+        HEAVY_READ:
+          max-requests: 60
+          window: 1m
+        EXPLAIN:
+          max-requests: 60
+          window: 1m
+        EXECUTE:
+          max-requests: 30
+          window: 1m
+    bulkhead:
+      # 默认 80；单实例全局并发硬上限。
+      global-max-concurrent: 80
+      # 默认 100ms；全局获取 permit 的最大等待。
+      acquire-timeout: 100ms
+      # 默认每 Token 最多 4 个并发，防止单个 Token 占满实例。
+      per-token-max-concurrent: 4
+      # 默认每用户最多 8 个并发。
+      per-user-max-concurrent: 8
+      # 默认每 target project/env 最多 6 个并发，避免单库打满影响其他库。
+      per-target-max-concurrent: 6
+      classes:
+        LIGHT_READ:
+          max-concurrent: 40
+          acquire-timeout: 200ms
+        HEAVY_READ:
+          max-concurrent: 20
+          acquire-timeout: 100ms
+        EXPLAIN:
+          max-concurrent: 16
+          acquire-timeout: 100ms
+        EXECUTE:
+          # 写路径默认 fail-fast，不排长队。
+          max-concurrent: 10
+          acquire-timeout: 0ms
+    degradation:
+      # 默认 true；压力态下对重型只读降级，对 EXPLAIN/EXECUTE 快速拒绝。
+      enabled: true
+      # 默认 50；schema inspect 等重型只读在压力态下降低返回上限。
+      heavy-read-max-items-under-pressure: 50
+      # 默认 true；目标或本地压力态下 EXPLAIN 返回容量拒绝。
+      reject-explain-under-pressure: true
+      # 默认 true；目标或本地压力态下 SQL 执行返回容量拒绝。
+      reject-execute-under-pressure: true
 
   # policies：SQL 风险策略配置。
   policies:

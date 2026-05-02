@@ -26,6 +26,8 @@ public record HealthComponent(
      * @return 不健康时返回 true
      */
     public boolean unhealthy() {
-        return "DEGRADED".equalsIgnoreCase(status) || "DOWN".equalsIgnoreCase(status);
+        return "DEGRADED".equalsIgnoreCase(status)
+                || "BUSY".equalsIgnoreCase(status)
+                || "DOWN".equalsIgnoreCase(status);
     }
 }

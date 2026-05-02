@@ -9,6 +9,9 @@ import com.refinex.dbflow.admin.view.HealthPageView;
 import com.refinex.dbflow.audit.dto.AuditEventWriteRequest;
 import com.refinex.dbflow.audit.dto.AuditRequestContext;
 import com.refinex.dbflow.audit.service.AuditEventWriter;
+import com.refinex.dbflow.capacity.model.CapacityRequest;
+import com.refinex.dbflow.capacity.model.McpToolClass;
+import com.refinex.dbflow.capacity.service.CapacityGuardService;
 import com.refinex.dbflow.observability.dto.HealthSnapshot;
 import com.refinex.dbflow.observability.service.DbflowHealthService;
 import com.refinex.dbflow.observability.service.DbflowMetricsService;
@@ -47,6 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.cloud.nacos.config.enabled=false",
         "spring.cloud.nacos.discovery.enabled=false",
         "management.endpoint.health.show-details=never",
+        "dbflow.capacity.rate-limit.per-token.max-requests=1",
         "dbflow.datasource-defaults.driver-class-name=org.h2.Driver",
         "dbflow.datasource-defaults.username=sa",
         "dbflow.datasource-defaults.hikari.pool-name-prefix=ops-metrics-target",
@@ -91,6 +95,12 @@ class OperationalHealthAndMetricsTests {
      */
     @Autowired
     private DbflowMetricsService metricsService;
+
+    /**
+     * 容量治理服务。
+     */
+    @Autowired
+    private CapacityGuardService capacityGuardService;
 
     /**
      * Micrometer 指标注册表。
@@ -186,7 +196,7 @@ class OperationalHealthAndMetricsTests {
         assertThat(page.unhealthyCount()).isEqualTo(snapshot.unhealthyCount());
         assertThat(page.items())
                 .extracting(HealthItem::name)
-                .contains("元数据库", "MCP Streamable HTTP", "Nacos", "ops-metrics / dev");
+                .contains("元数据库", "MCP Streamable HTTP", "Nacos", "容量治理", "ops-metrics / dev");
     }
 
     /**
@@ -196,6 +206,24 @@ class OperationalHealthAndMetricsTests {
     void shouldRecordDbflowMetrics() {
         metricsService.recordMcpCall("dbflow_execute_sql");
         metricsService.recordSqlExecutionDuration("SELECT", "LOW", "ALLOWED_EXECUTED", System.nanoTime());
+        capacityGuardService.evaluate(new CapacityRequest(
+                "req-capacity-1",
+                user.getId(),
+                token.getId(),
+                "dbflow_list_targets",
+                McpToolClass.LIGHT_READ,
+                null,
+                null
+        )).permit().close();
+        capacityGuardService.evaluate(new CapacityRequest(
+                "req-capacity-2",
+                user.getId(),
+                token.getId(),
+                "dbflow_list_targets",
+                McpToolClass.LIGHT_READ,
+                null,
+                null
+        ));
         auditEventWriter.policyDenied(new AuditEventWriteRequest(
                 "req-metrics-" + UUID.randomUUID(),
                 user.getId(),
@@ -235,6 +263,17 @@ class OperationalHealthAndMetricsTests {
         assertThat(meterRegistry.find("dbflow.confirmation.challenges")
                 .tag("status", "PENDING")
                 .gauge().value()).isZero();
+        assertThat(meterRegistry.find("dbflow.capacity.requests")
+                .tag("toolClass", "light_read")
+                .tag("decision", "allowed")
+                .counter().count()).isEqualTo(1.0);
+        assertThat(meterRegistry.find("dbflow.capacity.rejections")
+                .tag("toolClass", "light_read")
+                .tag("reason", "token_rate_limited")
+                .counter().count()).isEqualTo(1.0);
+        assertThat(meterRegistry.find("dbflow.capacity.rate_limit.exhausted")
+                .tag("scope", "token")
+                .counter().count()).isEqualTo(1.0);
     }
 
     /**

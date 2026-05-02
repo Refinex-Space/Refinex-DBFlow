@@ -28,6 +28,9 @@ DDL policy state, metadata database status, target Hikari pools, Nacos enablemen
 yet contain CI configuration or production deployment configuration. The MCP Streamable HTTP endpoint is now hardened
 with configurable trusted Origin validation, request size limits, fixed-window source-IP rate limiting, query-string
 token rejection, stable sanitized HTTP errors, and bounded MCP tool error metadata for denial/failure/expiry/truncation.
+The optional React admin bundle is served under `/admin-next/**` when packaged into the Spring Boot jar: non-resource
+SPA routes forward to `/admin-next/index.html`, while resource-looking paths are treated as static assets and never
+fall back to the SPA HTML.
 Operational logs now carry `requestId`/`traceId` MDC fields, and runbook-driven troubleshooting starts from
 `docs/runbooks/troubleshooting.md`. Deployment guidance now lives under `docs/deployment/`, including a runnable
 local empty-environment startup path, jar deployment notes, external MySQL/Nacos configuration, reverse proxy/TLS
@@ -321,9 +324,12 @@ and must be updated as implementation packages are added.
   whitelist entries, TRUNCATE confirmation policy, and prod strengthening rules from effective configuration; and
   `/admin/health` renders metadata database, target Hikari pool, Nacos, and MCP endpoint state without exposing
   credentials or full JDBC URLs. Static admin assets are served from `/admin-assets/**` without a Node/Vite build chain.
-- Admin security baseline: `/admin/**`, `/login`, `/logout`, and `/admin-assets/**` are handled by a management-side
-  Spring Security form-login session chain with CSRF, BCrypt-backed users, custom login page, admin-only page access,
-  and anonymous static asset access.
+- React admin SPA baseline: packaged React assets under `/admin-next/**` support production jar routing; `/admin-next`
+  and non-resource child routes forward to `/admin-next/index.html`, while `.js`, `.css`, `.svg`, `.png`, and similar
+  asset paths are served or 404 as static resources instead of falling back to HTML.
+- Admin security baseline: `/admin/**`, `/admin-next/**`, `/login`, `/logout`, and `/admin-assets/**` are handled by a
+  management-side Spring Security form-login session chain with CSRF, BCrypt-backed users, custom login page,
+  admin-only `/admin/**` and `/admin/api/**` access, and anonymous static asset plus React SPA shell access.
 - MCP Bearer security baseline: `/mcp` is protected by a separate stateless Spring Security chain that accepts only
   `Authorization: Bearer <token>`, rejects query string tokens, validates every request through `McpTokenService`, and
   writes a DBFlow MCP authentication token into `SecurityContext`.
@@ -630,9 +636,13 @@ only; JDBC URLs and passwords are not logged.
 
 The current implemented security boundary is management-side browser/session authentication only:
 
-- `AdminSecurityConfiguration` registers a path-limited `SecurityFilterChain` for `/admin/**`, `/login`, and `/logout`.
+- `AdminSecurityConfiguration` registers a path-limited `SecurityFilterChain` for `/admin/**`, `/admin-next`,
+  `/admin-next/**`,
+  `/login`, and `/logout`.
 - Form login is enabled with default success URL `/admin`.
 - Logout uses `/logout` and remains CSRF-protected.
+- `/admin/api/**` remains administrator-only. `/admin-next/**` is allowed to render the React shell anonymously, while
+  packaged static assets such as `/admin-next/assets/**` and `/admin-next/favicon*` remain anonymous-readable.
 - `AdminUserDetailsService` loads active users from `dbf_users` and authenticates against BCrypt hashes stored in
   `password_hash`.
 - `InitialAdminUserInitializer` can create the first administrator when `dbflow.admin.initial-user.enabled=true` and

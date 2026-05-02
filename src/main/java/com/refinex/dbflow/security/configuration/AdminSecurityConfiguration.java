@@ -32,10 +32,19 @@ public class AdminSecurityConfiguration {
     @Bean
     @Order(ADMIN_SECURITY_ORDER)
     public SecurityFilterChain adminSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.securityMatcher("/admin/**", "/login", "/logout", "/admin-assets/**")
+        http.securityMatcher("/admin/**", "/admin-next", "/admin-next/**", "/login", "/logout", "/admin-assets/**")
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/login", "/admin-assets/**").permitAll()
+                        .requestMatchers(
+                                "/login",
+                                "/admin-assets/**",
+                                "/admin-next",
+                                "/admin-next/",
+                                "/admin-next/index.html",
+                                "/admin-next/assets/**",
+                                "/admin-next/favicon*").permitAll()
+                        .requestMatchers("/admin/api/**").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/admin-next/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/admin", true).permitAll())

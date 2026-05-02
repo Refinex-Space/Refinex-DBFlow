@@ -26,7 +26,9 @@ page access, and the base admin pages converted from the P09 prototype. It also 
 for creating/disabling users, granting/revoking project environments, issuing/revoking/reissuing MCP Tokens, one-time
 Token plaintext display, and admin-only CSRF-protected POST boundaries. Management operations pages now have smoke
 coverage for audit filtering, pagination, denied-reason detail rendering, dangerous policy read-only rendering,
-system health rendering, non-admin rejection, and page-level secret redaction. The Testcontainers
+system health rendering, non-admin rejection, and page-level secret redaction. React admin SPA routing is covered for
+`/admin-next`, child routes, static resource non-fallback behavior, `/admin/api/**` protection, and `/admin` Thymeleaf
+regression. The Testcontainers
 classes are skipped automatically when the local machine has no Docker runtime. Spring Cloud Alibaba Nacos Config and
 Discovery dependencies are present, and default startup imports the single Nacos Data ID `application-dbflow.yml`.
 Tests override Nacos through `src/test/resources/application.yml` so unit and slice tests remain offline. Operational
@@ -222,7 +224,9 @@ Configuration sources and secret boundary:
   operations for user creation/disable, project/environment grant/revoke, and MCP Token issue/revoke/reissue.
   Token plaintext is carried by one-time flash state after issue/reissue; list pages only show prefixes and never show
   Token hash, password hash, JDBC URLs, or database passwords. `/admin-assets/**` is anonymous-readable for CSS/JS while
-  `/admin/**` remains admin-only.
+  `/admin/**` remains admin-only. `/admin-next/**` serves the packaged React admin shell: non-resource paths forward to
+  `/admin-next/index.html`, static resource paths are not converted into SPA HTML, and `/admin/api/**` remains
+  administrator-only.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -359,6 +363,8 @@ under pressure, and `HEAVY_READ` returns degradation notices instead of unbounde
   field omission/redaction, and non-admin rejection.
 - `AdminUiControllerTests` covers the custom Thymeleaf login page, anonymous redirect to login, anonymous static asset
   access, administrator access to all base admin pages, and non-admin page rejection.
+- `AdminSpaControllerTests` covers `/admin-next` and `/admin-next/users` SPA fallback, static resource non-fallback,
+  `/admin/api/**` anonymous rejection, and the existing `/admin` Thymeleaf overview regression.
 - `AdminOperationsPageControllerTests` covers audit page filtering and pagination, denied-reason detail rendering,
   page-level secret redaction, read-only dangerous policy rendering, system health rendering, and non-admin rejection
   for operations pages.

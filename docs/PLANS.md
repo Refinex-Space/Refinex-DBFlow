@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin SPA Routing](exec-plans/completed/2026-05-02-react-admin-spa-routing.md) -
+  Completed; added Spring Boot production jar SPA fallback for React admin `/admin-next/**`, preserved `/admin/**`
+  Thymeleaf behavior, kept `/admin/api/**` administrator-only, and verified targeted routing/security regression tests.
 - [2026-05-02 React Admin Maven Profile](exec-plans/completed/2026-05-02-react-admin-maven-profile.md) -
   Completed; added optional Maven `react-admin` profile for pnpm install/build and packaging React admin assets under
   `static/admin-next/` without affecting the default backend test path.

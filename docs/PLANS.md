@@ -18,6 +18,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Session Guard](exec-plans/completed/2026-05-02-react-admin-session-guard.md) -
+  Completed; wired the React admin shell to `/admin/api/session` for server-cookie-backed session state, protected
+  TanStack Router authenticated routes under `/admin-next/`, added `/login` guard behavior, and verified anonymous
+  `/admin-next/users` redirects to login.
 - [2026-05-02 React Admin API Client](exec-plans/completed/2026-05-02-react-admin-api-client.md) -
   Completed; added a unified Axios API client for the React admin shell with relative `/admin/api` routing, Spring
   Security CSRF header support, typed `ApiResult` unwrapping, focused frontend tests, and caller-controlled

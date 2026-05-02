@@ -30,6 +30,8 @@ system health rendering, non-admin rejection, and page-level secret redaction. R
 `/admin-next`, child routes, static resource non-fallback behavior, `/admin/api/**` protection, and `/admin` Thymeleaf
 regression. Management CSRF coverage now verifies browser-readable `XSRF-TOKEN` cookie bootstrap, `X-XSRF-TOKEN` SPA
 header acceptance, missing-token rejection for `/admin/api/**`, and Thymeleaf hidden `_csrf` parameter compatibility.
+React admin session API coverage now verifies authenticated session JSON, shell metadata reuse, sensitive-field
+omission, and anonymous JSON `401` handling for SPA clients.
 The Testcontainers
 classes are skipped automatically when the local machine has no Docker runtime. Spring Cloud Alibaba Nacos Config and
 Discovery dependencies are present, and default startup imports the single Nacos Data ID `application-dbflow.yml`.
@@ -368,6 +370,8 @@ under pressure, and `HEAVY_READ` returns degradation notices instead of unbounde
   access, administrator access to all base admin pages, and non-admin page rejection.
 - `AdminSpaControllerTests` covers `/admin-next` and `/admin-next/users` SPA fallback, static resource non-fallback,
   `/admin/api/**` anonymous rejection, and the existing `/admin` Thymeleaf overview regression.
+- `AdminSessionApiControllerTests` covers authenticated React session JSON, shell metadata projection, sensitive-field
+  omission, and anonymous JSON `401` handling.
 - `AdminOperationsPageControllerTests` covers audit page filtering and pagination, denied-reason detail rendering,
   page-level secret redaction, read-only dangerous policy rendering, system health rendering, and non-admin rejection
   for operations pages.

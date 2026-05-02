@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 Admin Session API](exec-plans/completed/2026-05-02-admin-session-api.md) -
+  Completed; added the React admin current-session JSON endpoint, reused safe shell metadata, returned machine-readable
+  anonymous API `401` responses for JSON clients, and preserved existing Thymeleaf `/admin/**` login redirects.
 - [2026-05-02 Admin SPA CSRF Cookie](exec-plans/completed/2026-05-02-admin-spa-csrf-cookie.md) -
   Completed; exposed browser-readable management CSRF cookies for React admin mutations, preserved Thymeleaf hidden
   CSRF form submissions, kept missing-token rejection for `/admin/api/**`, and verified `/mcp` security regression.

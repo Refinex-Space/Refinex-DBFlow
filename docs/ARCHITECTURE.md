@@ -329,7 +329,8 @@ and must be updated as implementation packages are added.
   asset paths are served or 404 as static resources instead of falling back to HTML.
 - Admin security baseline: `/admin/**`, `/admin-next/**`, `/login`, `/logout`, and `/admin-assets/**` are handled by a
   management-side Spring Security form-login session chain with CSRF, BCrypt-backed users, custom login page,
-  admin-only `/admin/**` and `/admin/api/**` access, and anonymous static asset plus React SPA shell access.
+  admin-only `/admin/**` and `/admin/api/**` access, anonymous static asset plus React SPA shell access, and JSON
+  `401` responses for unauthenticated API requests that explicitly accept JSON.
 - MCP Bearer security baseline: `/mcp` is protected by a separate stateless Spring Security chain that accepts only
   `Authorization: Bearer <token>`, rejects query string tokens, validates every request through `McpTokenService`, and
   writes a DBFlow MCP authentication token into `SecurityContext`.
@@ -374,6 +375,9 @@ and must be updated as implementation packages are added.
   `/admin/api/audit-events` API returns dedicated summary/detail DTOs, does not return token id or token prefix, and
   redacts password-like text and JDBC URLs before display. Full audit queries are currently admin-only through the
   `/admin/**` security chain; future ordinary-user audit access must be scoped to the caller's own rows.
+- Management session API baseline: `GET /admin/api/session` returns the current authenticated administrator name,
+  roles, and a shell metadata projection from `AdminShellViewService`. The DTO intentionally omits password hashes,
+  Token plaintext/hash values, and raw sensitive configuration.
 
 ## Current Source Package Boundaries
 
@@ -643,6 +647,9 @@ The current implemented security boundary is management-side browser/session aut
 - Logout uses `/logout` and remains CSRF-protected.
 - `/admin/api/**` remains administrator-only. `/admin-next/**` is allowed to render the React shell anonymously, while
   packaged static assets such as `/admin-next/assets/**` and `/admin-next/favicon*` remain anonymous-readable.
+- Unauthenticated `/admin/api/**` requests that explicitly accept JSON receive a JSON `401` response so the React SPA
+  can distinguish login state without parsing HTML. Browser page requests such as `/admin` continue to redirect to
+  `/login`.
 - Management CSRF remains enabled. The management chain uses the default `XSRF-TOKEN` cookie with `HttpOnly=false` for
   React admin reads and accepts SPA mutations through the `X-XSRF-TOKEN` header, while server-rendered Thymeleaf forms
   continue to submit hidden `_csrf` parameters.

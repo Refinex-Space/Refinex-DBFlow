@@ -13,6 +13,11 @@ public enum ErrorCode {
     INVALID_REQUEST("INVALID_REQUEST", "请求不合法"),
 
     /**
+     * 请求未通过认证。
+     */
+    UNAUTHENTICATED("UNAUTHENTICATED", "认证失败"),
+
+    /**
      * 服务端内部处理失败。
      */
     INTERNAL_ERROR("INTERNAL_ERROR", "服务端内部错误");

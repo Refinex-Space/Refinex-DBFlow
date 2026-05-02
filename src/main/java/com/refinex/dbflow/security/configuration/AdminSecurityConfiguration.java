@@ -1,5 +1,9 @@
 package com.refinex.dbflow.security.configuration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.refinex.dbflow.admin.service.AdminSessionViewService;
+import com.refinex.dbflow.common.ApiResult;
+import com.refinex.dbflow.common.ErrorCode;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -10,17 +14,21 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.*;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler;
 import org.springframework.security.web.csrf.*;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
@@ -42,6 +50,16 @@ public class AdminSecurityConfiguration {
     private static final String ADMIN_API_PREFIX = "/admin/api/";
 
     /**
+     * XHR 请求头名称。
+     */
+    private static final String REQUESTED_WITH_HEADER = "X-Requested-With";
+
+    /**
+     * XHR 请求头值。
+     */
+    private static final String XML_HTTP_REQUEST = "XMLHttpRequest";
+
+    /**
      * 判断请求是否显式接受 JSON 响应。
      *
      * @param request HTTP 请求
@@ -49,7 +67,8 @@ public class AdminSecurityConfiguration {
      */
     private static boolean acceptsJson(HttpServletRequest request) {
         String accept = request.getHeader(HttpHeaders.ACCEPT);
-        return StringUtils.hasText(accept) && accept.contains(MediaType.APPLICATION_JSON_VALUE);
+        return (StringUtils.hasText(accept) && accept.contains(MediaType.APPLICATION_JSON_VALUE))
+                || XML_HTTP_REQUEST.equalsIgnoreCase(request.getHeader(REQUESTED_WITH_HEADER));
     }
 
     /**
@@ -78,15 +97,35 @@ public class AdminSecurityConfiguration {
     }
 
     /**
+     * 写出 JSON 响应。
+     *
+     * @param response     HTTP 响应
+     * @param objectMapper JSON 序列化器
+     * @param status       HTTP 状态码
+     * @param body         响应体
+     * @throws IOException 写入响应异常
+     */
+    private static void writeJson(HttpServletResponse response, ObjectMapper objectMapper, HttpStatus status,
+                                  Object body) throws IOException {
+        response.setStatus(status.value());
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        objectMapper.writeValue(response.getOutputStream(), body);
+    }
+
+    /**
      * 创建管理端安全过滤链。
      *
-     * @param http HTTP 安全构造器
+     * @param http               HTTP 安全构造器
+     * @param objectMapper       JSON 序列化器
+     * @param sessionViewService 管理端当前 session 响应服务
      * @return 管理端安全过滤链
      * @throws Exception Spring Security 构建异常
      */
     @Bean
     @Order(ADMIN_SECURITY_ORDER)
-    public SecurityFilterChain adminSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain adminSecurityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
+                                                        AdminSessionViewService sessionViewService) throws Exception {
         http.securityMatcher("/admin/**", "/admin-next", "/admin-next/**", "/login", "/logout", "/admin-assets/**")
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
@@ -103,8 +142,14 @@ public class AdminSecurityConfiguration {
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(new AdminAuthenticationEntryPoint()))
-                .formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/admin", true).permitAll())
-                .logout(logout -> logout.logoutUrl("/logout").logoutSuccessUrl("/login?logout"))
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .successHandler(new JsonAwareAuthenticationSuccessHandler(objectMapper, sessionViewService))
+                        .failureHandler(new JsonAwareAuthenticationFailureHandler(objectMapper))
+                        .permitAll())
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .logoutSuccessHandler(new JsonAwareLogoutSuccessHandler(objectMapper)))
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()));
@@ -141,6 +186,153 @@ public class AdminSecurityConfiguration {
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write("{\"authenticated\":false,\"error\":\"UNAUTHENTICATED\"}");
+        }
+    }
+
+    /**
+     * JSON 感知的登录成功处理器。
+     */
+    private static final class JsonAwareAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
+
+        /**
+         * 非 JSON 登录成功委托处理器。
+         */
+        private final AuthenticationSuccessHandler redirectHandler;
+
+        /**
+         * JSON 序列化器。
+         */
+        private final ObjectMapper objectMapper;
+
+        /**
+         * 管理端当前 session 响应服务。
+         */
+        private final AdminSessionViewService sessionViewService;
+
+        /**
+         * 创建 JSON 感知的登录成功处理器。
+         *
+         * @param objectMapper       JSON 序列化器
+         * @param sessionViewService 管理端当前 session 响应服务
+         */
+        private JsonAwareAuthenticationSuccessHandler(ObjectMapper objectMapper,
+                                                      AdminSessionViewService sessionViewService) {
+            SimpleUrlAuthenticationSuccessHandler handler = new SimpleUrlAuthenticationSuccessHandler("/admin");
+            handler.setAlwaysUseDefaultTargetUrl(true);
+            this.redirectHandler = handler;
+            this.objectMapper = objectMapper;
+            this.sessionViewService = sessionViewService;
+        }
+
+        /**
+         * 处理登录成功响应。
+         *
+         * @param request        HTTP 请求
+         * @param response       HTTP 响应
+         * @param authentication 当前认证信息
+         * @throws IOException      写入响应异常
+         * @throws ServletException 委托处理异常
+         */
+        @Override
+        public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+                                            Authentication authentication) throws IOException, ServletException {
+            if (!acceptsJson(request)) {
+                redirectHandler.onAuthenticationSuccess(request, response, authentication);
+                return;
+            }
+            writeJson(response, objectMapper, HttpStatus.OK, ApiResult.ok(sessionViewService.current(authentication)));
+        }
+    }
+
+    /**
+     * JSON 感知的登录失败处理器。
+     */
+    private static final class JsonAwareAuthenticationFailureHandler implements AuthenticationFailureHandler {
+
+        /**
+         * 非 JSON 登录失败委托处理器。
+         */
+        private final AuthenticationFailureHandler redirectHandler =
+                new SimpleUrlAuthenticationFailureHandler("/login?error");
+
+        /**
+         * JSON 序列化器。
+         */
+        private final ObjectMapper objectMapper;
+
+        /**
+         * 创建 JSON 感知的登录失败处理器。
+         *
+         * @param objectMapper JSON 序列化器
+         */
+        private JsonAwareAuthenticationFailureHandler(ObjectMapper objectMapper) {
+            this.objectMapper = objectMapper;
+        }
+
+        /**
+         * 处理登录失败响应。
+         *
+         * @param request   HTTP 请求
+         * @param response  HTTP 响应
+         * @param exception 认证异常
+         * @throws IOException      写入响应异常
+         * @throws ServletException 委托处理异常
+         */
+        @Override
+        public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
+                                            AuthenticationException exception) throws IOException, ServletException {
+            if (!acceptsJson(request)) {
+                redirectHandler.onAuthenticationFailure(request, response, exception);
+                return;
+            }
+            writeJson(response, objectMapper, HttpStatus.UNAUTHORIZED, ApiResult.failed(ErrorCode.UNAUTHENTICATED));
+        }
+    }
+
+    /**
+     * JSON 感知的退出成功处理器。
+     */
+    private static final class JsonAwareLogoutSuccessHandler implements LogoutSuccessHandler {
+
+        /**
+         * 非 JSON 退出成功委托处理器。
+         */
+        private final LogoutSuccessHandler redirectHandler;
+
+        /**
+         * JSON 序列化器。
+         */
+        private final ObjectMapper objectMapper;
+
+        /**
+         * 创建 JSON 感知的退出成功处理器。
+         *
+         * @param objectMapper JSON 序列化器
+         */
+        private JsonAwareLogoutSuccessHandler(ObjectMapper objectMapper) {
+            SimpleUrlLogoutSuccessHandler handler = new SimpleUrlLogoutSuccessHandler();
+            handler.setDefaultTargetUrl("/login?logout");
+            this.redirectHandler = handler;
+            this.objectMapper = objectMapper;
+        }
+
+        /**
+         * 处理退出成功响应。
+         *
+         * @param request        HTTP 请求
+         * @param response       HTTP 响应
+         * @param authentication 当前认证信息
+         * @throws IOException      写入响应异常
+         * @throws ServletException 委托处理异常
+         */
+        @Override
+        public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response,
+                                    Authentication authentication) throws IOException, ServletException {
+            if (!acceptsJson(request)) {
+                redirectHandler.onLogoutSuccess(request, response, authentication);
+                return;
+            }
+            writeJson(response, objectMapper, HttpStatus.OK, ApiResult.ok(Map.of("authenticated", false)));
         }
     }
 

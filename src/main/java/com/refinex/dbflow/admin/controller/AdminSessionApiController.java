@@ -1,15 +1,12 @@
 package com.refinex.dbflow.admin.controller;
 
 import com.refinex.dbflow.admin.dto.AdminSessionResponse;
-import com.refinex.dbflow.admin.service.AdminShellViewService;
-import com.refinex.dbflow.admin.view.ShellView;
+import com.refinex.dbflow.admin.service.AdminSessionViewService;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -22,17 +19,17 @@ import java.util.Objects;
 public class AdminSessionApiController {
 
     /**
-     * 管理端共享 shell 视图服务。
+     * 管理端当前 session 响应服务。
      */
-    private final AdminShellViewService shellViewService;
+    private final AdminSessionViewService sessionViewService;
 
     /**
      * 创建 React 管理端当前 session API。
      *
-     * @param shellViewService 管理端共享 shell 视图服务
+     * @param sessionViewService 管理端当前 session 响应服务
      */
-    public AdminSessionApiController(AdminShellViewService shellViewService) {
-        this.shellViewService = Objects.requireNonNull(shellViewService);
+    public AdminSessionApiController(AdminSessionViewService sessionViewService) {
+        this.sessionViewService = Objects.requireNonNull(sessionViewService);
     }
 
     /**
@@ -43,32 +40,6 @@ public class AdminSessionApiController {
      */
     @GetMapping
     public AdminSessionResponse session(Authentication authentication) {
-        ShellView shell = shellViewService.shell(authentication);
-        String username = authentication.getName();
-        return new AdminSessionResponse(
-                true,
-                username,
-                username,
-                roles(authentication),
-                new AdminSessionResponse.Shell(
-                        shell.adminName(),
-                        shell.mcpStatus(),
-                        shell.mcpTone(),
-                        shell.configSourceLabel()
-                )
-        );
-    }
-
-    /**
-     * 提取当前认证角色。
-     *
-     * @param authentication 当前认证信息
-     * @return 角色列表
-     */
-    private List<String> roles(Authentication authentication) {
-        return authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .sorted()
-                .toList();
+        return sessionViewService.current(authentication);
     }
 }

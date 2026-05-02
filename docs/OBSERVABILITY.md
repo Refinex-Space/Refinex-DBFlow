@@ -31,7 +31,9 @@ system health rendering, non-admin rejection, and page-level secret redaction. R
 regression. Management CSRF coverage now verifies browser-readable `XSRF-TOKEN` cookie bootstrap, `X-XSRF-TOKEN` SPA
 header acceptance, missing-token rejection for `/admin/api/**`, and Thymeleaf hidden `_csrf` parameter compatibility.
 React admin session API coverage now verifies authenticated session JSON, shell metadata reuse, sensitive-field
-omission, and anonymous JSON `401` handling for SPA clients.
+omission, and anonymous JSON `401` handling for SPA clients. React admin JSON login coverage verifies JSON/XHR login
+success and failure responses, CSRF-required login, and JSON logout session invalidation while preserving ordinary
+Thymeleaf form-login redirects through the existing management security regression suite.
 The Testcontainers
 classes are skipped automatically when the local machine has no Docker runtime. Spring Cloud Alibaba Nacos Config and
 Discovery dependencies are present, and default startup imports the single Nacos Data ID `application-dbflow.yml`.
@@ -382,6 +384,8 @@ under pressure, and `HEAVY_READ` returns degradation notices instead of unbounde
   and missing-CSRF rejection.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
+- `AdminJsonLoginTests` covers JSON login success with safe session payload, XHR login failure JSON `401`, CSRF-required
+  JSON login, and JSON logout session invalidation.
 - `AdminCsrfSpaTests` covers `XSRF-TOKEN` cookie exposure, `X-XSRF-TOKEN` header acceptance for SPA requests,
   missing-CSRF rejection on `/admin/api/**`, and Thymeleaf hidden `_csrf` form compatibility.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,

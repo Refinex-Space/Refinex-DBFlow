@@ -118,6 +118,7 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- AdminAuditEventController.java
 |   |   |   |   +-- AdminHomeController.java
 |   |   |   |   +-- AdminOperationsViewService.java
+|   |   |   |   +-- AdminSessionViewService.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- audit/
 |   |   |   |   +-- entity/
@@ -285,6 +286,7 @@ and must be updated as implementation packages are added.
 |           +-- mcp/DbflowMcpServerTests.java
 |           +-- observability/RequestIdFilterTests.java
 |           +-- security/AdminSecurityTests.java
+|           +-- security/AdminJsonLoginTests.java
 |           +-- security/McpSecurityTests.java
 |           +-- security/McpTokenServiceJpaTests.java
 |           +-- sqlpolicy/DangerousDdlPolicyEngineTests.java
@@ -330,7 +332,10 @@ and must be updated as implementation packages are added.
 - Admin security baseline: `/admin/**`, `/admin-next/**`, `/login`, `/logout`, and `/admin-assets/**` are handled by a
   management-side Spring Security form-login session chain with CSRF, BCrypt-backed users, custom login page,
   admin-only `/admin/**` and `/admin/api/**` access, anonymous static asset plus React SPA shell access, and JSON
-  `401` responses for unauthenticated API requests that explicitly accept JSON.
+  `401` responses for unauthenticated API requests that explicitly accept JSON. JSON or XHR `POST /login` returns the
+  same safe session projection used by `GET /admin/api/session` on success and JSON `401` on failure; ordinary form
+  login still redirects to `/admin` or `/login?error`. JSON or XHR `POST /logout` returns JSON success after Spring
+  Security invalidates the session; ordinary logout still redirects to `/login?logout`.
 - MCP Bearer security baseline: `/mcp` is protected by a separate stateless Spring Security chain that accepts only
   `Authorization: Bearer <token>`, rejects query string tokens, validates every request through `McpTokenService`, and
   writes a DBFlow MCP authentication token into `SecurityContext`.
@@ -643,8 +648,10 @@ The current implemented security boundary is management-side browser/session aut
 - `AdminSecurityConfiguration` registers a path-limited `SecurityFilterChain` for `/admin/**`, `/admin-next`,
   `/admin-next/**`,
   `/login`, and `/logout`.
-- Form login is enabled with default success URL `/admin`.
-- Logout uses `/logout` and remains CSRF-protected.
+- Form login is enabled with default success URL `/admin` for ordinary browser forms. JSON or XHR login requests return
+  `ApiResult.ok(sessionInfo)` on success and `401` JSON on failure.
+- Logout uses `/logout` and remains CSRF-protected. JSON or XHR logout requests return JSON success after the normal
+  Spring Security logout flow invalidates the session; ordinary browser logout still redirects to `/login?logout`.
 - `/admin/api/**` remains administrator-only. `/admin-next/**` is allowed to render the React shell anonymously, while
   packaged static assets such as `/admin-next/assets/**` and `/admin-next/favicon*` remain anonymous-readable.
 - Unauthenticated `/admin/api/**` requests that explicitly accept JSON receive a JSON `401` response so the React SPA

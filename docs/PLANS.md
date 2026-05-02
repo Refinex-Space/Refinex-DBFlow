@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 Admin JSON Login](exec-plans/completed/2026-05-02-admin-json-login.md) -
+  Completed; added JSON-aware `/login` and `/logout` responses for the React admin SPA, reused the safe session
+  projection, preserved Thymeleaf redirects, and kept CSRF required.
 - [2026-05-02 Admin Session API](exec-plans/completed/2026-05-02-admin-session-api.md) -
   Completed; added the React admin current-session JSON endpoint, reused safe shell metadata, returned machine-readable
   anonymous API `401` responses for JSON clients, and preserved existing Thymeleaf `/admin/**` login redirects.

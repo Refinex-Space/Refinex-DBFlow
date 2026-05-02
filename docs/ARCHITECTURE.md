@@ -643,6 +643,9 @@ The current implemented security boundary is management-side browser/session aut
 - Logout uses `/logout` and remains CSRF-protected.
 - `/admin/api/**` remains administrator-only. `/admin-next/**` is allowed to render the React shell anonymously, while
   packaged static assets such as `/admin-next/assets/**` and `/admin-next/favicon*` remain anonymous-readable.
+- Management CSRF remains enabled. The management chain uses the default `XSRF-TOKEN` cookie with `HttpOnly=false` for
+  React admin reads and accepts SPA mutations through the `X-XSRF-TOKEN` header, while server-rendered Thymeleaf forms
+  continue to submit hidden `_csrf` parameters.
 - `AdminUserDetailsService` loads active users from `dbf_users` and authenticates against BCrypt hashes stored in
   `password_hash`.
 - `InitialAdminUserInitializer` can create the first administrator when `dbflow.admin.initial-user.enabled=true` and

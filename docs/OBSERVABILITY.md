@@ -28,7 +28,9 @@ Token plaintext display, and admin-only CSRF-protected POST boundaries. Manageme
 coverage for audit filtering, pagination, denied-reason detail rendering, dangerous policy read-only rendering,
 system health rendering, non-admin rejection, and page-level secret redaction. React admin SPA routing is covered for
 `/admin-next`, child routes, static resource non-fallback behavior, `/admin/api/**` protection, and `/admin` Thymeleaf
-regression. The Testcontainers
+regression. Management CSRF coverage now verifies browser-readable `XSRF-TOKEN` cookie bootstrap, `X-XSRF-TOKEN` SPA
+header acceptance, missing-token rejection for `/admin/api/**`, and Thymeleaf hidden `_csrf` parameter compatibility.
+The Testcontainers
 classes are skipped automatically when the local machine has no Docker runtime. Spring Cloud Alibaba Nacos Config and
 Discovery dependencies are present, and default startup imports the single Nacos Data ID `application-dbflow.yml`.
 Tests override Nacos through `src/test/resources/application.yml` so unit and slice tests remain offline. Operational
@@ -226,7 +228,8 @@ Configuration sources and secret boundary:
   Token hash, password hash, JDBC URLs, or database passwords. `/admin-assets/**` is anonymous-readable for CSS/JS while
   `/admin/**` remains admin-only. `/admin-next/**` serves the packaged React admin shell: non-resource paths forward to
   `/admin-next/index.html`, static resource paths are not converted into SPA HTML, and `/admin/api/**` remains
-  administrator-only.
+  administrator-only. The management chain emits a browser-readable `XSRF-TOKEN` cookie and accepts SPA mutations via
+  `X-XSRF-TOKEN`, while Thymeleaf forms continue to submit hidden `_csrf` parameters.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -375,6 +378,8 @@ under pressure, and `HEAVY_READ` returns degradation notices instead of unbounde
   and missing-CSRF rejection.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
+- `AdminCsrfSpaTests` covers `XSRF-TOKEN` cookie exposure, `X-XSRF-TOKEN` header acceptance for SPA requests,
+  missing-CSRF rejection on `/admin/api/**`, and Thymeleaf hidden `_csrf` form compatibility.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,
   no-session-auth-reuse, SecurityContext-to-MCP-context propagation, unauthorized environment denial, stable tool error
   metadata, and token/secret redaction paths.

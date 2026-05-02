@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 Admin SPA CSRF Cookie](exec-plans/completed/2026-05-02-admin-spa-csrf-cookie.md) -
+  Completed; exposed browser-readable management CSRF cookies for React admin mutations, preserved Thymeleaf hidden
+  CSRF form submissions, kept missing-token rejection for `/admin/api/**`, and verified `/mcp` security regression.
 - [2026-05-02 React Admin SPA Routing](exec-plans/completed/2026-05-02-react-admin-spa-routing.md) -
   Completed; added Spring Boot production jar SPA fallback for React admin `/admin-next/**`, preserved `/admin/**`
   Thymeleaf behavior, kept `/admin/api/**` administrator-only, and verified targeted routing/security regression tests.

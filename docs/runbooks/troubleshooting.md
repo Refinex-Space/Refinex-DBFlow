@@ -126,6 +126,8 @@ Checks:
 
 - JDBC URL 不要携带 password 参数；密码必须在 password 字段或外部密钥源。
 - 本地离线开发保持 `dbflow.datasource-defaults.validate-on-startup=false`。
+- 关闭启动校验时，DBFlow 会把目标 Hikari pool 的实际 `minimumIdle` 降为 `0`；如果仍出现
+  `connection-adder` 建连告警，优先确认运行包是否已包含该修复。
 - 生产要 fail fast 时再启用启动校验。
 
 ## Scenario 5: Runtime Config Refresh Or Datasource Replacement Fails

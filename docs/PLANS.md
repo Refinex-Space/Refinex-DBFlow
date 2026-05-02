@@ -18,12 +18,16 @@ Harness Powers lifecycle:
 
 ## Active Plans
 
-- [2026-05-01 Backend Code Organization](exec-plans/active/2026-05-01-backend-code-organization.md) -
-  Active; normalize backend package structure, extract nested public records, consolidate shared utilities, and split
-  selected oversized classes without changing external behavior.
+No active plans.
 
 ## Completed Plans
 
+- [2026-05-01 Backend Code Organization](exec-plans/completed/2026-05-01-backend-code-organization.md) -
+  Completed; normalized backend package structure, extracted public contracts into semantic packages, consolidated
+  shared utilities, reduced long parameter surfaces, updated documentation, and passed regression verification.
+- [2026-05-02 Target Datasource Idle Connection Noise](exec-plans/completed/2026-05-02-target-datasource-idle-connection-noise.md) -
+  Completed; fixed target Hikari pools so disabled startup validation no longer triggers background idle connection
+  attempts against unreachable business databases, with regression coverage and docs updated.
 - [2026-04-30 Admin UI Polish](exec-plans/completed/2026-04-30-admin-ui-polish.md) -
   Completed; deeply polished the Thymeleaf admin frontend with warm-neutral design tokens, first-class light/dark themes,
   accessible theme controls, responsive shell/layout, branded logo usage, refined login page, and browser-verified UI

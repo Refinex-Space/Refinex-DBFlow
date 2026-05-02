@@ -70,7 +70,8 @@ dbflow:
       pool-name-prefix: dbflow-target
       # dev 默认 10；为空时使用 Hikari 默认 maximumPoolSize。
       maximum-pool-size: 10
-      # dev 默认 1；必须小于等于 maximum-pool-size，适合本机低资源启动。
+      # dev 默认 1；必须小于等于 maximum-pool-size。
+      # validate-on-startup=false 时，DBFlow 会把实际目标库 pool minimumIdle 降为 0，避免启动后后台连接不可达业务库。
       minimum-idle: 1
       # dev 默认 30s；获取连接等待超过该时间会失败。
       connection-timeout: 30s

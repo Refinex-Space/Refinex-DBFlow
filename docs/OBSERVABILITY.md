@@ -139,7 +139,8 @@ Configuration sources and secret boundary:
   maximum pool size, minimum idle, connection timeout, idle timeout, and max lifetime.
 - Startup target database connection validation is controlled by `dbflow.datasource-defaults.validate-on-startup`.
   Keep it disabled for local/offline development and enable it in environments where startup should fail fast on
-  unreachable target databases.
+  unreachable target databases. When it is disabled, DBFlow forces the effective target Hikari `minimumIdle` to `0`
+  so configured target pools do not try to create background idle connections before first use.
 - Runtime target datasource reload always preheats candidate pools before replacing the registry, even when startup
   validation is disabled. Failed reloads preserve the old registry snapshot and emit sanitized operational warning logs
   without JDBC URLs or passwords.
@@ -287,7 +288,7 @@ Expected: Maven tests pass and Harness validation passes. Use `harness-verify` b
   Discovery group, and absence of committed Nacos credential defaults.
 - `HikariDataSourceRegistryTests` covers one isolated Hikari pool per configured project/environment, shared Hikari
   default application, missing environment rejection without fallback, configurable startup connection validation,
-  sanitized failure messages, and pool shutdown.
+  disabled-validation lazy connection behavior, sanitized failure messages, and pool shutdown.
 - `DataSourceConfigReloaderTests` covers successful candidate warmup and atomic replacement, failed candidate warmup
   preserving the old pool, candidate validation failure preserving the old pool, and old-pool closure only after a
   successful swap.

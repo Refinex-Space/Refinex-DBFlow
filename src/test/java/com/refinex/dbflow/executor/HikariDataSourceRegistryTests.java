@@ -1,6 +1,5 @@
 package com.refinex.dbflow.executor;
 
-
 import com.refinex.dbflow.common.DbflowException;
 import com.refinex.dbflow.config.properties.DbflowProperties;
 import com.refinex.dbflow.executor.datasource.HikariDataSourceRegistry;
@@ -12,7 +11,17 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.sql.Connection;
+import java.sql.Driver;
+import java.sql.DriverManager;
+import java.sql.DriverPropertyInfo;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.time.Duration;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -87,7 +96,7 @@ class HikariDataSourceRegistryTests {
             assertThat(demoProd.getJdbcUrl()).contains("target_demo_prod");
             assertThat(opsDev.getJdbcUrl()).contains("target_ops_dev");
             assertThat(demoDev.getMaximumPoolSize()).isEqualTo(4);
-            assertThat(demoProd.getMinimumIdle()).isEqualTo(1);
+            assertThat(demoProd.getMinimumIdle()).isZero();
             assertThat(opsDev.getConnectionTimeout()).isEqualTo(1000L);
             assertThat(demoDev.getPoolName()).isEqualTo("dbflow-target-demo-dev");
         });
@@ -140,6 +149,47 @@ class HikariDataSourceRegistryTests {
     }
 
     /**
+     * 验证关闭启动期连接校验时，目标库连接池不会为了补足 idle 连接而后台触碰业务库。
+     *
+     * @throws InterruptedException 等待后台线程观察窗口被中断时抛出
+     */
+    @Test
+    void shouldNotOpenBackgroundConnectionsWhenStartupValidationDisabled() throws InterruptedException {
+        CountingFailingDriver.reset();
+
+        contextRunner.withPropertyValues(targetProperties(
+                "dbflow.datasource-defaults.driver-class-name="
+                        + CountingFailingDriver.class.getName(),
+                "dbflow.projects[0].environments[0].jdbc-url=" + CountingFailingDriver.URL,
+                "dbflow.projects[0].environments[1].jdbc-url=" + CountingFailingDriver.URL,
+                "dbflow.projects[1].environments[0].jdbc-url=" + CountingFailingDriver.URL,
+                "dbflow.datasource-defaults.hikari.minimum-idle=1",
+                "dbflow.datasource-defaults.hikari.connection-timeout=250ms"
+        )).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertNoConnectionAttemptsFor(Duration.ofMillis(800));
+        });
+    }
+
+    /**
+     * 验证开启启动期连接校验时仍保留配置的最小空闲连接数。
+     */
+    @Test
+    void shouldPreserveMinimumIdleWhenStartupValidationEnabled() {
+        contextRunner.withPropertyValues(targetProperties(
+                "dbflow.datasource-defaults.validate-on-startup=true",
+                "dbflow.datasource-defaults.hikari.minimum-idle=1"
+        )).run(context -> {
+            ProjectEnvironmentDataSourceRegistry registry =
+                    context.getBean(ProjectEnvironmentDataSourceRegistry.class);
+
+            HikariDataSource demoDev = (HikariDataSource) registry.getDataSource("demo", "dev");
+
+            assertThat(demoDev.getMinimumIdle()).isEqualTo(1);
+        });
+    }
+
+    /**
      * 验证开启启动期连接校验时，不可达目标库会以脱敏错误阻断启动。
      */
     @Test
@@ -177,5 +227,143 @@ class HikariDataSourceRegistryTests {
             return new HikariDataSourceRegistry(properties);
         }
 
+    }
+
+    /**
+     * 统计连接尝试并始终失败的测试 JDBC Driver。
+     *
+     * @author refinex
+     */
+    public static final class CountingFailingDriver implements Driver {
+
+        /**
+         * 测试 JDBC URL。
+         */
+        private static final String URL = "jdbc:dbflow-test-unreachable://target";
+
+        /**
+         * 连接尝试次数。
+         */
+        private static final AtomicInteger CONNECTION_ATTEMPTS = new AtomicInteger();
+
+        static {
+            try {
+                DriverManager.registerDriver(new CountingFailingDriver());
+            } catch (SQLException exception) {
+                throw new ExceptionInInitializerError(exception);
+            }
+        }
+
+        /**
+         * 重置连接尝试计数。
+         */
+        private static void reset() {
+            CONNECTION_ATTEMPTS.set(0);
+        }
+
+        /**
+         * 返回连接尝试次数。
+         *
+         * @return 连接尝试次数
+         */
+        private static int connectionAttempts() {
+            return CONNECTION_ATTEMPTS.get();
+        }
+
+        /**
+         * 始终拒绝测试连接并记录尝试次数。
+         *
+         * @param url  JDBC URL
+         * @param info 连接属性
+         * @return 不返回连接
+         * @throws SQLException 固定抛出测试连接失败
+         */
+        @Override
+        public Connection connect(String url, Properties info) throws SQLException {
+            if (!acceptsURL(url)) {
+                return null;
+            }
+            CONNECTION_ATTEMPTS.incrementAndGet();
+            throw new SQLException("counting driver refuses target connection");
+        }
+
+        /**
+         * 判断是否支持测试 URL。
+         *
+         * @param url JDBC URL
+         * @return 支持时返回 true
+         */
+        @Override
+        public boolean acceptsURL(String url) {
+            return URL.equals(url);
+        }
+
+        /**
+         * 返回测试驱动属性信息。
+         *
+         * @param url  JDBC URL
+         * @param info 连接属性
+         * @return 空属性数组
+         */
+        @Override
+        public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
+            return new DriverPropertyInfo[0];
+        }
+
+        /**
+         * 返回主版本号。
+         *
+         * @return 主版本号
+         */
+        @Override
+        public int getMajorVersion() {
+            return 1;
+        }
+
+        /**
+         * 返回次版本号。
+         *
+         * @return 次版本号
+         */
+        @Override
+        public int getMinorVersion() {
+            return 0;
+        }
+
+        /**
+         * 返回是否兼容 JDBC。
+         *
+         * @return 测试驱动不声明兼容
+         */
+        @Override
+        public boolean jdbcCompliant() {
+            return false;
+        }
+
+        /**
+         * 返回父级日志记录器。
+         *
+         * @return 父级日志记录器
+         * @throws SQLFeatureNotSupportedException 固定不支持
+         */
+        @Override
+        public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+            throw new SQLFeatureNotSupportedException("not supported");
+        }
+    }
+
+    /**
+     * 在指定观察窗口内断言没有目标库连接尝试。
+     *
+     * @param duration 观察时长
+     * @throws InterruptedException 等待被中断时抛出
+     */
+    private static void assertNoConnectionAttemptsFor(Duration duration) throws InterruptedException {
+        long deadline = System.nanoTime() + duration.toNanos();
+        while (System.nanoTime() < deadline) {
+            assertThat(CountingFailingDriver.connectionAttempts()).isZero();
+            Thread.sleep(25L);
+        }
+        assertThat(CountingFailingDriver.connectionAttempts()).isZero();
     }
 }

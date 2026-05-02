@@ -184,7 +184,7 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
         setIfHasText(config::setUsername, resolveText(environment.getUsername(), defaults.getUsername()));
         setIfPresent(config::setPassword, resolveSecret(environment.getPassword(), defaults.getPassword()));
         config.setPoolName(poolName(defaults.getHikari(), project.getKey(), environment.getKey()));
-        applySharedHikari(config, defaults.getHikari());
+        applySharedHikari(config, defaults.getHikari(), validateConnection);
         config.setInitializationFailTimeout(validateConnection ? 1L : -1L);
         return config;
     }
@@ -192,15 +192,33 @@ public class HikariDataSourceRegistry implements ProjectEnvironmentDataSourceReg
     /**
      * 应用共享 Hikari 配置。
      *
-     * @param config Hikari 配置
-     * @param hikari 共享 Hikari 配置
+     * @param config             Hikari 配置
+     * @param hikari             共享 Hikari 配置
+     * @param validateConnection 是否需要启动期连接校验
      */
-    private void applySharedHikari(HikariConfig config, DbflowProperties.Hikari hikari) {
+    private void applySharedHikari(
+            HikariConfig config,
+            DbflowProperties.Hikari hikari,
+            boolean validateConnection) {
         setIfPresent(config::setMaximumPoolSize, hikari.getMaximumPoolSize());
-        setIfPresent(config::setMinimumIdle, hikari.getMinimumIdle());
+        setIfPresent(config::setMinimumIdle, effectiveMinimumIdle(hikari, validateConnection));
         setIfPresent(config::setConnectionTimeout, toMillis(hikari.getConnectionTimeout()));
         setIfPresent(config::setIdleTimeout, toMillis(hikari.getIdleTimeout()));
         setIfPresent(config::setMaxLifetime, toMillis(hikari.getMaxLifetime()));
+    }
+
+    /**
+     * 计算实际生效的最小空闲连接数。
+     *
+     * @param hikari             共享 Hikari 配置
+     * @param validateConnection 是否需要启动期连接校验
+     * @return 实际最小空闲连接数
+     */
+    private Integer effectiveMinimumIdle(DbflowProperties.Hikari hikari, boolean validateConnection) {
+        if (!validateConnection) {
+            return 0;
+        }
+        return hikari.getMinimumIdle();
     }
 
     /**

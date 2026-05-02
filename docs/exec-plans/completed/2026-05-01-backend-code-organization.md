@@ -1,5 +1,8 @@
 # Backend Code Organization Implementation Plan
 
+Status: Completed
+Completed: 2026-05-02
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `harness-execute` semantics to implement this plan task by task. Use
 `harness-dispatch` only for independent subtasks with disjoint write scopes. Steps use checkbox (`- [ ]`) syntax for
 > tracking.
@@ -701,3 +704,17 @@ environment has no valid Docker socket (`/var/run/docker.sock`). `python3 script
 manifest checks. `git diff --check` passed. A production method parameter scan excluding record canonical constructors
 reported no methods over seven parameters. `rg -n "SqlExecutionResultFactory\\.create|new AuditQueryCriteria\\("
 src/main/java src/test/java` only reports the internal `AuditQueryCriteria.Builder.build()` constructor call.
+
+## Completion Summary
+
+Completed: 2026-05-02
+Result: Backend package organization, shared utility extraction, DTO/view/command/support moves, wildcard import cleanup,
+documentation updates, and long-parameter-surface reduction are complete.
+Verification:
+
+- `./mvnw test` passed with 157 tests, 0 failures, 0 errors, 10 skipped.
+- `python3 scripts/check_harness.py` passed all 14 manifest checks.
+- `git diff --check` passed.
+- Production method parameter scan excluding record canonical constructors reported no methods over seven parameters.
+
+Residual notes: Testcontainers MySQL tests remained skipped because this environment has no valid Docker socket.

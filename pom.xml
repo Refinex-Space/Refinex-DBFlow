@@ -29,6 +29,8 @@
         <spring-cloud.version>2025.0.2</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.0.0.0</spring-cloud-alibaba.version>
         <jsqlparser.version>5.3</jsqlparser.version>
+        <exec-maven-plugin.version>3.6.2</exec-maven-plugin.version>
+        <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
     </properties>
 
     <!-- 统一依赖版本管理：当前阶段只导入 BOM，不提前引入业务实现依赖。 -->
@@ -223,4 +225,78 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>react-admin</id>
+            <build>
+                <plugins>
+                    <!-- React 管理端构建仅在 react-admin profile 启用，避免默认 Maven 测试依赖 Node/pnpm。 -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>${exec-maven-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>react-admin-pnpm-install</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>pnpm</executable>
+                                    <arguments>
+                                        <argument>--dir</argument>
+                                        <argument>dbflow-admin</argument>
+                                        <argument>install</argument>
+                                        <argument>--frozen-lockfile</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>react-admin-pnpm-build</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>pnpm</executable>
+                                    <arguments>
+                                        <argument>--dir</argument>
+                                        <argument>dbflow-admin</argument>
+                                        <argument>build</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- 将 Vite dist 复制到 target/classes，使 Spring Boot jar 暴露 /admin-next/ 静态资源。 -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>${maven-resources-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>copy-react-admin-dist</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.outputDirectory}/static/admin-next
+                                    </outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/dbflow-admin/dist</directory>
+                                            <filtering>false</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

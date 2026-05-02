@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Maven Profile](exec-plans/completed/2026-05-02-react-admin-maven-profile.md) -
+  Completed; added optional Maven `react-admin` profile for pnpm install/build and packaging React admin assets under
+  `static/admin-next/` without affecting the default backend test path.
 - [2026-05-02 React Admin Subpath Proxy](exec-plans/completed/2026-05-02-react-admin-subpath-proxy.md) -
   Completed; configured React admin `/admin-next/` base path, Vite dev proxy to the Spring Boot backend, host-bound
   dev/preview scripts, and verified build output resource prefixes.

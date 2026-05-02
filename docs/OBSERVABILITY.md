@@ -50,6 +50,7 @@ and production/test Java sources are kept free of wildcard imports.
 |----------------------|----------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Install dependencies | `./mvnw dependency:go-offline`                                                                                                               | Maven resolves project dependencies for offline use.                                                                                                                                                                          |
 | Build                | `./mvnw package`                                                                                                                             | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                                                                                                        |
+| Package React admin  | `./mvnw -Preact-admin -DskipTests package`                                                                                                   | Runs `pnpm --dir dbflow-admin install --frozen-lockfile`, builds the React admin, copies `dbflow-admin/dist/**` into `target/classes/static/admin-next/`, and includes those assets in the Spring Boot jar.                   |
 | Run tests            | `./mvnw test`                                                                                                                                | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, security, configuration, JPA service tests, and Docker-optional MySQL execution/explain/schema inspect tests pass. |
 | Lint / format check  | Not available yet; no formatter is configured.                                                                                               | Future scaffold must replace this row.                                                                                                                                                                                        |
 | Start dev server     | `./mvnw spring-boot:run`                                                                                                                     | Starts the Spring Boot application locally with MCP Streamable HTTP available at `http://localhost:8080/mcp`.                                                                                                                 |
@@ -96,6 +97,9 @@ Planned baseline:
 - Spring Boot Actuator with web exposure limited to `health` and `metrics`
 - Logback console logging with MDC fields `requestId` and `traceId`; run local troubleshooting with
   `./mvnw spring-boot:run | tee target/dbflow.log` when a searchable log file is needed
+- React admin packaging is opt-in through the Maven `react-admin` profile. Default `./mvnw test` does not execute
+  Node/pnpm; release builds that need the bundled React admin should run `./mvnw -Preact-admin -DskipTests package`
+  in an environment where `pnpm` is available.
 
 Local reference checkouts:
 

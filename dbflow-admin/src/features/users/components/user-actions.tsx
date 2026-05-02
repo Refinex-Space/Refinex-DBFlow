@@ -84,8 +84,7 @@ export function UserActions({user}: UserActionsProps) {
                         </AlertDialogCancel>
                         <AlertDialogAction
                             disabled={toggleMutation.isPending}
-                            onClick={(event) => {
-                                event.preventDefault()
+                            onClick={() => {
                                 toggleMutation.mutate()
                             }}
                         >

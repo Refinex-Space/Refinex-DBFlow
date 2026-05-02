@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin DBFlow Components](exec-plans/completed/2026-05-02-react-admin-dbflow-components.md) -
+  Completed; added reusable DBFlow admin business components, centralized risk/decision/status/environment badge
+  mappings, formatting helpers, and clipboard interaction coverage for the React admin shell.
 - [2026-05-02 React Admin Session Shell Layout](exec-plans/completed/2026-05-02-react-admin-session-shell-layout.md) -
   Completed; wired the React admin layout to DBFlow session identity and shell metadata, replaced remaining demo
   profile/team/search text with DBFlow navigation, and verified JSON logout plus build/test/brand gates.

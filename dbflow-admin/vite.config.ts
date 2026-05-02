@@ -8,6 +8,7 @@ import {playwright} from '@vitest/browser-playwright'
 
 // https://vite.dev/config/
 export default defineConfig({
+    base: '/admin-next/',
     plugins: [
         tanstackRouter({
             target: 'react',
@@ -20,6 +21,30 @@ export default defineConfig({
         alias: {
             '@': path.resolve(__dirname, './src'),
         },
+    },
+    server: {
+        port: 5173,
+        proxy: {
+            '/admin/api': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+            },
+            '/login': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+            },
+            '/logout': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+            },
+            '/actuator': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+            },
+        },
+    },
+    build: {
+        outDir: 'dist',
     },
     test: {
         silent: 'passed-only',

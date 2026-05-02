@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Subpath Proxy](exec-plans/completed/2026-05-02-react-admin-subpath-proxy.md) -
+  Completed; configured React admin `/admin-next/` base path, Vite dev proxy to the Spring Boot backend, host-bound
+  dev/preview scripts, and verified build output resource prefixes.
 - [2026-05-02 React Admin Sidebar IA](exec-plans/completed/2026-05-02-react-admin-sidebar-ia.md) -
   Completed; replaced imported template sidebar demo data with DBFlow Admin information architecture and verified the
   React admin build plus sidebar keyword checks.

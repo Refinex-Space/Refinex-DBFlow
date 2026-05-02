@@ -17,8 +17,9 @@ index advice. `dbflow_inspect_schema` and the schema resource now use an authori
 inspection service for schemas, tables, columns, indexes, views, procedures, and functions with bounded results. It
 now has a unified `AuditEventWriter` for request received, policy denied, confirmation-required, executed, failed, and
 confirmation-expired audit events with token id, client metadata, tool name, decision, SQL hash, and bounded summaries.
-It also exposes management-side JSON APIs for audit list/detail and read-only overview/configuration/dangerous
-policy/health data, with administrator-only access and sanitized DTOs that exclude Token metadata and redact
+It also exposes management-side JSON APIs for audit list/detail, user management, and read-only
+overview/configuration/dangerous policy/health data, with administrator-only access and sanitized DTOs that exclude
+Token metadata and redact
 password-like text. It now includes a Thymeleaf-based
 management UI foundation converted from the P09 admin prototype: custom form-login page, shared admin shell, navigation,
 top status bar, dense table/filter/detail layouts, static CSS/JS, and real management flows for users, MCP Tokens, and
@@ -122,6 +123,7 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- AdminOperationsViewService.java
 |   |   |   |   +-- AdminOverviewApiController.java
 |   |   |   |   +-- AdminSessionViewService.java
+|   |   |   |   +-- AdminUserApiController.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- audit/
 |   |   |   |   +-- entity/
@@ -391,6 +393,12 @@ and must be updated as implementation packages are added.
 - Management operations API baseline: `GET /admin/api/overview`, `GET /admin/api/config`,
   `GET /admin/api/policies/dangerous`, and `GET /admin/api/health` expose read-only React admin payloads from existing
   sanitized admin view services and are protected by the `/admin/api/**` administrator-only security rule.
+- Management user API baseline: `GET /admin/api/users`, `POST /admin/api/users`, `POST
+  /admin/api/users/{userId}/disable`, `POST /admin/api/users/{userId}/enable`, and `POST
+  /admin/api/users/{userId}/reset-password` reuse `AdminAccessManagementService` for the same user-management behavior
+  as the Thymeleaf page. Responses use `ApiResult`, return only the safe `UserRow` projection or operation markers, do
+  not expose password hashes or reset-password plaintext, and remain protected by the administrator-only `/admin/api/**`
+  rule plus CSRF for mutations.
 - Management session API baseline: `GET /admin/api/session` returns the current authenticated administrator name,
   roles, and a shell metadata projection from `AdminShellViewService`. The DTO intentionally omits password hashes,
   Token plaintext/hash values, and raw sensitive configuration.

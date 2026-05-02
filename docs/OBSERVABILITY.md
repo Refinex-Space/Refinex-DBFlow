@@ -35,7 +35,9 @@ omission, and anonymous JSON `401` handling for SPA clients. React admin JSON lo
 success and failure responses, CSRF-required login, and JSON logout session invalidation while preserving ordinary
 Thymeleaf form-login redirects through the existing management security regression suite. React admin read-only
 operations API coverage now verifies overview, configuration, dangerous policy, and health JSON responses, admin-only
-access, and absence of full JDBC URLs, Token prefixes, password hashes, and Token hashes.
+access, and absence of full JDBC URLs, Token prefixes, password hashes, and Token hashes. React admin user API coverage
+now verifies list/filter/create/disable/enable/reset-password JSON behavior, admin-only access, CSRF-required
+mutations, JSON validation errors, and omission of password hashes and reset-password plaintext.
 The Testcontainers
 classes are skipped automatically when the local machine has no Docker runtime. Spring Cloud Alibaba Nacos Config and
 Discovery dependencies are present, and default startup imports the single Nacos Data ID `application-dbflow.yml`.
@@ -378,6 +380,9 @@ under pressure, and `HEAVY_READ` returns degradation notices instead of unbounde
   omission, and anonymous JSON `401` handling.
 - `AdminOperationsApiControllerTests` covers read-only overview/config/dangerous-policy/health JSON APIs, admin-only
   access, and sensitive-field omission for full JDBC URLs, Token prefixes, password hashes, and Token hashes.
+- `AdminUserApiControllerTests` covers user list/filter/create/disable/enable/reset-password JSON APIs, anonymous and
+  non-admin rejection, missing-CSRF rejection for mutation, JSON 4xx validation responses, and password material
+  omission.
 - `AdminOperationsPageControllerTests` covers audit page filtering and pagination, denied-reason detail rendering,
   page-level secret redaction, read-only dangerous policy rendering, system health rendering, and non-admin rejection
   for operations pages.

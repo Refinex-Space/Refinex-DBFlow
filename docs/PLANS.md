@@ -18,6 +18,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 Admin User JSON API](exec-plans/completed/2026-05-02-admin-user-json-api.md) -
+  Completed; exposed existing admin user-management list/filter/create/disable/enable/reset-password behavior as
+  administrator-only JSON APIs for the React admin shell, preserved Thymeleaf pages, and kept CSRF required for
+  mutations.
 - [2026-05-02 Admin Readonly JSON APIs](exec-plans/completed/2026-05-02-admin-readonly-json-apis.md) -
   Completed; added read-only JSON APIs for overview, configuration, dangerous policy, and health pages, reused existing
   sanitized admin view services, preserved Thymeleaf controllers, and verified admin-only access.

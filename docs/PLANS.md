@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 Admin Readonly JSON APIs](exec-plans/completed/2026-05-02-admin-readonly-json-apis.md) -
+  Completed; added read-only JSON APIs for overview, configuration, dangerous policy, and health pages, reused existing
+  sanitized admin view services, preserved Thymeleaf controllers, and verified admin-only access.
 - [2026-05-02 Admin JSON Login](exec-plans/completed/2026-05-02-admin-json-login.md) -
   Completed; added JSON-aware `/login` and `/logout` responses for the React admin SPA, reused the safe session
   projection, preserved Thymeleaf redirects, and kept CSRF required.

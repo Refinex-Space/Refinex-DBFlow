@@ -17,8 +17,9 @@ index advice. `dbflow_inspect_schema` and the schema resource now use an authori
 inspection service for schemas, tables, columns, indexes, views, procedures, and functions with bounded results. It
 now has a unified `AuditEventWriter` for request received, policy denied, confirmation-required, executed, failed, and
 confirmation-expired audit events with token id, client metadata, tool name, decision, SQL hash, and bounded summaries.
-It also exposes a management-side audit list/detail API with filtering, pagination, sorting, administrator-only access,
-and sanitized DTOs that exclude Token metadata and redact password-like text. It now includes a Thymeleaf-based
+It also exposes management-side JSON APIs for audit list/detail and read-only overview/configuration/dangerous
+policy/health data, with administrator-only access and sanitized DTOs that exclude Token metadata and redact
+password-like text. It now includes a Thymeleaf-based
 management UI foundation converted from the P09 admin prototype: custom form-login page, shared admin shell, navigation,
 top status bar, dense table/filter/detail layouts, static CSS/JS, and real management flows for users, MCP Tokens, and
 project/environment grants. Token plaintext is shown only through a one-time flash result after issue/reissue, while
@@ -117,7 +118,9 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- AdminAccessManagementService.java
 |   |   |   |   +-- AdminAuditEventController.java
 |   |   |   |   +-- AdminHomeController.java
+|   |   |   |   +-- AdminOperationsApiController.java
 |   |   |   |   +-- AdminOperationsViewService.java
+|   |   |   |   +-- AdminOverviewApiController.java
 |   |   |   |   +-- AdminSessionViewService.java
 |   |   |   |   +-- package-info.java
 |   |   |   +-- audit/
@@ -262,6 +265,7 @@ and must be updated as implementation packages are added.
 |           +-- admin/AdminAccessManagementControllerTests.java
 |           +-- admin/AdminAccessManagementServiceTests.java
 |           +-- admin/AdminAuditEventControllerTests.java
+|           +-- admin/AdminOperationsApiControllerTests.java
 |           +-- admin/AdminOperationsPageControllerTests.java
 |           +-- admin/AdminUiControllerTests.java
 |           +-- common/
@@ -329,6 +333,10 @@ and must be updated as implementation packages are added.
 - React admin SPA baseline: packaged React assets under `/admin-next/**` support production jar routing; `/admin-next`
   and non-resource child routes forward to `/admin-next/index.html`, while `.js`, `.css`, `.svg`, `.png`, and similar
   asset paths are served or 404 as static resources instead of falling back to HTML.
+- React admin read-only API baseline: `GET /admin/api/overview`, `GET /admin/api/config`,
+  `GET /admin/api/policies/dangerous`, and `GET /admin/api/health` return `ApiResult.ok(data)` using the same
+  sanitized view services as the Thymeleaf overview, configuration, dangerous policy, and health pages. These APIs do
+  not expose full JDBC URLs, passwords, Token plaintext, Token hashes, or password hashes.
 - Admin security baseline: `/admin/**`, `/admin-next/**`, `/login`, `/logout`, and `/admin-assets/**` are handled by a
   management-side Spring Security form-login session chain with CSRF, BCrypt-backed users, custom login page,
   admin-only `/admin/**` and `/admin/api/**` access, anonymous static asset plus React SPA shell access, and JSON
@@ -380,6 +388,9 @@ and must be updated as implementation packages are added.
   `/admin/api/audit-events` API returns dedicated summary/detail DTOs, does not return token id or token prefix, and
   redacts password-like text and JDBC URLs before display. Full audit queries are currently admin-only through the
   `/admin/**` security chain; future ordinary-user audit access must be scoped to the caller's own rows.
+- Management operations API baseline: `GET /admin/api/overview`, `GET /admin/api/config`,
+  `GET /admin/api/policies/dangerous`, and `GET /admin/api/health` expose read-only React admin payloads from existing
+  sanitized admin view services and are protected by the `/admin/api/**` administrator-only security rule.
 - Management session API baseline: `GET /admin/api/session` returns the current authenticated administrator name,
   roles, and a shell metadata projection from `AdminShellViewService`. The DTO intentionally omits password hashes,
   Token plaintext/hash values, and raw sensitive configuration.

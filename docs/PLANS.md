@@ -22,6 +22,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 MCP Target And Policy Projection](exec-plans/completed/2026-05-02-mcp-target-policy-projection.md) -
+  Completed; replaced target and policy MCP skeleton placeholders with authorized project/environment catalog and
+  effective dangerous DDL policy projection for tools and resources.
 - [2026-05-01 Backend Code Organization](exec-plans/completed/2026-05-01-backend-code-organization.md) -
   Completed; normalized backend package structure, extracted public contracts into semantic packages, consolidated
   shared utilities, reduced long parameter surfaces, updated documentation, and passed regression verification.

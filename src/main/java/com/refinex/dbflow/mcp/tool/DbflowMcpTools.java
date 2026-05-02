@@ -12,6 +12,7 @@ import com.refinex.dbflow.mcp.auth.McpAuthenticationContextResolver;
 import com.refinex.dbflow.mcp.auth.McpAuthorizationBoundary;
 import com.refinex.dbflow.mcp.dto.DbflowMcpSkeletonResponse;
 import com.refinex.dbflow.mcp.support.DbflowMcpNames;
+import com.refinex.dbflow.mcp.support.McpTargetPolicyProjectionService;
 import com.refinex.dbflow.observability.service.DbflowMetricsService;
 import com.refinex.dbflow.sqlpolicy.dto.TruncateConfirmationConfirmRequest;
 import com.refinex.dbflow.sqlpolicy.dto.TruncateConfirmationDecision;
@@ -48,6 +49,11 @@ public class DbflowMcpTools {
     private final McpAccessBoundaryService accessBoundaryService;
 
     /**
+     * MCP 目标与策略投影服务。
+     */
+    private final McpTargetPolicyProjectionService targetPolicyProjectionService;
+
+    /**
      * TRUNCATE 服务端二次确认服务。
      */
     private final TruncateConfirmationService truncateConfirmationService;
@@ -77,6 +83,7 @@ public class DbflowMcpTools {
      *
      * @param authenticationContextResolver MCP 认证上下文解析器
      * @param accessBoundaryService         MCP 访问授权边界服务
+     * @param targetPolicyProjectionService MCP 目标与策略投影服务
      * @param truncateConfirmationService   TRUNCATE 服务端二次确认服务
      * @param sqlExecutionService           受控 SQL 执行服务
      * @param sqlExplainService             受控 SQL EXPLAIN 服务
@@ -86,6 +93,7 @@ public class DbflowMcpTools {
     public DbflowMcpTools(
             McpAuthenticationContextResolver authenticationContextResolver,
             McpAccessBoundaryService accessBoundaryService,
+            McpTargetPolicyProjectionService targetPolicyProjectionService,
             TruncateConfirmationService truncateConfirmationService,
             SqlExecutionService sqlExecutionService,
             SqlExplainService sqlExplainService,
@@ -94,6 +102,7 @@ public class DbflowMcpTools {
     ) {
         this.authenticationContextResolver = authenticationContextResolver;
         this.accessBoundaryService = accessBoundaryService;
+        this.targetPolicyProjectionService = targetPolicyProjectionService;
         this.truncateConfirmationService = truncateConfirmationService;
         this.sqlExecutionService = sqlExecutionService;
         this.sqlExplainService = sqlExplainService;
@@ -104,12 +113,12 @@ public class DbflowMcpTools {
     /**
      * 列出当前用户可访问的 DBFlow 目标项目环境。
      *
-     * @return 可访问目标 skeleton 响应
+     * @return 可访问目标响应
      */
     @McpTool(
             name = DbflowMcpNames.TOOL_LIST_TARGETS,
             title = "List DBFlow targets",
-            description = "List project/environment targets visible to the current MCP principal. Skeleton returns an empty list until target catalog projection is connected.",
+            description = "List project/environment targets visible to the current MCP principal after authentication and grant checks. Datasource secrets and raw JDBC URLs are never returned.",
             annotations = @McpTool.McpAnnotations(
                     title = "List DBFlow targets",
                     readOnlyHint = true,
@@ -126,7 +135,13 @@ public class DbflowMcpTools {
                 context,
                 DbflowMcpNames.TOOL_LIST_TARGETS
         );
-        return response(DbflowMcpNames.TOOL_LIST_TARGETS, context, boundary, Map.of("targets", java.util.List.of()));
+        return response(DbflowMcpNames.TOOL_LIST_TARGETS, context, boundary, Map.of(
+                "targets", targetPolicyProjectionService.visibleTargets(
+                        context,
+                        accessBoundaryService,
+                        DbflowMcpNames.TOOL_LIST_TARGETS
+                )
+        ));
     }
 
     /**
@@ -208,12 +223,12 @@ public class DbflowMcpTools {
      * @param schema    schema 名称
      * @param table     表名
      * @param operation SQL 操作类型
-     * @return policy skeleton 响应
+     * @return policy 响应
      */
     @McpTool(
             name = DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY,
             title = "Get effective DBFlow SQL policy",
-            description = "Return the effective SQL policy for project/environment/schema/table/operation scope. Skeleton exposes default safe-policy shape only.",
+            description = "Return the effective SQL policy for project/environment/schema/table/operation scope from current DBFlow configuration after target authorization.",
             annotations = @McpTool.McpAnnotations(
                     title = "Get effective DBFlow SQL policy",
                     readOnlyHint = true,
@@ -238,15 +253,8 @@ public class DbflowMcpTools {
                 env,
                 DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY
         );
-        return response(DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY, context, boundary, data(
-                "project", project,
-                "env", env,
-                "schema", schema,
-                "table", table,
-                "operation", operation,
-                "defaults", Map.of("DROP_TABLE", "DENY", "DROP_DATABASE", "DENY", "TRUNCATE", "REQUIRE_CONFIRMATION"),
-                "whitelist", java.util.List.of()
-        ));
+        return response(DbflowMcpNames.TOOL_GET_EFFECTIVE_POLICY, context, boundary,
+                targetPolicyProjectionService.effectivePolicy(project, env, schema, table, operation, boundary));
     }
 
     /**

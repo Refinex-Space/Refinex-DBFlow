@@ -9,11 +9,11 @@ import com.refinex.dbflow.mcp.auth.McpAuthenticationContext;
 import com.refinex.dbflow.mcp.auth.McpAuthenticationContextResolver;
 import com.refinex.dbflow.mcp.auth.McpAuthorizationBoundary;
 import com.refinex.dbflow.mcp.support.DbflowMcpNames;
+import com.refinex.dbflow.mcp.support.McpTargetPolicyProjectionService;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springaicommunity.mcp.annotation.McpResource;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Map;
 
 import static com.refinex.dbflow.mcp.support.McpResponseBuilder.data;
@@ -44,6 +44,11 @@ public class DbflowMcpResources {
     private final McpAccessBoundaryService accessBoundaryService;
 
     /**
+     * MCP 目标与策略投影服务。
+     */
+    private final McpTargetPolicyProjectionService targetPolicyProjectionService;
+
+    /**
      * schema inspect 服务。
      */
     private final SchemaInspectService schemaInspectService;
@@ -54,22 +59,25 @@ public class DbflowMcpResources {
      * @param objectMapper                  JSON 序列化器
      * @param authenticationContextResolver MCP 认证上下文解析器
      * @param accessBoundaryService         MCP 访问授权边界服务
+     * @param targetPolicyProjectionService MCP 目标与策略投影服务
      * @param schemaInspectService          schema inspect 服务
      */
     public DbflowMcpResources(
             ObjectMapper objectMapper,
             McpAuthenticationContextResolver authenticationContextResolver,
             McpAccessBoundaryService accessBoundaryService,
+            McpTargetPolicyProjectionService targetPolicyProjectionService,
             SchemaInspectService schemaInspectService
     ) {
         this.objectMapper = objectMapper;
         this.authenticationContextResolver = authenticationContextResolver;
         this.accessBoundaryService = accessBoundaryService;
+        this.targetPolicyProjectionService = targetPolicyProjectionService;
         this.schemaInspectService = schemaInspectService;
     }
 
     /**
-     * 返回目标项目环境列表 resource skeleton。
+     * 返回目标项目环境列表 resource。
      *
      * @param request resource 读取请求
      * @return resource 读取结果
@@ -78,18 +86,22 @@ public class DbflowMcpResources {
             uri = DbflowMcpNames.RESOURCE_TARGETS,
             name = "dbflow_targets",
             title = "DBFlow targets",
-            description = "Project/environment targets visible to the current MCP principal. Skeleton returns an empty list.",
+            description = "Project/environment targets visible to the current MCP principal after authentication and grant checks.",
             mimeType = "application/json"
     )
     public McpSchema.ReadResourceResult targets(McpSchema.ReadResourceRequest request) {
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
         McpAuthorizationBoundary boundary = accessBoundaryService.metadataBoundary(context, "resource:" + request.uri());
         return jsonResource(objectMapper, request.uri(), Map.of(
-                "status", "SKELETON",
+                "status", boundary.allowed() ? "AUTHORIZED" : "DENIED",
                 "uri", request.uri(),
                 "authentication", context,
                 "authorization", boundary,
-                "targets", List.of()
+                "targets", targetPolicyProjectionService.visibleTargets(
+                        context,
+                        accessBoundaryService,
+                        "resource:" + request.uri()
+                )
         ));
     }
 
@@ -148,7 +160,7 @@ public class DbflowMcpResources {
     }
 
     /**
-     * 返回项目环境 policy resource skeleton。
+     * 返回项目环境 policy resource。
      *
      * @param request resource 读取请求
      * @param project 项目标识
@@ -159,23 +171,25 @@ public class DbflowMcpResources {
             uri = DbflowMcpNames.RESOURCE_POLICY,
             name = "dbflow_policy",
             title = "DBFlow policy",
-            description = "Effective SQL policy view for a DBFlow project environment. Skeleton returns safe defaults.",
+            description = "Effective SQL policy view for a DBFlow project environment from current configuration.",
             mimeType = "application/json"
     )
     public McpSchema.ReadResourceResult policy(McpSchema.ReadResourceRequest request, String project, String env) {
         McpAuthenticationContext context = authenticationContextResolver.currentContext();
         McpAuthorizationBoundary boundary = accessBoundaryService.targetBoundary(context, project, env,
                 "resource:policy");
-        return jsonResource(objectMapper, request.uri(), data(
-                "status", "SKELETON",
-                "uri", request.uri(),
-                "project", project,
-                "env", env,
-                "authentication", context,
-                "authorization", boundary,
-                "defaults", Map.of("DROP_TABLE", "DENY", "DROP_DATABASE", "DENY", "TRUNCATE", "REQUIRE_CONFIRMATION"),
-                "whitelist", List.of()
-        ));
+        Map<String, Object> policy = targetPolicyProjectionService.effectivePolicy(
+                project,
+                env,
+                null,
+                null,
+                null,
+                boundary
+        );
+        policy.put("uri", request.uri());
+        policy.put("authentication", context);
+        policy.put("authorization", boundary);
+        return jsonResource(objectMapper, request.uri(), policy);
     }
 
 }

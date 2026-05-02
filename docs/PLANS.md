@@ -12,10 +12,6 @@ Harness Powers lifecycle:
 - Archive completed execution plans in `docs/exec-plans/completed/`.
 - Use `harness-verify` before completion claims.
 
-## Roadmap
-
-- [0-1-PLANS.md](../0-1-PLANS.md) - Root-level 0-1 development roadmap with copy-ready staged prompts.
-
 ## Active Plans
 
 No active plans.

@@ -8,7 +8,7 @@
 
 - `docs/exec-plans/specs/2026-04-29-dbflow-mcp-architecture-design.md`
 - `docs/ARCHITECTURE.md`
-- `0-1-PLANS.md` 的 P09 后台管理 HTML 原型设计阶段
+- `docs/exec-plans/completed/2026-04-30-admin-ui-polish.md`
 - [Nacos Console Guide](https://nacos.io/en/docs/latest/guide/admin/console-guide/)：服务列表、健康状态、配置管理、命名空间隔离、登录管理等控制台型信息架构
 
 ## 设计原则

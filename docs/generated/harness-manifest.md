@@ -7,7 +7,6 @@
 | Path                                                                    | Type        | Created    | Last Verified |
 |-------------------------------------------------------------------------|-------------|------------|---------------|
 | AGENTS.md                                                               | root-agents | 2026-04-29 | 2026-05-01    |
-| 0-1-PLANS.md                                                            | managed-doc | 2026-04-29 | 2026-05-01    |
 | docs/PLANS.md                                                           | managed-doc | 2026-04-29 | 2026-05-01    |
 | docs/ARCHITECTURE.md                                                    | managed-doc | 2026-04-29 | 2026-05-01    |
 | docs/OBSERVABILITY.md                                                   | managed-doc | 2026-04-29 | 2026-05-01    |

@@ -10,6 +10,8 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.*;
 import net.sf.jsqlparser.statement.alter.Alter;
+import net.sf.jsqlparser.statement.create.function.CreateFunction;
+import net.sf.jsqlparser.statement.create.procedure.CreateProcedure;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.drop.Drop;
@@ -22,6 +24,7 @@ import net.sf.jsqlparser.util.TablesNamesFinder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -141,6 +144,12 @@ public class SqlClassifier {
             case CreateTable createTable ->
                     ddl(SqlOperation.CREATE, tableName(createTable.getTable()), SqlRiskLevel.HIGH,
                             SqlParseStatus.SUCCESS, false, "CREATE TABLE 结构创建");
+            case CreateFunction createFunction ->
+                    ddl(SqlOperation.CREATE, routineTarget(createFunction), SqlRiskLevel.HIGH,
+                            SqlParseStatus.SUCCESS, false, "CREATE FUNCTION 例程创建");
+            case CreateProcedure createProcedure ->
+                    ddl(SqlOperation.CREATE, routineTarget(createProcedure), SqlRiskLevel.HIGH,
+                            SqlParseStatus.SUCCESS, false, "CREATE PROCEDURE 例程创建");
             case Alter alter -> ddl(SqlOperation.ALTER, tableName(alter.getTable()), SqlRiskLevel.HIGH,
                     SqlParseStatus.SUCCESS, false, "ALTER TABLE 结构变更");
             case Drop drop -> classifyDrop(drop);
@@ -423,6 +432,23 @@ public class SqlClassifier {
             return SqlTarget.EMPTY;
         }
         return tableName(tables.iterator().next());
+    }
+
+    /**
+     * 从 routine 语句中提取名称。
+     *
+     * @param statement routine 语句
+     * @return 目标对象
+     */
+    private SqlTarget routineTarget(CreateFunctionalStatement statement) {
+        if (statement == null) {
+            return SqlTarget.EMPTY;
+        }
+        List<String> declarationParts = statement.getFunctionDeclarationParts();
+        if (declarationParts == null || declarationParts.isEmpty()) {
+            return fallbackObject(statement.toString());
+        }
+        return tableName(declarationParts.get(0));
     }
 
     /**

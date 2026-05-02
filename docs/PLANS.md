@@ -25,6 +25,9 @@ No active plans.
 - [2026-05-02 Target Connection Timeout Feedback](exec-plans/completed/2026-05-02-target-connection-timeout-feedback.md) -
   Completed; shortened target datasource connection timeout defaults for interactive MCP failures and documented
   unreachable target database triage.
+- [2026-05-02 Routine DDL Classification](exec-plans/completed/2026-05-02-routine-ddl-classification.md) -
+  Completed; classified `CREATE FUNCTION` and `CREATE PROCEDURE` as supported routine DDL instead of collapsing them
+  into the generic `CREATE 解析失败，默认拒绝` path when JSQLParser already parses them successfully.
 - [2026-05-02 MCP Target And Policy Projection](exec-plans/completed/2026-05-02-mcp-target-policy-projection.md) -
   Completed; replaced target and policy MCP skeleton placeholders with authorized project/environment catalog and
   effective dangerous DDL policy projection for tools and resources.

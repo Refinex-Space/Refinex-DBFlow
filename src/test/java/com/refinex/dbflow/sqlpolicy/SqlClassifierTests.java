@@ -81,6 +81,12 @@ class SqlClassifierTests {
     void shouldClassifyDdlAndAdminStatements() {
         assertDdl("CREATE TABLE sales.orders_archive (id BIGINT PRIMARY KEY)",
                 SqlOperation.CREATE, "sales", "orders_archive", SqlRiskLevel.HIGH);
+        assertDdl("CREATE FUNCTION get_product_sku_by_name(p_product_name VARCHAR(255)) "
+                        + "RETURNS VARCHAR(64) NOT DETERMINISTIC READS SQL DATA "
+                        + "RETURN (SELECT sku FROM products WHERE name = p_product_name LIMIT 1)",
+                SqlOperation.CREATE, null, "get_product_sku_by_name", SqlRiskLevel.HIGH);
+        assertDdl("CREATE PROCEDURE p_refresh_product_stats() SELECT 1",
+                SqlOperation.CREATE, null, "p_refresh_product_stats", SqlRiskLevel.HIGH);
         assertDdl("ALTER TABLE sales.orders ADD COLUMN note VARCHAR(255)",
                 SqlOperation.ALTER, "sales", "orders", SqlRiskLevel.HIGH);
         assertDdl("DROP TABLE sales.orders_archive",

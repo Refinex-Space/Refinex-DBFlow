@@ -137,6 +137,9 @@ Configuration sources and secret boundary:
   sources so connection pool logs cannot expose them.
 - Shared target pool tuning is configured under `dbflow.datasource-defaults.hikari`, including pool name prefix,
   maximum pool size, minimum idle, connection timeout, idle timeout, and max lifetime.
+- Target Hikari `connection-timeout` defaults to `5s` in DBFlow and in the dev Nacos template, so interactive MCP
+  calls fail fast when a configured target database is unreachable. Deployments that require longer cross-network
+  waits may override `dbflow.datasource-defaults.hikari.connection-timeout` explicitly.
 - Startup target database connection validation is controlled by `dbflow.datasource-defaults.validate-on-startup`.
   Keep it disabled for local/offline development and enable it in environments where startup should fail fast on
   unreachable target databases. When it is disabled, DBFlow forces the effective target Hikari `minimumIdle` to `0`

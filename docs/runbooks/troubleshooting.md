@@ -113,6 +113,8 @@ Symptoms:
 
 - 日志出现 `目标数据源启动校验失败`、`datasource.target.create.failed`。
 - SQL tool 返回目标库连接失败或执行失败。
+- MCP tool 返回 `Connection is not available, request timed out after 30001ms` 时，通常表示运行配置仍在使用旧的
+  `connection-timeout=30s` 或配置刷新/重启尚未生效。
 
 Steps:
 
@@ -128,6 +130,8 @@ Checks:
 - 本地离线开发保持 `dbflow.datasource-defaults.validate-on-startup=false`。
 - 关闭启动校验时，DBFlow 会把目标 Hikari pool 的实际 `minimumIdle` 降为 `0`；如果仍出现
   `connection-adder` 建连告警，优先确认运行包是否已包含该修复。
+- dev 模板默认 `dbflow.datasource-defaults.hikari.connection-timeout=5s`；如果 Codex/MCP 仍等待约 30 秒才失败，
+  先检查 Nacos `application-dbflow.yml` 中是否仍是 `30s`，更新后重启应用或执行受控配置刷新。
 - 生产要 fail fast 时再启用启动校验。
 
 ## Scenario 5: Runtime Config Refresh Or Datasource Replacement Fails

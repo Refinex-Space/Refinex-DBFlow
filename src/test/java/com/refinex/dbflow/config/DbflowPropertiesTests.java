@@ -139,6 +139,19 @@ class DbflowPropertiesTests {
     }
 
     /**
+     * 验证目标库连接获取默认等待时间适合 MCP 交互式失败反馈。
+     */
+    @Test
+    void shouldProvideInteractiveTargetConnectionTimeoutDefault() {
+        contextRunner.run(context -> {
+            DbflowProperties properties = context.getBean(DbflowProperties.class);
+
+            assertThat(properties.getDatasourceDefaults().getHikari().getConnectionTimeout())
+                    .isEqualTo(Duration.ofSeconds(5));
+        });
+    }
+
+    /**
      * 验证重复 project key 会导致启动失败。
      */
     @Test

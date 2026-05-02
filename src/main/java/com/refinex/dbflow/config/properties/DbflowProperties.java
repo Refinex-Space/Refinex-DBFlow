@@ -339,9 +339,9 @@ public class DbflowProperties implements InitializingBean {
         private Integer minimumIdle;
 
         /**
-         * 获取连接最大等待时间；为空时使用 Hikari 默认值。
+         * 获取连接最大等待时间；默认 5 秒，避免 MCP 交互在不可达目标库上等待 Hikari 默认 30 秒。
          */
-        private Duration connectionTimeout;
+        private Duration connectionTimeout = Duration.ofSeconds(5);
 
         /**
          * 空闲连接保留时间；为空时使用 Hikari 默认值。

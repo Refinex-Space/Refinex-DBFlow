@@ -73,8 +73,8 @@ dbflow:
       # dev 默认 1；必须小于等于 maximum-pool-size。
       # validate-on-startup=false 时，DBFlow 会把实际目标库 pool minimumIdle 降为 0，避免启动后后台连接不可达业务库。
       minimum-idle: 1
-      # dev 默认 30s；获取连接等待超过该时间会失败。
-      connection-timeout: 30s
+      # dev 默认 5s；获取连接等待超过该时间会失败，避免 MCP 客户端在不可达目标库上长时间卡住。
+      connection-timeout: 5s
       # dev 默认 10m；空闲连接超过该时间可被回收。
       idle-timeout: 10m
       # dev 默认 30m；连接存活超过该时间会被轮换。

@@ -47,11 +47,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-    getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
-    id: '/users',
-    path: '/users',
+  id: '/users',
+  path: '/users',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const errors503Route = errors503RouteImport.update({
@@ -97,11 +97,11 @@ const authSignInRoute = authSignInRouteImport.update({
 const authOtpRoute = authOtpRouteImport.update({
   id: '/(auth)/otp',
   path: '/otp',
-    getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const authLoginRoute = authLoginRouteImport.update({
-    id: '/(auth)/login',
-    path: '/login',
+  id: '/(auth)/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
@@ -171,7 +171,7 @@ export interface FileRoutesByFullPath {
   '/clerk': typeof ClerkauthRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
-    '/login': typeof authLoginRoute
+  '/login': typeof authLoginRoute
   '/otp': typeof authOtpRoute
   '/sign-in': typeof authSignInRoute
   '/sign-in-2': typeof authSignIn2Route
@@ -181,7 +181,7 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-    '/users': typeof AuthenticatedUsersRoute
+  '/users': typeof AuthenticatedUsersRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
@@ -194,7 +194,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/clerk': typeof ClerkauthRouteRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
-    '/login': typeof authLoginRoute
+  '/login': typeof authLoginRoute
   '/otp': typeof authOtpRoute
   '/sign-in': typeof authSignInRoute
   '/sign-in-2': typeof authSignIn2Route
@@ -204,7 +204,7 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-    '/users': typeof AuthenticatedUsersRoute
+  '/users': typeof AuthenticatedUsersRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -222,7 +222,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/clerk/(auth)': typeof ClerkauthRouteRouteWithChildren
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
-    '/(auth)/login': typeof authLoginRoute
+  '/(auth)/login': typeof authLoginRoute
   '/(auth)/otp': typeof authOtpRoute
   '/(auth)/sign-in': typeof authSignInRoute
   '/(auth)/sign-in-2': typeof authSignIn2Route
@@ -232,7 +232,7 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
-    '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -326,7 +326,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   ClerkRouteRoute: typeof ClerkRouteRouteWithChildren
   authForgotPasswordRoute: typeof authForgotPasswordRoute
-    authLoginRoute: typeof authLoginRoute
+  authLoginRoute: typeof authLoginRoute
   authOtpRoute: typeof authOtpRoute
   authSignInRoute: typeof authSignInRoute
   authSignIn2Route: typeof authSignIn2Route
@@ -361,13 +361,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-      '/_authenticated/users': {
-          id: '/_authenticated/users'
-          path: '/users'
-          fullPath: '/users'
-          preLoaderRoute: typeof AuthenticatedUsersRouteImport
-          parentRoute: typeof AuthenticatedRouteRoute
-      }
+    '/_authenticated/users': {
+      id: '/_authenticated/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthenticatedUsersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/(errors)/503': {
       id: '/(errors)/503'
       path: '/503'
@@ -431,13 +431,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authOtpRouteImport
       parentRoute: typeof rootRouteImport
     }
-      '/(auth)/login': {
-          id: '/(auth)/login'
-          path: '/login'
-          fullPath: '/login'
-          preLoaderRoute: typeof authLoginRouteImport
-          parentRoute: typeof rootRouteImport
-      }
+    '/(auth)/login': {
+      id: '/(auth)/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof authLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(auth)/forgot-password': {
       id: '/(auth)/forgot-password'
       path: '/forgot-password'
@@ -543,14 +543,14 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
-    AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
+  AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
-    AuthenticatedUsersRoute: AuthenticatedUsersRoute,
+  AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
 }
@@ -588,7 +588,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ClerkRouteRoute: ClerkRouteRouteWithChildren,
   authForgotPasswordRoute: authForgotPasswordRoute,
-    authLoginRoute: authLoginRoute,
+  authLoginRoute: authLoginRoute,
   authOtpRoute: authOtpRoute,
   authSignInRoute: authSignInRoute,
   authSignIn2Route: authSignIn2Route,

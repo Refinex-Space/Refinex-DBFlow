@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-02 React Admin Login Page](exec-plans/completed/2026-05-02-react-admin-login-page.md) -
+  Completed; replaced the template sign-in demo on `/login` with a DBFlow-specific React + shadcn/ui login page, wired
+  Spring Security JSON login/logout with CSRF, and verified failed-login toast plus successful Dashboard access.
 - [2026-05-02 React Admin Session Guard](exec-plans/completed/2026-05-02-react-admin-session-guard.md) -
   Completed; wired the React admin shell to `/admin/api/session` for server-cookie-backed session state, protected
   TanStack Router authenticated routes under `/admin-next/`, added `/login` guard behavior, and verified anonymous

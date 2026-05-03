@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Config Page](exec-plans/completed/2026-05-03-react-admin-config-page.md) -
+  Completed; implemented the React `/config` read-only configuration page backed by `/admin/api/config`, including
+  sanitized source labels, config table rows, refresh, detail Sheet, empty state, and sensitive-field verification.
 - [2026-05-02 React Admin Tokens Page](exec-plans/completed/2026-05-02-react-admin-tokens-page.md) -
   Completed; implemented the React `/tokens` MCP Token management page backed by `/admin/api/tokens`, including
   URL-synced filters, safe list rendering, issue/reissue one-time plaintext reveal, revoke confirmation, and

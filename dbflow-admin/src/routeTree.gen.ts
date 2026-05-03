@@ -15,6 +15,7 @@ import {Route as AuthenticatedIndexRouteImport} from './routes/_authenticated/in
 import {Route as AuthenticatedUsersRouteImport} from './routes/_authenticated/users'
 import {Route as AuthenticatedTokensRouteImport} from './routes/_authenticated/tokens'
 import {Route as AuthenticatedGrantsRouteImport} from './routes/_authenticated/grants'
+import {Route as AuthenticatedConfigRouteImport} from './routes/_authenticated/config'
 import {Route as errors503RouteImport} from './routes/(errors)/503'
 import {Route as errors500RouteImport} from './routes/(errors)/500'
 import {Route as errors404RouteImport} from './routes/(errors)/404'
@@ -64,6 +65,11 @@ const AuthenticatedTokensRoute = AuthenticatedTokensRouteImport.update({
 const AuthenticatedGrantsRoute = AuthenticatedGrantsRouteImport.update({
   id: '/grants',
   path: '/grants',
+    getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedConfigRoute = AuthenticatedConfigRouteImport.update({
+    id: '/config',
+    path: '/config',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const errors503Route = errors503RouteImport.update({
@@ -193,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+    '/config': typeof AuthenticatedConfigRoute
   '/grants': typeof AuthenticatedGrantsRoute
     '/tokens': typeof AuthenticatedTokensRoute
   '/users': typeof AuthenticatedUsersRoute
@@ -218,6 +225,7 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+    '/config': typeof AuthenticatedConfigRoute
   '/grants': typeof AuthenticatedGrantsRoute
     '/tokens': typeof AuthenticatedTokensRoute
   '/users': typeof AuthenticatedUsersRoute
@@ -248,6 +256,7 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
+    '/_authenticated/config': typeof AuthenticatedConfigRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
     '/_authenticated/tokens': typeof AuthenticatedTokensRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
@@ -278,6 +287,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+      | '/config'
       | '/grants'
       | '/tokens'
       | '/users'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+      | '/config'
       | '/grants'
       | '/tokens'
       | '/users'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
+      | '/_authenticated/config'
       | '/_authenticated/grants'
       | '/_authenticated/tokens'
       | '/_authenticated/users'
@@ -406,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGrantsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+      '/_authenticated/config': {
+          id: '/_authenticated/config'
+          path: '/config'
+          fullPath: '/config'
+          preLoaderRoute: typeof AuthenticatedConfigRouteImport
+          parentRoute: typeof AuthenticatedRouteRoute
+      }
     '/(errors)/503': {
       id: '/(errors)/503'
       path: '/503'
@@ -581,6 +600,7 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
+    AuthenticatedConfigRoute: typeof AuthenticatedConfigRoute
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
     AuthenticatedTokensRoute: typeof AuthenticatedTokensRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
@@ -590,6 +610,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
+    AuthenticatedConfigRoute: AuthenticatedConfigRoute,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
     AuthenticatedTokensRoute: AuthenticatedTokensRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,

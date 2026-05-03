@@ -18,6 +18,9 @@ Harness Powers lifecycle:
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Monaco SQL Viewer](exec-plans/completed/2026-05-03-react-admin-monaco-sql-viewer.md) -
+  Completed; upgraded the React audit detail SQL viewer to readonly Monaco Editor with SQL language, default height,
+  dark/light theme support, local worker configuration, and build/test verification.
 - [2026-05-03 React Admin Audit Detail Page](exec-plans/completed/2026-05-03-react-admin-audit-detail-page.md) -
   Completed; implemented the React `/audit/:eventId` audit detail page backed by `/admin/api/audit-events/{id}`,
   including identity, SQL, failure, reconstructed timeline, SQL Hash copy, and sensitive-field verification.

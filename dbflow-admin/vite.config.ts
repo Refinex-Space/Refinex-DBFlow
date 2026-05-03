@@ -47,7 +47,13 @@ export default defineConfig({
         outDir: 'dist',
     },
     optimizeDeps: {
-        include: ['@radix-ui/react-checkbox'],
+        include: [
+            '@monaco-editor/react',
+            '@radix-ui/react-checkbox',
+            'monaco-editor',
+            'monaco-editor/esm/vs/basic-languages/sql/sql.contribution.js',
+            'monaco-editor/esm/vs/editor/editor.api.js',
+        ],
     },
     test: {
         silent: 'passed-only',

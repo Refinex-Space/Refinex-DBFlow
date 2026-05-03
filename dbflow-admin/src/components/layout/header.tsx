@@ -43,7 +43,9 @@ export function Header({className, fixed, children, ...props}: HeaderProps) {
             >
                 <SidebarTrigger variant='outline' className='max-md:scale-125'/>
                 <Separator orientation='vertical' className='h-6'/>
-                {children}
+                <div className='ms-auto flex min-w-0 items-center gap-2 sm:gap-3'>
+                    {children}
+                </div>
             </div>
         </header>
     )

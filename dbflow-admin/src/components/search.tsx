@@ -1,8 +1,6 @@
 import {SearchIcon} from 'lucide-react'
-import {useSessionStore} from '@/stores/session-store'
 import {cn} from '@/lib/utils'
 import {useSearch} from '@/context/search-provider'
-import {Badge} from './ui/badge'
 import {Button} from './ui/button'
 
 export function Search({
@@ -11,28 +9,9 @@ export function Search({
                            ...props
                        }: React.ComponentProps<'button'> & { placeholder?: string }) {
     const {setOpen} = useSearch()
-    const shell = useSessionStore((state) => state.session?.shell)
-    const status = shell?.mcpStatus ?? 'UNKNOWN'
-    const configSourceLabel = shell?.configSourceLabel ?? '等待 Session'
 
     return (
-        <div className={cn('flex min-w-0 flex-1 items-center gap-2', className)}>
-            <div className='hidden min-w-0 items-center gap-2 lg:flex'>
-                <Badge
-                    variant='outline'
-                    className={cn(
-                        'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-                        status !== 'HEALTHY' &&
-                        'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                    )}
-                >
-                    <span className='size-1.5 rounded-full bg-current'/>
-                    MCP {status}
-                </Badge>
-                <span className='max-w-56 truncate text-xs text-muted-foreground'>
-          {configSourceLabel}
-        </span>
-            </div>
+        <div className={cn('flex min-w-0 items-center', className)}>
             <Button
                 {...props}
                 variant='outline'

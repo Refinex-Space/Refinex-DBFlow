@@ -18,6 +18,11 @@ Harness Powers lifecycle:
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Login Polish](exec-plans/completed/2026-05-03-react-admin-login-polish.md) -
+  Completed; Chinese-localized and visually simplified the React `/login` page to a top-left logo plus centered
+  administrator form, removed the explanatory access-boundary copy and safety signals, preserved Spring Security JSON
+  login/CSRF/session/redirect behavior, and verified focused tests, frontend build/lint, Harness validation, diff
+  hygiene, and browser desktop/mobile rendering.
 - [2026-05-03 React Admin Cutover Docs](exec-plans/completed/2026-05-03-react-admin-cutover-docs.md) -
   Completed; updated user-visible documentation for the React `/admin` cutover, documented `dbflow-admin/` and the
   React frontend stack, preserved the MCP Bearer Token boundary, and deleted the obsolete root `PLANS.md`.

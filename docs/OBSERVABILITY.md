@@ -38,6 +38,8 @@ coverage now verifies issue/list/reissue/revoke JSON behavior, CSRF-required mut
 responses, and plaintext/hash omission from list responses and audit rows. The React admin API client now has focused
 Vitest browser coverage for Spring Security CSRF header behavior, `ApiResult` unwrapping, typed API errors, and
 caller-controlled `401` propagation.
+The React admin source lives under `dbflow-admin/` and uses React, Vite, TypeScript, shadcn/ui, Tailwind CSS, and
+TanStack Router/Query/Table.
 The Testcontainers
 classes are skipped automatically when the local machine has no Docker runtime. Spring Cloud Alibaba Nacos Config and
 Discovery dependencies are present, and default startup imports the single Nacos Data ID `application-dbflow.yml`.
@@ -103,6 +105,8 @@ Planned baseline:
 - Flyway V1 metadata migration with H2 MySQL mode verification
 - Spring Security management session login for `/admin/**`, `/login`, and `/logout`
 - React management SPA static assets under `/admin/**` when packaged with the `react-admin` profile
+- React admin frontend source under `dbflow-admin/`, built with React, Vite, TypeScript, shadcn/ui, Tailwind CSS, and
+  TanStack Router/Query/Table
 - Spring AI MCP WebMVC Server starter with Streamable HTTP endpoint `/mcp`
 - `/mcp` endpoint guard with configurable trusted Origin validation, request size limit, and fixed-window source-IP
   rate limiting

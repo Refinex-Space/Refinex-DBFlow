@@ -18,21 +18,22 @@ inspection service for schemas, tables, columns, indexes, views, procedures, and
 now has a unified `AuditEventWriter` for request received, policy denied, confirmation-required, executed, failed, and
 confirmation-expired audit events with token id, client metadata, tool name, decision, SQL hash, and bounded summaries.
 It also exposes management-side JSON APIs for audit list/detail, user management, project/environment grants, and
-read-only
-overview/configuration/dangerous policy/health data, with administrator-only access and sanitized DTOs that exclude
-Token metadata and redact
-password-like text. It now includes a React management SPA under `/admin` with JSON-backed real management flows for
-users, MCP Tokens, project/environment grants, audit, dangerous policy, configuration, and health. Token plaintext is
-shown only through one-time JSON issue/reissue responses, while list payloads omit Token hash, password hash, database
-passwords, and full Token plaintext. It does not
-yet contain CI configuration or production deployment configuration. The MCP Streamable HTTP endpoint is now hardened
+read-only overview/configuration/dangerous policy/health data, with administrator-only access and sanitized DTOs that
+exclude Token metadata and redact password-like text. It now includes a React management SPA under `/admin` with
+JSON-backed real management flows for users, MCP Tokens, project/environment grants, audit, dangerous policy,
+configuration, and health. The frontend source lives in `dbflow-admin/` and uses React, Vite, TypeScript, shadcn/ui,
+Tailwind CSS, and TanStack Router/Query/Table. Token plaintext is shown only through one-time JSON issue/reissue
+responses, while list payloads omit Token hash, password hash, database passwords, and full Token plaintext. It does
+not yet contain CI configuration or production deployment configuration. The MCP Streamable HTTP endpoint is now
+hardened
 with configurable trusted Origin validation, request size limits, fixed-window source-IP rate limiting, query-string
 token rejection, stable sanitized HTTP errors, and bounded MCP tool error metadata for denial/failure/expiry/truncation.
-The optional React admin bundle is served under `/admin-next/**` when packaged into the Spring Boot jar: non-resource
-SPA routes forward to `/admin-next/index.html`, while resource-looking paths are treated as static assets and never
-fall back to the SPA HTML. The React shell now has a unified Axios API client under `dbflow-admin/src/api/` that uses
-relative `/admin/api` requests, copies Spring Security's `XSRF-TOKEN` cookie into `X-XSRF-TOKEN` for mutations, unwraps
-DBFlow `ApiResult` payloads, and leaves `401` handling to the future session/router layer.
+The React admin bundle is packaged into the Spring Boot jar with `./mvnw -Preact-admin -DskipTests package` and served
+under `/admin/**`: non-resource SPA routes forward to `/admin/index.html`, while resource-looking paths are treated as
+static assets and never fall back to the SPA HTML. The old Thymeleaf admin and `/admin-legacy/**` routes have been
+deleted. The React shell has a unified Axios API client under `dbflow-admin/src/api/` that uses relative `/admin/api`
+requests, copies Spring Security's `XSRF-TOKEN` cookie into `X-XSRF-TOKEN` for mutations, unwraps DBFlow `ApiResult`
+payloads, and leaves `401` handling to the session/router layer.
 Operational logs now carry `requestId`/`traceId` MDC fields, and runbook-driven troubleshooting starts from
 `docs/runbooks/troubleshooting.md`. Deployment guidance now lives under `docs/deployment/`, including a runnable
 local empty-environment startup path, jar deployment notes, external MySQL/Nacos configuration, reverse proxy/TLS
@@ -66,6 +67,7 @@ and must be updated as implementation packages are added.
 +-- dbflow-admin/
 |   +-- package.json
 |   +-- vite.config.ts
+|   +-- tsconfig.json
 |   +-- src/
 |       +-- api/
 |       +-- components/
@@ -668,15 +670,14 @@ only; JDBC URLs and passwords are not logged.
 
 The current implemented security boundary is management-side browser/session authentication only:
 
-- `AdminSecurityConfiguration` registers a path-limited `SecurityFilterChain` for `/admin/**`, `/admin-next`,
-  `/admin-next/**`,
-  `/login`, and `/logout`.
+- `AdminSecurityConfiguration` registers a path-limited `SecurityFilterChain` for `/admin`, `/admin/**`, `/login`, and
+  `/logout`.
 - Form login is enabled with default success URL `/admin` for ordinary browser forms. JSON or XHR login requests return
   `ApiResult.ok(sessionInfo)` on success and `401` JSON on failure.
 - Logout uses `/logout` and remains CSRF-protected. JSON or XHR logout requests return JSON success after the normal
   Spring Security logout flow invalidates the session; ordinary browser logout still redirects to `/login?logout`.
-- `/admin/api/**` remains administrator-only. `/admin-next/**` is allowed to render the React shell anonymously, while
-  packaged static assets such as `/admin-next/assets/**` and `/admin-next/favicon*` remain anonymous-readable.
+- `/admin/api/**` remains administrator-only. Packaged static assets such as `/admin/assets/**` and `/admin/favicon*`
+  remain anonymous-readable so the React shell can load after redirect/login.
 - Unauthenticated `/admin/api/**` requests that explicitly accept JSON receive a JSON `401` response so the React SPA
   can distinguish login state without parsing HTML. Browser page requests such as `/admin` continue to redirect to
   `/login`.

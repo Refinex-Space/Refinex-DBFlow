@@ -18,6 +18,9 @@ Harness Powers lifecycle:
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Cutover Docs](exec-plans/completed/2026-05-03-react-admin-cutover-docs.md) -
+  Completed; updated user-visible documentation for the React `/admin` cutover, documented `dbflow-admin/` and the
+  React frontend stack, preserved the MCP Bearer Token boundary, and deleted the obsolete root `PLANS.md`.
 - [2026-05-03 Remove Legacy Thymeleaf Admin](exec-plans/completed/2026-05-03-remove-legacy-thymeleaf-admin.md) -
   Completed; deleted the legacy Thymeleaf admin controller, templates, and assets; removed the Thymeleaf dependency and
   SSR-only tests; kept React `/admin`, React `/login`, and `/admin/api/**` as the only maintained admin surfaces.

@@ -58,7 +58,8 @@ set +a
 
 ### React admin 开发态
 
-本地开发 React 新后台时，后端和前端分两个进程启动：
+本地开发 React 管理端时，后端和前端分两个进程启动。前端源码位于 `dbflow-admin/`，技术栈为 React、Vite、
+TypeScript、shadcn/ui、Tailwind CSS 和 TanStack Router/Query/Table：
 
 ```bash
 ./mvnw spring-boot:run
@@ -132,7 +133,7 @@ ls -lh target/refinex-dbflow-0.1.0-SNAPSHOT.jar
 
 Testcontainers 集成测试在本机无 Docker runtime 时会自动跳过。
 
-如果要把 React 新后台打进 jar，使用 opt-in profile：
+如果要把 React 管理端打进 jar，使用 opt-in profile：
 
 ```bash
 ./mvnw -Preact-admin -DskipTests package

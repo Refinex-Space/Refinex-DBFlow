@@ -6,16 +6,19 @@
 
 ## 1. 管理端入口
 
-| 场景             | 地址                                      | 说明                                  |
-|----------------|-----------------------------------------|-------------------------------------|
-| 本地后端管理端        | `http://127.0.0.1:8080/login`           | Spring Security 登录入口。               |
-| 本地 React 管理端开发 | `http://127.0.0.1:5173/admin`           | 前端 dev server，代理 `/admin/api/**`。   |
-| 打包后 React 管理端  | `http://127.0.0.1:8080/admin`           | 需要用 `react-admin` Maven profile 打包。 |
-| 内网部署示例         | `https://dbflow.internal.example/login` | 反向代理后仍先走同一登录入口。                     |
+| 场景             | 地址                                      | 说明                                                  |
+|----------------|-----------------------------------------|-----------------------------------------------------|
+| 本地后端管理端        | `http://127.0.0.1:8080/login`           | Spring Security 登录入口。                               |
+| 本地 React 管理端开发 | `http://127.0.0.1:5173/admin`           | `dbflow-admin/` Vite dev server，代理 `/admin/api/**`。 |
+| 打包后 React 管理端  | `http://127.0.0.1:8080/admin`           | 需要用 `react-admin` Maven profile 打包。                 |
+| 内网部署示例         | `https://dbflow.internal.example/login` | 反向代理后仍先走同一登录入口。                                     |
 
 登录后默认进入 `/admin` React 总览页。管理端使用 Spring Security form login；`/admin/api/**` 是 React
 管理端使用的 JSON API，写操作必须携带 Spring Security CSRF token。`/mcp` 不使用管理端 session，而是每次请求都要求
 `Authorization: Bearer <DBFlow Token>`。
+
+React 管理端源码位于仓库根目录的 `dbflow-admin/`，技术栈为 React、Vite、TypeScript、shadcn/ui、Tailwind CSS、
+TanStack Router、TanStack Query 和 TanStack Table。
 
 初始管理员账号应来自外部配置或密钥系统，例如 `dbflow.admin.initial-user.*`。不要把真实密码、BCrypt hash、Token
 pepper 或数据库密码写入仓库。
@@ -163,7 +166,7 @@ curl -s http://127.0.0.1:8080/actuator/health
 安全规则：
 
 - Token 明文只在颁发或重新颁发成功后通过一次性页面状态展示一次。
-- React 新后台的明文 reveal dialog 关闭后会清空本地明文状态；刷新、返回列表或重新打开页面都不能再次取回明文。
+- React 管理端的明文 reveal dialog 关闭后会清空本地明文状态；刷新、返回列表或重新打开页面都不能再次取回明文。
 - 管理端列表不展示 Token 明文、Token hash 或 pepper。
 - 不通过 IM、邮件正文、截图或共享文档传播真实 Token。
 - 如果员工反馈 Token 丢失，管理员应重新颁发并吊销旧 Token，而不是查询旧明文。

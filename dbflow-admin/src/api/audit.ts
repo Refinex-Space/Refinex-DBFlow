@@ -1,4 +1,4 @@
-import type {AuditEventFilters, AuditEventPage} from '@/types/audit'
+import type {AuditEventDetail, AuditEventFilters, AuditEventPage,} from '@/types/audit'
 import {apiGet} from '@/api/client'
 
 export const AUDIT_DEFAULT_PAGE = 0
@@ -9,12 +9,23 @@ export const AUDIT_DEFAULT_DIRECTION = 'desc'
 export const auditEventsQueryKey = (filters?: AuditEventFilters) =>
     filters ? ['audit-events', normalizeAuditFilters(filters)] : ['audit-events']
 
+export const auditEventDetailQueryKey = (eventId: number) => [
+    'audit-events',
+    eventId,
+]
+
 export function fetchAuditEvents(
     filters: AuditEventFilters = {}
 ): Promise<AuditEventPage> {
     return apiGet<AuditEventPage>('/audit-events', {
         params: normalizeAuditFilters(filters),
     })
+}
+
+export function fetchAuditEventDetail(
+    eventId: number
+): Promise<AuditEventDetail> {
+    return apiGet<AuditEventDetail>(`/audit-events/${eventId}`)
 }
 
 export function normalizeAuditFilters(

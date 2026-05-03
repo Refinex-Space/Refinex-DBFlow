@@ -35,6 +35,15 @@ export type AuditEventSummary = {
     createdAt: string
 }
 
+export type AuditEventDetail = AuditEventSummary & {
+    userAgent: string
+    sourceIp: string
+    sqlText: string
+    errorCode: string | null
+    errorMessage: string | null
+    confirmationId: string | null
+}
+
 export type AuditEventPage = {
     content: AuditEventSummary[]
     page: number

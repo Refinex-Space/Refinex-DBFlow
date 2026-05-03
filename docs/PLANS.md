@@ -14,10 +14,13 @@ Harness Powers lifecycle:
 
 ## Active Plans
 
-No active plans.
+- No active plans.
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Audit Detail Page](exec-plans/completed/2026-05-03-react-admin-audit-detail-page.md) -
+  Completed; implemented the React `/audit/:eventId` audit detail page backed by `/admin/api/audit-events/{id}`,
+  including identity, SQL, failure, reconstructed timeline, SQL Hash copy, and sensitive-field verification.
 - [2026-05-03 React Admin Audit List Page](exec-plans/completed/2026-05-03-react-admin-audit-list-page.md) -
   Completed; implemented the React `/audit` audit list page backed by `/admin/api/audit-events`, including URL-synced
   filters, server-side pagination, SQL Hash copy, active filter chips, and detail navigation.

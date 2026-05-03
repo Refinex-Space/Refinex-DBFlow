@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Health Page](exec-plans/completed/2026-05-03-react-admin-health-page.md) -
+  Completed; implemented the React `/health` read-only system health page backed by `/admin/api/health`, including
+  overall health summary, component health cards, query invalidation refresh, and sensitive-field verification.
 - [2026-05-03 React Admin Dangerous Policies Page](exec-plans/completed/2026-05-03-react-admin-dangerous-policies-page.md) -
   Completed; implemented the React `/policies/dangerous` read-only dangerous policy page backed by
   `/admin/api/policies/dangerous`, including default high-risk policy rows, DROP whitelist rows, fixed strengthened

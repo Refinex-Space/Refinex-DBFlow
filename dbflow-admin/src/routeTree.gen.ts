@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedTokensRouteImport } from './routes/_authenticated/tokens'
+import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
 import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated/grants'
 import { Route as AuthenticatedConfigRouteImport } from './routes/_authenticated/config'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
@@ -61,6 +62,11 @@ const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
 const AuthenticatedTokensRoute = AuthenticatedTokensRouteImport.update({
   id: '/tokens',
   path: '/tokens',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHealthRoute = AuthenticatedHealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedGrantsRoute = AuthenticatedGrantsRouteImport.update({
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/config': typeof AuthenticatedConfigRoute
   '/grants': typeof AuthenticatedGrantsRoute
+  '/health': typeof AuthenticatedHealthRoute
   '/tokens': typeof AuthenticatedTokensRoute
   '/users': typeof AuthenticatedUsersRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/503': typeof errors503Route
   '/config': typeof AuthenticatedConfigRoute
   '/grants': typeof AuthenticatedGrantsRoute
+  '/health': typeof AuthenticatedHealthRoute
   '/tokens': typeof AuthenticatedTokensRoute
   '/users': typeof AuthenticatedUsersRoute
   '/': typeof AuthenticatedIndexRoute
@@ -267,6 +275,7 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/_authenticated/config': typeof AuthenticatedConfigRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
+  '/_authenticated/health': typeof AuthenticatedHealthRoute
   '/_authenticated/tokens': typeof AuthenticatedTokensRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -299,6 +308,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/config'
     | '/grants'
+    | '/health'
     | '/tokens'
     | '/users'
     | '/errors/$error'
@@ -326,6 +336,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/config'
     | '/grants'
+    | '/health'
     | '/tokens'
     | '/users'
     | '/'
@@ -357,6 +368,7 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/config'
     | '/_authenticated/grants'
+    | '/_authenticated/health'
     | '/_authenticated/tokens'
     | '/_authenticated/users'
     | '/_authenticated/'
@@ -422,6 +434,13 @@ declare module '@tanstack/react-router' {
       path: '/tokens'
       fullPath: '/tokens'
       preLoaderRoute: typeof AuthenticatedTokensRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/health': {
+      id: '/_authenticated/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof AuthenticatedHealthRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/grants': {
@@ -622,6 +641,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedConfigRoute: typeof AuthenticatedConfigRoute
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
+  AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
   AuthenticatedTokensRoute: typeof AuthenticatedTokensRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -633,6 +653,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedConfigRoute: AuthenticatedConfigRoute,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
+  AuthenticatedHealthRoute: AuthenticatedHealthRoute,
   AuthenticatedTokensRoute: AuthenticatedTokensRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,

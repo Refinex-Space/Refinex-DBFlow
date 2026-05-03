@@ -7,6 +7,7 @@ import {Button} from '@/components/ui/button'
 type CopyButtonProps = {
     value: string
     label?: string
+    ariaLabel?: string
     successMessage?: string
     errorMessage?: string
     className?: string
@@ -15,6 +16,7 @@ type CopyButtonProps = {
 export function CopyButton({
                                value,
                                label = '复制',
+                               ariaLabel,
                                successMessage = '已复制到剪贴板',
                                errorMessage = '复制失败',
                                className,
@@ -39,6 +41,7 @@ export function CopyButton({
             type='button'
             variant='outline'
             size='sm'
+            aria-label={ariaLabel}
             className={cn('h-8', className)}
             onClick={handleCopy}
         >

@@ -18,6 +18,9 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Audit List Page](exec-plans/completed/2026-05-03-react-admin-audit-list-page.md) -
+  Completed; implemented the React `/audit` audit list page backed by `/admin/api/audit-events`, including URL-synced
+  filters, server-side pagination, SQL Hash copy, active filter chips, and detail navigation.
 - [2026-05-03 React Admin Health Page](exec-plans/completed/2026-05-03-react-admin-health-page.md) -
   Completed; implemented the React `/health` read-only system health page backed by `/admin/api/health`, including
   overall health summary, component health cards, query invalidation refresh, and sensitive-field verification.

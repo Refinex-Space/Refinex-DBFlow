@@ -17,6 +17,7 @@ import { Route as AuthenticatedTokensRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedHealthRouteImport } from './routes/_authenticated/health'
 import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated/grants'
 import { Route as AuthenticatedConfigRouteImport } from './routes/_authenticated/config'
+import { Route as AuthenticatedAuditRouteImport } from './routes/_authenticated/audit'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
@@ -39,6 +40,7 @@ import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_a
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedPoliciesDangerousRouteImport } from './routes/_authenticated/policies/dangerous'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
+import { Route as AuthenticatedAuditEventIdRouteImport } from './routes/_authenticated/audit.$eventId'
 
 const ClerkRouteRoute = ClerkRouteRouteImport.update({
   id: '/clerk',
@@ -77,6 +79,11 @@ const AuthenticatedGrantsRoute = AuthenticatedGrantsRouteImport.update({
 const AuthenticatedConfigRoute = AuthenticatedConfigRouteImport.update({
   id: '/config',
   path: '/config',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAuditRoute = AuthenticatedAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const errors503Route = errors503RouteImport.update({
@@ -196,6 +203,12 @@ const AuthenticatedErrorsErrorRoute =
     path: '/errors/$error',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAuditEventIdRoute =
+  AuthenticatedAuditEventIdRouteImport.update({
+    id: '/$eventId',
+    path: '/$eventId',
+    getParentRoute: () => AuthenticatedAuditRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -212,11 +225,13 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/audit': typeof AuthenticatedAuditRouteWithChildren
   '/config': typeof AuthenticatedConfigRoute
   '/grants': typeof AuthenticatedGrantsRoute
   '/health': typeof AuthenticatedHealthRoute
   '/tokens': typeof AuthenticatedTokensRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/audit/$eventId': typeof AuthenticatedAuditEventIdRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/policies/dangerous': typeof AuthenticatedPoliciesDangerousRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -240,12 +255,14 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/audit': typeof AuthenticatedAuditRouteWithChildren
   '/config': typeof AuthenticatedConfigRoute
   '/grants': typeof AuthenticatedGrantsRoute
   '/health': typeof AuthenticatedHealthRoute
   '/tokens': typeof AuthenticatedTokensRoute
   '/users': typeof AuthenticatedUsersRoute
   '/': typeof AuthenticatedIndexRoute
+  '/audit/$eventId': typeof AuthenticatedAuditEventIdRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/policies/dangerous': typeof AuthenticatedPoliciesDangerousRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -273,12 +290,14 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
+  '/_authenticated/audit': typeof AuthenticatedAuditRouteWithChildren
   '/_authenticated/config': typeof AuthenticatedConfigRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
   '/_authenticated/health': typeof AuthenticatedHealthRoute
   '/_authenticated/tokens': typeof AuthenticatedTokensRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/audit/$eventId': typeof AuthenticatedAuditEventIdRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/policies/dangerous': typeof AuthenticatedPoliciesDangerousRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -306,11 +325,13 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/audit'
     | '/config'
     | '/grants'
     | '/health'
     | '/tokens'
     | '/users'
+    | '/audit/$eventId'
     | '/errors/$error'
     | '/policies/dangerous'
     | '/settings/account'
@@ -334,12 +355,14 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/audit'
     | '/config'
     | '/grants'
     | '/health'
     | '/tokens'
     | '/users'
     | '/'
+    | '/audit/$eventId'
     | '/errors/$error'
     | '/policies/dangerous'
     | '/settings/account'
@@ -366,12 +389,14 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
+    | '/_authenticated/audit'
     | '/_authenticated/config'
     | '/_authenticated/grants'
     | '/_authenticated/health'
     | '/_authenticated/tokens'
     | '/_authenticated/users'
     | '/_authenticated/'
+    | '/_authenticated/audit/$eventId'
     | '/_authenticated/errors/$error'
     | '/_authenticated/policies/dangerous'
     | '/_authenticated/settings/account'
@@ -455,6 +480,13 @@ declare module '@tanstack/react-router' {
       path: '/config'
       fullPath: '/config'
       preLoaderRoute: typeof AuthenticatedConfigRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/audit': {
+      id: '/_authenticated/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuthenticatedAuditRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/(errors)/503': {
@@ -611,6 +643,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErrorsErrorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/audit/$eventId': {
+      id: '/_authenticated/audit/$eventId'
+      path: '/$eventId'
+      fullPath: '/audit/$eventId'
+      preLoaderRoute: typeof AuthenticatedAuditEventIdRouteImport
+      parentRoute: typeof AuthenticatedAuditRoute
+    }
   }
 }
 
@@ -637,8 +676,20 @@ const AuthenticatedSettingsRouteRouteWithChildren =
     AuthenticatedSettingsRouteRouteChildren,
   )
 
+interface AuthenticatedAuditRouteChildren {
+  AuthenticatedAuditEventIdRoute: typeof AuthenticatedAuditEventIdRoute
+}
+
+const AuthenticatedAuditRouteChildren: AuthenticatedAuditRouteChildren = {
+  AuthenticatedAuditEventIdRoute: AuthenticatedAuditEventIdRoute,
+}
+
+const AuthenticatedAuditRouteWithChildren =
+  AuthenticatedAuditRoute._addFileChildren(AuthenticatedAuditRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
+  AuthenticatedAuditRoute: typeof AuthenticatedAuditRouteWithChildren
   AuthenticatedConfigRoute: typeof AuthenticatedConfigRoute
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
   AuthenticatedHealthRoute: typeof AuthenticatedHealthRoute
@@ -651,6 +702,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
+  AuthenticatedAuditRoute: AuthenticatedAuditRouteWithChildren,
   AuthenticatedConfigRoute: AuthenticatedConfigRoute,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
   AuthenticatedHealthRoute: AuthenticatedHealthRoute,

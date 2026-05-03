@@ -1,4 +1,4 @@
-import {type FormEvent, useEffect, useState} from 'react'
+import {type FormEvent, useState} from 'react'
 import {useMutation, useQueryClient} from '@tanstack/react-query'
 import {Pencil, TriangleAlert} from 'lucide-react'
 import {toast} from 'sonner'
@@ -31,8 +31,41 @@ export function EditProjectGrantsSheet({
                                            row,
                                            environments,
                                        }: EditProjectGrantsSheetProps) {
-    const queryClient = useQueryClient()
     const [open, setOpen] = useState(false)
+
+    return (
+        <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+                <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    aria-label={`编辑 ${row.username} / ${row.projectKey}`}
+                >
+                    <Pencil className='size-4'/>
+                    编辑
+                </Button>
+            </SheetTrigger>
+            <SheetContent className='sm:max-w-md'>
+                <EditProjectGrantsForm
+                    key={editFormKey(row)}
+                    row={row}
+                    environments={environments}
+                    closeSheet={() => setOpen(false)}
+                />
+            </SheetContent>
+        </Sheet>
+    )
+}
+
+function EditProjectGrantsForm({
+                                   row,
+                                   environments,
+                                   closeSheet,
+                               }: EditProjectGrantsSheetProps & {
+    closeSheet: () => void
+}) {
+    const queryClient = useQueryClient()
     const [grantType, setGrantType] = useState<GrantType | string>(
         row.environments[0]?.grantType ?? 'WRITE'
     )
@@ -40,16 +73,6 @@ export function EditProjectGrantsSheet({
         row.environments.map((environment) => environment.environmentKey)
     )
     const [error, setError] = useState<string | null>(null)
-
-    useEffect(() => {
-        if (open) {
-            setGrantType(row.environments[0]?.grantType ?? 'WRITE')
-            setEnvironmentKeys(
-                row.environments.map((environment) => environment.environmentKey)
-            )
-            setError(null)
-        }
-    }, [open, row])
 
     const mutation = useMutation({
         mutationFn: updateProjectGrants,
@@ -59,7 +82,7 @@ export function EditProjectGrantsSheet({
                 queryClient.invalidateQueries({queryKey: grantOptionsQueryKey}),
             ])
             toast.success('授权已保存')
-            setOpen(false)
+            closeSheet()
         },
         onError: (mutationError) => {
             const message = errorMessage(mutationError)
@@ -80,20 +103,7 @@ export function EditProjectGrantsSheet({
     }
 
     return (
-        <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-                <Button
-                    type='button'
-                    size='sm'
-                    variant='outline'
-                    aria-label={`编辑 ${row.username} / ${row.projectKey}`}
-                >
-                    <Pencil className='size-4'/>
-                    编辑
-                </Button>
-            </SheetTrigger>
-            <SheetContent className='sm:max-w-md'>
-                <form className='flex h-full flex-col' onSubmit={handleSubmit}>
+        <form className='flex h-full flex-col' onSubmit={handleSubmit}>
                     <SheetHeader>
                         <SheetTitle>编辑授权</SheetTitle>
                         <SheetDescription>
@@ -182,10 +192,19 @@ export function EditProjectGrantsSheet({
                             {mutation.isPending ? '保存中...' : '保存变更'}
                         </Button>
                     </SheetFooter>
-                </form>
-            </SheetContent>
-        </Sheet>
+        </form>
     )
+}
+
+function editFormKey(row: GrantGroupRow): string {
+    return [
+        row.userId,
+        row.projectKey,
+        ...row.environments.map(
+            (environment) =>
+                `${environment.environmentKey}:${environment.grantType}`
+        ),
+    ].join('|')
 }
 
 function errorMessage(error: unknown): string {

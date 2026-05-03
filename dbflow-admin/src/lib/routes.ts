@@ -1,8 +1,8 @@
-import type {LucideIcon} from 'lucide-react'
 import {
     Activity,
     KeyRound,
     LayoutDashboard,
+    type LucideIcon,
     Palette,
     ScrollText,
     Settings,

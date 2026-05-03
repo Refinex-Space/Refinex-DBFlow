@@ -18,6 +18,9 @@ Harness Powers lifecycle:
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Integration Verification](exec-plans/completed/2026-05-03-react-admin-integration-verification.md) -
+  Completed; ran the full React admin integration verification matrix, fixed real lint failures, verified packaged
+  `/admin-next` assets, and confirmed `/admin` Thymeleaf regression coverage.
 - [2026-05-03 React Admin Tests And Docs](exec-plans/completed/2026-05-03-react-admin-tests-and-docs.md) -
   Completed; added Vitest setup, DBFlow badge tests, Token plaintext reveal copy/clear coverage, login error-state
   coverage, and React admin development/deployment/cutover documentation.

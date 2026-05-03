@@ -1,4 +1,4 @@
-import {type FormEvent, useEffect, useState} from 'react'
+import {type FormEvent, useState} from 'react'
 import {useQuery} from '@tanstack/react-query'
 import {KeyRound, RefreshCw, Search as SearchIcon} from 'lucide-react'
 import {fetchTokenOptions, fetchTokens, tokenOptionsQueryKey, tokensQueryKey,} from '@/api/tokens'
@@ -31,14 +31,11 @@ type TokensPageProps = {
 
 export function TokensPage({search, onSearchChange}: TokensPageProps) {
     const filters = normalizeSearch(search)
-    const [username, setUsername] = useState(filters.username ?? '')
-    const [status, setStatus] = useState(filters.status ?? '')
     const [revealedToken, setRevealedToken] = useState<IssuedTokenResponse | null>(null)
-
-    useEffect(() => {
-        setUsername(filters.username ?? '')
-        setStatus(filters.status ?? '')
-    }, [filters.username, filters.status])
+    const formDefaults = {
+        username: filters.username ?? '',
+        status: filters.status ?? '',
+    }
 
     const tokensQuery = useQuery({
         queryKey: tokensQueryKey(filters),
@@ -51,17 +48,16 @@ export function TokensPage({search, onSearchChange}: TokensPageProps) {
 
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
+        const data = new FormData(event.currentTarget)
         onSearchChange(
             normalizeSearch({
-                username,
-                status,
+                username: formValue(data, 'username'),
+                status: formValue(data, 'status'),
             })
         )
     }
 
     function handleReset() {
-        setUsername('')
-        setStatus('')
         onSearchChange({})
     }
 
@@ -89,6 +85,7 @@ export function TokensPage({search, onSearchChange}: TokensPageProps) {
                     />
 
                     <form
+                        key={JSON.stringify(formDefaults)}
                         className='grid gap-3 rounded-md border bg-card/50 p-4 md:grid-cols-[minmax(220px,1fr)_180px_auto] md:items-end'
                         onSubmit={handleSubmit}
                     >
@@ -96,18 +93,18 @@ export function TokensPage({search, onSearchChange}: TokensPageProps) {
                             <Label htmlFor='tokens-filter-username'>用户名</Label>
                             <Input
                                 id='tokens-filter-username'
-                                value={username}
+                                name='username'
+                                defaultValue={formDefaults.username}
                                 placeholder='输入用户名关键字'
-                                onChange={(event) => setUsername(event.target.value)}
                             />
                         </div>
                         <div className='grid gap-2'>
                             <Label htmlFor='tokens-filter-status'>状态</Label>
                             <select
                                 id='tokens-filter-status'
-                                value={status}
+                                name='status'
+                                defaultValue={formDefaults.status}
                                 className={selectClassName}
-                                onChange={(event) => setStatus(event.target.value)}
                             >
                                 <option value=''>全部状态</option>
                                 <option value='ACTIVE'>ACTIVE</option>
@@ -211,6 +208,10 @@ function errorMessage(error: unknown): string {
     }
 
     return error instanceof Error ? error.message : 'Token 列表加载失败'
+}
+
+function formValue(data: FormData, name: keyof TokenFilters): string {
+    return String(data.get(name) ?? '')
 }
 
 const selectClassName = cn(

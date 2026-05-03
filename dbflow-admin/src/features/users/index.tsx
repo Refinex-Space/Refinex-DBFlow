@@ -1,4 +1,4 @@
-import {type FormEvent, useEffect, useState} from 'react'
+import {type FormEvent} from 'react'
 import {useQuery} from '@tanstack/react-query'
 import {RefreshCw, Search as SearchIcon, UserRound} from 'lucide-react'
 import {fetchUsers, usersQueryKey} from '@/api/users'
@@ -30,13 +30,10 @@ type UsersPageProps = {
 
 export function UsersPage({search, onSearchChange}: UsersPageProps) {
     const filters = normalizeSearch(search)
-    const [username, setUsername] = useState(filters.username ?? '')
-    const [status, setStatus] = useState(filters.status ?? '')
-
-    useEffect(() => {
-        setUsername(filters.username ?? '')
-        setStatus(filters.status ?? '')
-    }, [filters.username, filters.status])
+    const formDefaults = {
+        username: filters.username ?? '',
+        status: filters.status ?? '',
+    }
 
     const usersQuery = useQuery({
         queryKey: usersQueryKey(filters),
@@ -45,17 +42,16 @@ export function UsersPage({search, onSearchChange}: UsersPageProps) {
 
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
+        const data = new FormData(event.currentTarget)
         onSearchChange(
             normalizeSearch({
-                username,
-                status,
+                username: formValue(data, 'username'),
+                status: formValue(data, 'status'),
             })
         )
     }
 
     function handleReset() {
-        setUsername('')
-        setStatus('')
         onSearchChange({})
     }
 
@@ -78,6 +74,7 @@ export function UsersPage({search, onSearchChange}: UsersPageProps) {
                     />
 
                     <form
+                        key={JSON.stringify(formDefaults)}
                         className='grid gap-3 rounded-md border bg-card/50 p-4 md:grid-cols-[minmax(220px,1fr)_180px_auto] md:items-end'
                         onSubmit={handleSubmit}
                     >
@@ -85,21 +82,21 @@ export function UsersPage({search, onSearchChange}: UsersPageProps) {
                             <Label htmlFor='users-filter-username'>筛选用户名</Label>
                             <Input
                                 id='users-filter-username'
-                                value={username}
+                                name='username'
+                                defaultValue={formDefaults.username}
                                 placeholder='输入用户名关键字'
-                                onChange={(event) => setUsername(event.target.value)}
                             />
                         </div>
                         <div className='grid gap-2'>
                             <Label htmlFor='users-filter-status'>状态</Label>
                             <select
                                 id='users-filter-status'
-                                value={status}
+                                name='status'
+                                defaultValue={formDefaults.status}
                                 className={cn(
                                     'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-colors',
                                     'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50'
                                 )}
-                                onChange={(event) => setStatus(event.target.value)}
                             >
                                 <option value=''>全部状态</option>
                                 <option value='ACTIVE'>ACTIVE</option>
@@ -177,6 +174,10 @@ function normalizeSearch(search: UserFilters): UserFilters {
 function cleanOptionalString(value: string | undefined): string | undefined {
     const text = value?.trim()
     return text ? text : undefined
+}
+
+function formValue(data: FormData, name: keyof UserFilters): string {
+    return String(data.get(name) ?? '')
 }
 
 function errorMessage(error: unknown): string {

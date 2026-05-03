@@ -1,4 +1,4 @@
-import {type FormEvent, useEffect, useState} from 'react'
+import {type FormEvent, useState} from 'react'
 import type {AuditEventFilters} from '@/types/audit'
 import {Filter} from 'lucide-react'
 import {AUDIT_DEFAULT_DIRECTION, AUDIT_DEFAULT_SORT, normalizeAuditFilters,} from '@/api/audit'
@@ -39,25 +39,12 @@ export function AuditFilterSheet({
                                      onSearchChange,
                                  }: AuditFilterSheetProps) {
     const [open, setOpen] = useState(false)
-    const [form, setForm] = useState<FilterFormState>(() => formState(filters))
-
-    useEffect(() => {
-        setForm(formState(filters))
-    }, [
-        filters.from,
-        filters.to,
-        filters.userId,
-        filters.project,
-        filters.env,
-        filters.risk,
-        filters.decision,
-        filters.sqlHash,
-        filters.tool,
-        filters.size,
-    ])
+    const defaultForm = formState(filters)
+    const formKey = JSON.stringify(defaultForm)
 
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
+        const form = formValues(event.currentTarget)
         onSearchChange(
             normalizeAuditFilters({
                 from: form.from,
@@ -80,7 +67,6 @@ export function AuditFilterSheet({
 
     function handleReset() {
         const nextForm = formState({})
-        setForm(nextForm)
         onSearchChange(
             normalizeAuditFilters({
                 page: 0,
@@ -101,7 +87,7 @@ export function AuditFilterSheet({
                 </Button>
             </SheetTrigger>
             <SheetContent className='overflow-y-auto sm:max-w-lg'>
-                <form className='grid h-full gap-6' onSubmit={handleSubmit}>
+                <form key={formKey} className='grid h-full gap-6' onSubmit={handleSubmit}>
                     <SheetHeader>
                         <SheetTitle>高级筛选</SheetTitle>
                         <SheetDescription>
@@ -113,90 +99,82 @@ export function AuditFilterSheet({
                     <div className='grid gap-4'>
                         <TextField
                             id='audit-filter-from'
+                            name='from'
                             label='起始时间'
-                            value={form.from}
+                            defaultValue={defaultForm.from}
                             placeholder='2026-05-01T00:00:00Z'
-                            onChange={(from) => setForm((current) => ({...current, from}))}
                         />
                         <TextField
                             id='audit-filter-to'
+                            name='to'
                             label='结束时间'
-                            value={form.to}
+                            defaultValue={defaultForm.to}
                             placeholder='2026-05-02T00:00:00Z'
-                            onChange={(to) => setForm((current) => ({...current, to}))}
                         />
                         <TextField
                             id='audit-filter-user-id'
+                            name='userId'
                             label='用户 ID'
-                            value={form.userId}
+                            defaultValue={defaultForm.userId}
                             placeholder='1001'
-                            onChange={(userId) =>
-                                setForm((current) => ({...current, userId}))
-                            }
                         />
                         <TextField
                             id='audit-filter-project'
+                            name='project'
                             label='项目'
-                            value={form.project}
+                            defaultValue={defaultForm.project}
                             placeholder='billing-core'
-                            onChange={(project) =>
-                                setForm((current) => ({...current, project}))
-                            }
                         />
                         <TextField
                             id='audit-filter-env'
+                            name='env'
                             label='环境'
-                            value={form.env}
+                            defaultValue={defaultForm.env}
                             placeholder='prod'
-                            onChange={(env) => setForm((current) => ({...current, env}))}
                         />
                         <SelectField
                             id='audit-filter-risk'
+                            name='risk'
                             label='Risk'
-                            value={form.risk}
+                            defaultValue={defaultForm.risk}
                             options={['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']}
-                            onChange={(risk) => setForm((current) => ({...current, risk}))}
                         />
                         <SelectField
                             id='audit-filter-decision'
+                            name='decision'
                             label='Decision'
-                            value={form.decision}
+                            defaultValue={defaultForm.decision}
                             options={[
                                 'EXECUTED',
                                 'POLICY_DENIED',
                                 'REQUIRES_CONFIRMATION',
                                 'FAILED',
                             ]}
-                            onChange={(decision) =>
-                                setForm((current) => ({...current, decision}))
-                            }
                         />
                         <TextField
                             id='audit-filter-sql-hash'
+                            name='sqlHash'
                             label='SQL Hash'
-                            value={form.sqlHash}
+                            defaultValue={defaultForm.sqlHash}
                             placeholder='sha256:'
-                            onChange={(sqlHash) =>
-                                setForm((current) => ({...current, sqlHash}))
-                            }
                         />
                         <SelectField
                             id='audit-filter-tool'
+                            name='tool'
                             label='Tool'
-                            value={form.tool}
+                            defaultValue={defaultForm.tool}
                             options={[
                                 'dbflow_execute_sql',
                                 'dbflow_explain_sql',
                                 'dbflow_inspect_schema',
                             ]}
-                            onChange={(tool) => setForm((current) => ({...current, tool}))}
                         />
                         <SelectField
                             id='audit-filter-size'
+                            name='size'
                             label='每页'
-                            value={form.size}
+                            defaultValue={defaultForm.size}
                             options={['10', '20', '50']}
-                            onChange={(size) => setForm((current) => ({...current, size}))}
                         />
                     </div>
 
@@ -214,25 +192,25 @@ export function AuditFilterSheet({
 
 function TextField({
                        id,
+                       name,
                        label,
-                       value,
+                       defaultValue,
                        placeholder,
-                       onChange,
                    }: {
     id: string
+    name: keyof FilterFormState
     label: string
-    value: string
+    defaultValue: string
     placeholder: string
-    onChange: (value: string) => void
 }) {
     return (
         <div className='grid gap-2'>
             <Label htmlFor={id}>{label}</Label>
             <Input
                 id={id}
-                value={value}
+                name={name}
+                defaultValue={defaultValue}
                 placeholder={placeholder}
-                onChange={(event) => onChange(event.target.value)}
             />
         </div>
     )
@@ -240,25 +218,25 @@ function TextField({
 
 function SelectField({
                          id,
+                         name,
                          label,
-                         value,
+                         defaultValue,
                          options,
-                         onChange,
                      }: {
     id: string
+    name: keyof FilterFormState
     label: string
-    value: string
+    defaultValue: string
     options: string[]
-    onChange: (value: string) => void
 }) {
     return (
         <div className='grid gap-2'>
             <Label htmlFor={id}>{label}</Label>
             <select
                 id={id}
-                value={value}
+                name={name}
+                defaultValue={defaultValue}
                 className={selectClassName}
-                onChange={(event) => onChange(event.target.value)}
             >
                 <option value=''>全部</option>
                 {options.map((option) => (
@@ -284,6 +262,27 @@ function formState(filters: AuditEventFilters): FilterFormState {
         tool: filters.tool ?? '',
         size: String(filters.size ?? 20),
     }
+}
+
+function formValues(form: HTMLFormElement): FilterFormState {
+    const data = new FormData(form)
+
+    return {
+        from: formValue(data, 'from'),
+        to: formValue(data, 'to'),
+        userId: formValue(data, 'userId'),
+        project: formValue(data, 'project'),
+        env: formValue(data, 'env'),
+        risk: formValue(data, 'risk'),
+        decision: formValue(data, 'decision'),
+        sqlHash: formValue(data, 'sqlHash'),
+        tool: formValue(data, 'tool'),
+        size: formValue(data, 'size'),
+    }
+}
+
+function formValue(data: FormData, name: keyof FilterFormState): string {
+    return String(data.get(name) ?? '')
 }
 
 const selectClassName = cn(

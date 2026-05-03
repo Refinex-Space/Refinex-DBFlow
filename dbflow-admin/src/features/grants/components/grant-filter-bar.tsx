@@ -1,4 +1,4 @@
-import {type FormEvent, useEffect, useState} from 'react'
+import {type FormEvent} from 'react'
 import {Search} from 'lucide-react'
 import type {GrantFilters} from '@/types/access'
 import {cn} from '@/lib/utils'
@@ -12,33 +12,33 @@ type GrantFilterBarProps = {
 }
 
 export function GrantFilterBar({search, onSearchChange}: GrantFilterBarProps) {
-    const [username, setUsername] = useState(search.username ?? '')
-    const [projectKey, setProjectKey] = useState(search.projectKey ?? '')
-    const [environmentKey, setEnvironmentKey] = useState(search.environmentKey ?? '')
-    const [status, setStatus] = useState(search.status ?? '')
-
-    useEffect(() => {
-        setUsername(search.username ?? '')
-        setProjectKey(search.projectKey ?? '')
-        setEnvironmentKey(search.environmentKey ?? '')
-        setStatus(search.status ?? '')
-    }, [search.username, search.projectKey, search.environmentKey, search.status])
+    const formDefaults = {
+        username: search.username ?? '',
+        projectKey: search.projectKey ?? '',
+        environmentKey: search.environmentKey ?? '',
+        status: search.status ?? '',
+    }
 
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
-        onSearchChange(cleanFilters({username, projectKey, environmentKey, status}))
+        const data = new FormData(event.currentTarget)
+        onSearchChange(
+            cleanFilters({
+                username: formValue(data, 'username'),
+                projectKey: formValue(data, 'projectKey'),
+                environmentKey: formValue(data, 'environmentKey'),
+                status: formValue(data, 'status'),
+            })
+        )
     }
 
     function handleReset() {
-        setUsername('')
-        setProjectKey('')
-        setEnvironmentKey('')
-        setStatus('')
         onSearchChange({})
     }
 
     return (
         <form
+            key={JSON.stringify(formDefaults)}
             className='grid gap-3 rounded-md border bg-card/50 p-4 lg:grid-cols-[repeat(4,minmax(140px,1fr))_auto] lg:items-end'
             onSubmit={handleSubmit}
         >
@@ -46,36 +46,36 @@ export function GrantFilterBar({search, onSearchChange}: GrantFilterBarProps) {
                 <Label htmlFor='grants-filter-username'>用户</Label>
                 <Input
                     id='grants-filter-username'
-                    value={username}
+                    name='username'
+                    defaultValue={formDefaults.username}
                     placeholder='alice'
-                    onChange={(event) => setUsername(event.target.value)}
                 />
             </div>
             <div className='grid gap-2'>
                 <Label htmlFor='grants-filter-project'>项目</Label>
                 <Input
                     id='grants-filter-project'
-                    value={projectKey}
+                    name='projectKey'
+                    defaultValue={formDefaults.projectKey}
                     placeholder='billing-core'
-                    onChange={(event) => setProjectKey(event.target.value)}
                 />
             </div>
             <div className='grid gap-2'>
                 <Label htmlFor='grants-filter-environment'>环境</Label>
                 <Input
                     id='grants-filter-environment'
-                    value={environmentKey}
+                    name='environmentKey'
+                    defaultValue={formDefaults.environmentKey}
                     placeholder='prod'
-                    onChange={(event) => setEnvironmentKey(event.target.value)}
                 />
             </div>
             <div className='grid gap-2'>
                 <Label htmlFor='grants-filter-status'>状态</Label>
                 <select
                     id='grants-filter-status'
-                    value={status}
+                    name='status'
+                    defaultValue={formDefaults.status}
                     className={selectClassName}
-                    onChange={(event) => setStatus(event.target.value)}
                 >
                     <option value=''>全部状态</option>
                     <option value='ACTIVE'>ACTIVE</option>
@@ -112,6 +112,10 @@ function cleanFilters(filters: GrantFilters): GrantFilters {
 function cleanOptionalString(value: string | undefined): string | undefined {
     const text = value?.trim()
     return text ? text : undefined
+}
+
+function formValue(data: FormData, name: keyof GrantFilters): string {
+    return String(data.get(name) ?? '')
 }
 
 const selectClassName = cn(

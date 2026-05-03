@@ -11,8 +11,6 @@ type HealthCardProps = {
 }
 
 export function HealthCard({item}: HealthCardProps) {
-    const Icon = iconForComponent(item.component)
-
     return (
         <Card
             role='article'
@@ -24,7 +22,7 @@ export function HealthCard({item}: HealthCardProps) {
                     <div className='flex min-w-0 items-start gap-3'>
                         <div
                             className='flex size-9 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground'>
-                            <Icon className='size-4'/>
+                            {componentIcon(item.component)}
                         </div>
                         <div className='min-w-0 space-y-1'>
                             <CardTitle className='truncate text-sm'>
@@ -81,24 +79,24 @@ function ToneBadge({tone}: { tone: string }) {
     )
 }
 
-function iconForComponent(component: string) {
+function componentIcon(component: string) {
     const lowerComponent = component.toLowerCase()
 
     if (lowerComponent.includes('database')) {
-        return Database
+        return <Database className='size-4'/>
     }
 
     if (lowerComponent.includes('datasource')) {
-        return Server
+        return <Server className='size-4'/>
     }
 
     if (lowerComponent.includes('nacos')) {
-        return Settings2
+        return <Settings2 className='size-4'/>
     }
 
     if (lowerComponent.includes('mcp')) {
-        return Network
+        return <Network className='size-4'/>
     }
 
-    return Activity
+    return <Activity className='size-4'/>
 }

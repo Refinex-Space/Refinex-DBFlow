@@ -18,6 +18,10 @@ No active plans.
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Dangerous Policies Page](exec-plans/completed/2026-05-03-react-admin-dangerous-policies-page.md) -
+  Completed; implemented the React `/policies/dangerous` read-only dangerous policy page backed by
+  `/admin/api/policies/dangerous`, including default high-risk policy rows, DROP whitelist rows, fixed strengthened
+  policy rules, denied-audit navigation, empty whitelist guidance, reason details, and sensitive-field verification.
 - [2026-05-03 React Admin Config Page](exec-plans/completed/2026-05-03-react-admin-config-page.md) -
   Completed; implemented the React `/config` read-only configuration page backed by `/admin/api/config`, including
   sanitized source labels, config table rows, refresh, detail Sheet, empty state, and sensitive-field verification.

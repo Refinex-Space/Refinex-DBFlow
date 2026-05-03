@@ -8,35 +8,36 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import {Route as rootRouteImport} from './routes/__root'
-import {Route as ClerkRouteRouteImport} from './routes/clerk/route'
-import {Route as AuthenticatedRouteRouteImport} from './routes/_authenticated/route'
-import {Route as AuthenticatedIndexRouteImport} from './routes/_authenticated/index'
-import {Route as AuthenticatedUsersRouteImport} from './routes/_authenticated/users'
-import {Route as AuthenticatedTokensRouteImport} from './routes/_authenticated/tokens'
-import {Route as AuthenticatedGrantsRouteImport} from './routes/_authenticated/grants'
-import {Route as AuthenticatedConfigRouteImport} from './routes/_authenticated/config'
-import {Route as errors503RouteImport} from './routes/(errors)/503'
-import {Route as errors500RouteImport} from './routes/(errors)/500'
-import {Route as errors404RouteImport} from './routes/(errors)/404'
-import {Route as errors403RouteImport} from './routes/(errors)/403'
-import {Route as errors401RouteImport} from './routes/(errors)/401'
-import {Route as authSignUpRouteImport} from './routes/(auth)/sign-up'
-import {Route as authSignIn2RouteImport} from './routes/(auth)/sign-in-2'
-import {Route as authSignInRouteImport} from './routes/(auth)/sign-in'
-import {Route as authOtpRouteImport} from './routes/(auth)/otp'
-import {Route as authLoginRouteImport} from './routes/(auth)/login'
-import {Route as authForgotPasswordRouteImport} from './routes/(auth)/forgot-password'
-import {Route as ClerkauthRouteRouteImport} from './routes/clerk/(auth)/route'
-import {Route as AuthenticatedSettingsRouteRouteImport} from './routes/_authenticated/settings/route'
-import {Route as AuthenticatedSettingsIndexRouteImport} from './routes/_authenticated/settings/index'
-import {Route as ClerkauthSignUpRouteImport} from './routes/clerk/(auth)/sign-up'
-import {Route as ClerkauthSignInRouteImport} from './routes/clerk/(auth)/sign-in'
-import {Route as AuthenticatedSettingsNotificationsRouteImport} from './routes/_authenticated/settings/notifications'
-import {Route as AuthenticatedSettingsDisplayRouteImport} from './routes/_authenticated/settings/display'
-import {Route as AuthenticatedSettingsAppearanceRouteImport} from './routes/_authenticated/settings/appearance'
-import {Route as AuthenticatedSettingsAccountRouteImport} from './routes/_authenticated/settings/account'
-import {Route as AuthenticatedErrorsErrorRouteImport} from './routes/_authenticated/errors/$error'
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as ClerkRouteRouteImport } from './routes/clerk/route'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
+import { Route as AuthenticatedTokensRouteImport } from './routes/_authenticated/tokens'
+import { Route as AuthenticatedGrantsRouteImport } from './routes/_authenticated/grants'
+import { Route as AuthenticatedConfigRouteImport } from './routes/_authenticated/config'
+import { Route as errors503RouteImport } from './routes/(errors)/503'
+import { Route as errors500RouteImport } from './routes/(errors)/500'
+import { Route as errors404RouteImport } from './routes/(errors)/404'
+import { Route as errors403RouteImport } from './routes/(errors)/403'
+import { Route as errors401RouteImport } from './routes/(errors)/401'
+import { Route as authSignUpRouteImport } from './routes/(auth)/sign-up'
+import { Route as authSignIn2RouteImport } from './routes/(auth)/sign-in-2'
+import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
+import { Route as authOtpRouteImport } from './routes/(auth)/otp'
+import { Route as authLoginRouteImport } from './routes/(auth)/login'
+import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
+import { Route as ClerkauthRouteRouteImport } from './routes/clerk/(auth)/route'
+import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
+import { Route as ClerkauthSignUpRouteImport } from './routes/clerk/(auth)/sign-up'
+import { Route as ClerkauthSignInRouteImport } from './routes/clerk/(auth)/sign-in'
+import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
+import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
+import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
+import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
+import { Route as AuthenticatedPoliciesDangerousRouteImport } from './routes/_authenticated/policies/dangerous'
+import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 
 const ClerkRouteRoute = ClerkRouteRouteImport.update({
   id: '/clerk',
@@ -55,21 +56,21 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
-    getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedTokensRoute = AuthenticatedTokensRouteImport.update({
-    id: '/tokens',
-    path: '/tokens',
+  id: '/tokens',
+  path: '/tokens',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedGrantsRoute = AuthenticatedGrantsRouteImport.update({
   id: '/grants',
   path: '/grants',
-    getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedConfigRoute = AuthenticatedConfigRouteImport.update({
-    id: '/config',
-    path: '/config',
+  id: '/config',
+  path: '/config',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const errors503Route = errors503RouteImport.update({
@@ -177,6 +178,12 @@ const AuthenticatedSettingsAccountRoute =
     path: '/account',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedPoliciesDangerousRoute =
+  AuthenticatedPoliciesDangerousRouteImport.update({
+    id: '/policies/dangerous',
+    path: '/policies/dangerous',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedErrorsErrorRoute =
   AuthenticatedErrorsErrorRouteImport.update({
     id: '/errors/$error',
@@ -199,11 +206,12 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-    '/config': typeof AuthenticatedConfigRoute
+  '/config': typeof AuthenticatedConfigRoute
   '/grants': typeof AuthenticatedGrantsRoute
-    '/tokens': typeof AuthenticatedTokensRoute
+  '/tokens': typeof AuthenticatedTokensRoute
   '/users': typeof AuthenticatedUsersRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/policies/dangerous': typeof AuthenticatedPoliciesDangerousRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -225,12 +233,13 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-    '/config': typeof AuthenticatedConfigRoute
+  '/config': typeof AuthenticatedConfigRoute
   '/grants': typeof AuthenticatedGrantsRoute
-    '/tokens': typeof AuthenticatedTokensRoute
+  '/tokens': typeof AuthenticatedTokensRoute
   '/users': typeof AuthenticatedUsersRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/policies/dangerous': typeof AuthenticatedPoliciesDangerousRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -256,12 +265,13 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
-    '/_authenticated/config': typeof AuthenticatedConfigRoute
+  '/_authenticated/config': typeof AuthenticatedConfigRoute
   '/_authenticated/grants': typeof AuthenticatedGrantsRoute
-    '/_authenticated/tokens': typeof AuthenticatedTokensRoute
+  '/_authenticated/tokens': typeof AuthenticatedTokensRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/_authenticated/policies/dangerous': typeof AuthenticatedPoliciesDangerousRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -277,7 +287,7 @@ export interface FileRouteTypes {
     | '/clerk'
     | '/settings'
     | '/forgot-password'
-      | '/login'
+    | '/login'
     | '/otp'
     | '/sign-in'
     | '/sign-in-2'
@@ -287,11 +297,12 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
-      | '/config'
-      | '/grants'
-      | '/tokens'
-      | '/users'
+    | '/config'
+    | '/grants'
+    | '/tokens'
+    | '/users'
     | '/errors/$error'
+    | '/policies/dangerous'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/display'
@@ -303,7 +314,7 @@ export interface FileRouteTypes {
   to:
     | '/clerk'
     | '/forgot-password'
-      | '/login'
+    | '/login'
     | '/otp'
     | '/sign-in'
     | '/sign-in-2'
@@ -313,12 +324,13 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
-      | '/config'
-      | '/grants'
-      | '/tokens'
-      | '/users'
+    | '/config'
+    | '/grants'
+    | '/tokens'
+    | '/users'
     | '/'
     | '/errors/$error'
+    | '/policies/dangerous'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/display'
@@ -333,7 +345,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/clerk/(auth)'
     | '/(auth)/forgot-password'
-      | '/(auth)/login'
+    | '/(auth)/login'
     | '/(auth)/otp'
     | '/(auth)/sign-in'
     | '/(auth)/sign-in-2'
@@ -343,12 +355,13 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
-      | '/_authenticated/config'
-      | '/_authenticated/grants'
-      | '/_authenticated/tokens'
-      | '/_authenticated/users'
+    | '/_authenticated/config'
+    | '/_authenticated/grants'
+    | '/_authenticated/tokens'
+    | '/_authenticated/users'
     | '/_authenticated/'
     | '/_authenticated/errors/$error'
+    | '/_authenticated/policies/dangerous'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
@@ -404,13 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-      '/_authenticated/tokens': {
-          id: '/_authenticated/tokens'
-          path: '/tokens'
-          fullPath: '/tokens'
-          preLoaderRoute: typeof AuthenticatedTokensRouteImport
-          parentRoute: typeof AuthenticatedRouteRoute
-      }
+    '/_authenticated/tokens': {
+      id: '/_authenticated/tokens'
+      path: '/tokens'
+      fullPath: '/tokens'
+      preLoaderRoute: typeof AuthenticatedTokensRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/grants': {
       id: '/_authenticated/grants'
       path: '/grants'
@@ -418,13 +431,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGrantsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-      '/_authenticated/config': {
-          id: '/_authenticated/config'
-          path: '/config'
-          fullPath: '/config'
-          preLoaderRoute: typeof AuthenticatedConfigRouteImport
-          parentRoute: typeof AuthenticatedRouteRoute
-      }
+    '/_authenticated/config': {
+      id: '/_authenticated/config'
+      path: '/config'
+      fullPath: '/config'
+      preLoaderRoute: typeof AuthenticatedConfigRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/(errors)/503': {
       id: '/(errors)/503'
       path: '/503'
@@ -565,6 +578,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/policies/dangerous': {
+      id: '/_authenticated/policies/dangerous'
+      path: '/policies/dangerous'
+      fullPath: '/policies/dangerous'
+      preLoaderRoute: typeof AuthenticatedPoliciesDangerousRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/errors/$error': {
       id: '/_authenticated/errors/$error'
       path: '/errors/$error'
@@ -600,22 +620,24 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
-    AuthenticatedConfigRoute: typeof AuthenticatedConfigRoute
+  AuthenticatedConfigRoute: typeof AuthenticatedConfigRoute
   AuthenticatedGrantsRoute: typeof AuthenticatedGrantsRoute
-    AuthenticatedTokensRoute: typeof AuthenticatedTokensRoute
+  AuthenticatedTokensRoute: typeof AuthenticatedTokensRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedPoliciesDangerousRoute: typeof AuthenticatedPoliciesDangerousRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
-    AuthenticatedConfigRoute: AuthenticatedConfigRoute,
+  AuthenticatedConfigRoute: AuthenticatedConfigRoute,
   AuthenticatedGrantsRoute: AuthenticatedGrantsRoute,
-    AuthenticatedTokensRoute: AuthenticatedTokensRoute,
+  AuthenticatedTokensRoute: AuthenticatedTokensRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedPoliciesDangerousRoute: AuthenticatedPoliciesDangerousRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

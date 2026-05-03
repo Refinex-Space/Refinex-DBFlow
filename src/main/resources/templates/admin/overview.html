@@ -12,7 +12,7 @@
                         th:value="${option.value}">全部环境
                 </option>
             </select>
-            <a class="btn btn-icon" th:href="@{/admin}" aria-label="刷新" title="刷新">
+            <a aria-label="刷新" class="btn btn-icon" th:href="@{/admin-legacy}" title="刷新">
                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
             </a>
         </div>
@@ -29,7 +29,8 @@
     </div>
     <div class="split">
         <div class="panel">
-            <div class="panel-head"><h2>最近审计事件</h2><a class="btn text" th:href="@{/admin/audit}">查看全部</a>
+            <div class="panel-head"><h2>最近审计事件</h2><a class="btn text"
+                                                            th:href="@{/admin-legacy/audit}">查看全部</a>
             </div>
             <div class="table-wrap">
                 <table>
@@ -53,7 +54,7 @@
                         <td><span th:class="'status ' + ${row.decisionTone}" th:text="${row.decision}">EXECUTED</span>
                         </td>
                         <td class="mono" th:text="${row.sqlHash}">sha256:</td>
-                        <td><a class="btn text" th:href="@{/admin/audit/{id}(id=${row.id})}">详情</a></td>
+                        <td><a class="btn text" th:href="@{/admin-legacy/audit/{id}(id=${row.id})}">详情</a></td>
                     </tr>
                     </tbody>
                     <tbody th:if="${overview.recentAuditRows.isEmpty()}">
@@ -66,7 +67,7 @@
         </div>
         <div class="panel">
             <div class="panel-head"><h2>需要关注</h2><a class="btn text"
-                                                        th:href="@{/admin/policies/dangerous}">危险策略</a></div>
+                                                        th:href="@{/admin-legacy/policies/dangerous}">危险策略</a></div>
             <div class="panel-body small-list" th:if="${!overview.attentionItems.isEmpty()}">
                 <div class="small-row" th:each="item : ${overview.attentionItems}">
                     <span th:text="${item.label}">DROP TABLE 被拒绝</span>

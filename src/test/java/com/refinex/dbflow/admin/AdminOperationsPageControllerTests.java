@@ -154,7 +154,7 @@ class AdminOperationsPageControllerTests {
      */
     @Test
     void shouldRenderAuditListWithPagination() throws Exception {
-        mockMvc.perform(get("/admin/audit")
+        mockMvc.perform(get("/admin-legacy/audit")
                         .with(user("admin").roles("ADMIN"))
                         .param("project", projectKey)
                         .param("page", "0")
@@ -173,7 +173,7 @@ class AdminOperationsPageControllerTests {
      */
     @Test
     void shouldFilterAuditListAndExposeDeniedReasonLink() throws Exception {
-        mockMvc.perform(get("/admin/audit")
+        mockMvc.perform(get("/admin-legacy/audit")
                         .with(user("admin").roles("ADMIN"))
                         .param("project", projectKey)
                         .param("decision", "POLICY_DENIED")
@@ -191,7 +191,7 @@ class AdminOperationsPageControllerTests {
      */
     @Test
     void shouldRenderSanitizedAuditDetailWithDeniedReason() throws Exception {
-        mockMvc.perform(get("/admin/audit/{id}", deniedEvent.getId())
+        mockMvc.perform(get("/admin-legacy/audit/{id}", deniedEvent.getId())
                         .with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("审计详情")))
@@ -208,7 +208,7 @@ class AdminOperationsPageControllerTests {
      */
     @Test
     void shouldRenderReadOnlyDangerousPolicyPage() throws Exception {
-        mockMvc.perform(get("/admin/policies/dangerous")
+        mockMvc.perform(get("/admin-legacy/policies/dangerous")
                         .with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("默认高危策略")))
@@ -225,7 +225,7 @@ class AdminOperationsPageControllerTests {
      */
     @Test
     void shouldRenderSystemHealthPageWithoutSecrets() throws Exception {
-        mockMvc.perform(get("/admin/health")
+        mockMvc.perform(get("/admin-legacy/health")
                         .with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("元数据库")))
@@ -244,11 +244,11 @@ class AdminOperationsPageControllerTests {
      */
     @Test
     void shouldRejectNonAdminOperationsPages() throws Exception {
-        mockMvc.perform(get("/admin/audit").with(user("operator").roles("USER")))
+        mockMvc.perform(get("/admin-legacy/audit").with(user("operator").roles("USER")))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/admin/policies/dangerous").with(user("operator").roles("USER")))
+        mockMvc.perform(get("/admin-legacy/policies/dangerous").with(user("operator").roles("USER")))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/admin/health").with(user("operator").roles("USER")))
+        mockMvc.perform(get("/admin-legacy/health").with(user("operator").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 }

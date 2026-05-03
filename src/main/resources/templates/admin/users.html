@@ -25,7 +25,7 @@
             <span class="k">状态</span><span th:text="${param.status[0]}">x</span>
         </span>
         <span class="spacer"></span>
-        <a class="btn text" th:href="@{/admin/users}">重置</a>
+        <a class="btn text" th:href="@{/admin-legacy/users}">重置</a>
     </div>
 
     <!-- 主体：用户列表 -->
@@ -59,20 +59,20 @@
                     <td th:text="${row.activeTokenCount}">1</td>
                     <td>
                         <div class="actions">
-                            <a class="btn text" th:href="@{/admin/grants(username=${row.username})}">授权</a>
+                            <a class="btn text" th:href="@{/admin-legacy/grants(username=${row.username})}">授权</a>
                             <!-- 重置密码：弹出内联 modal -->
                             <button class="btn text"
                                     th:data-drawer-open="'#resetPwdDrawer-' + ${row.id}"
                                     type="button">重置密码</button>
                             <!-- 禁用：仅 ACTIVE 且非初始化管理员可操作 -->
                             <form class="inline-form" method="post"
-                                  th:action="@{/admin/users/{userId}/disable(userId=${row.id})}"
+                                  th:action="@{/admin-legacy/users/{userId}/disable(userId=${row.id})}"
                                   th:if="${row.status == 'ACTIVE' and row.username != initialAdminUsername}">
                                 <button class="btn text danger-text" type="submit">禁用</button>
                             </form>
                             <!-- 启用：仅 DISABLED 可操作 -->
                             <form class="inline-form" method="post"
-                                  th:action="@{/admin/users/{userId}/enable(userId=${row.id})}"
+                                  th:action="@{/admin-legacy/users/{userId}/enable(userId=${row.id})}"
                                   th:if="${row.status == 'DISABLED'}">
                                 <button class="btn text" type="submit">启用</button>
                             </form>
@@ -95,7 +95,7 @@
                 <button class="btn" data-drawer-close type="button">关闭</button>
             </div>
             <form class="drawer-body drawer-form" method="post"
-                  th:action="@{/admin/users/{userId}/reset-password(userId=${row.id})}">
+                  th:action="@{/admin-legacy/users/{userId}/reset-password(userId=${row.id})}">
                 <div class="field">
                     <label>新密码</label>
                     <input autocomplete="new-password" class="control" name="newPassword"
@@ -116,7 +116,7 @@
             <h2>新建用户</h2>
             <button class="btn" data-drawer-close type="button">关闭</button>
         </div>
-        <form class="drawer-body drawer-form" method="post" th:action="@{/admin/users}">
+        <form class="drawer-body drawer-form" method="post" th:action="@{/admin-legacy/users}">
             <div class="field">
                 <label>用户名</label>
                 <input class="control" name="username" placeholder="ops.alice" required>
@@ -175,7 +175,7 @@
                 </select>
             </div>
             <div class="drawer-foot">
-                <a class="btn" th:href="@{/admin/users}">重置</a>
+                <a class="btn" th:href="@{/admin-legacy/users}">重置</a>
                 <button class="btn primary" type="submit">应用筛选</button>
             </div>
         </form>

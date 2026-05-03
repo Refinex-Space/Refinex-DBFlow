@@ -18,6 +18,10 @@ Harness Powers lifecycle:
 
 ## Completed Plans
 
+- [2026-05-03 React Admin `/admin` Cutover](exec-plans/completed/2026-05-03-react-admin-admin-cutover.md) -
+  Completed; promoted the accepted React admin SPA from `/admin-next` to `/admin`, moved legacy Thymeleaf routes to
+  `/admin-legacy`, verified `/admin/api/**` and `/admin/assets/**` boundaries, and packaged React assets under
+  `static/admin/`.
 - [2026-05-03 React Admin Integration Verification](exec-plans/completed/2026-05-03-react-admin-integration-verification.md) -
   Completed; ran the full React admin integration verification matrix, fixed real lint failures, verified packaged
   `/admin-next` assets, and confirmed `/admin` Thymeleaf regression coverage.

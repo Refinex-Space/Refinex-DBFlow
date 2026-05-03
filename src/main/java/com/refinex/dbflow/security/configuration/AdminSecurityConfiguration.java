@@ -126,19 +126,18 @@ public class AdminSecurityConfiguration {
     @Order(ADMIN_SECURITY_ORDER)
     public SecurityFilterChain adminSecurityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
                                                         AdminSessionViewService sessionViewService) throws Exception {
-        http.securityMatcher("/admin/**", "/admin-next", "/admin-next/**", "/login", "/logout", "/admin-assets/**")
+        http.securityMatcher("/admin", "/admin/**", "/admin-legacy", "/admin-legacy/**", "/login", "/logout",
+                        "/admin-assets/**")
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/login",
                                 "/admin-assets/**",
-                                "/admin-next",
-                                "/admin-next/",
-                                "/admin-next/index.html",
-                                "/admin-next/assets/**",
-                                "/admin-next/favicon*").permitAll()
+                                "/admin/assets/**",
+                                "/admin/favicon*").permitAll()
                         .requestMatchers("/admin/api/**").hasRole("ADMIN")
+                        .requestMatchers("/admin-legacy", "/admin-legacy/**").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/admin-next/**").permitAll()
+                        .requestMatchers("/admin").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(new AdminAuthenticationEntryPoint()))

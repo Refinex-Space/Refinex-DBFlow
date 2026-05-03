@@ -78,7 +78,7 @@ class AdminOverviewRealDataControllerTests {
     @Test
     @Order(1)
     void shouldRenderRealEmptyStateWithoutPrototypeRows() throws Exception {
-        mockMvc.perform(get("/admin").with(user("actual-admin").roles("ADMIN")))
+        mockMvc.perform(get("/admin-legacy").with(user("actual-admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("actual-admin")))
                 .andExpect(content().string(containsString("当前暂无审计事件")))
@@ -128,7 +128,7 @@ class AdminOverviewRealDataControllerTests {
                 null
         ));
 
-        mockMvc.perform(get("/admin").with(user("actual-admin").roles("ADMIN")))
+        mockMvc.perform(get("/admin-legacy").with(user("actual-admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("actual-admin")))
                 .andExpect(content().string(containsString(project.getProjectKey())))
@@ -148,7 +148,7 @@ class AdminOverviewRealDataControllerTests {
      */
     @Test
     void shouldRejectNonAdminOverviewRequest() throws Exception {
-        mockMvc.perform(get("/admin").with(user("operator").roles("USER")))
+        mockMvc.perform(get("/admin-legacy").with(user("operator").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 }

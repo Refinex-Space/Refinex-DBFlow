@@ -46,12 +46,13 @@ set +a
 
 访问：
 
-| 入口           | 地址                                      |
-|--------------|-----------------------------------------|
-| 管理端登录        | `http://127.0.0.1:8080/login`           |
-| React 新后台试运行 | `http://127.0.0.1:8080/admin-next`      |
-| Health       | `http://127.0.0.1:8080/actuator/health` |
-| MCP          | `http://127.0.0.1:8080/mcp`             |
+| 入口             | 地址                                      |
+|----------------|-----------------------------------------|
+| 管理端登录          | `http://127.0.0.1:8080/login`           |
+| React 管理端      | `http://127.0.0.1:8080/admin`           |
+| 旧 Thymeleaf 后台 | `http://127.0.0.1:8080/admin-legacy`    |
+| Health         | `http://127.0.0.1:8080/actuator/health` |
+| MCP            | `http://127.0.0.1:8080/mcp`             |
 
 初始管理员 username/password 以 Nacos dev YAML 或受管密钥配置中的 `dbflow.admin.initial-user.*`
 为准。首次登录后请立即修改管理员密码，再创建个人用户、授权 project/env、颁发 MCP Token。
@@ -65,7 +66,7 @@ set +a
 pnpm --dir dbflow-admin dev
 ```
 
-访问 `http://127.0.0.1:5173/admin-next`。Vite dev server 会代理 `/admin/api/**`、`/login`、`/logout` 和
+访问 `http://127.0.0.1:5173/admin`。Vite dev server 会代理 `/admin/api/**`、`/login`、`/logout` 和
 `/actuator` 到后端。未登录时先访问 `/login` 建立管理端 session。
 
 ## 3. 配置 project/env
@@ -138,8 +139,8 @@ Testcontainers 集成测试在本机无 Docker runtime 时会自动跳过。
 ./mvnw -Preact-admin -DskipTests package
 ```
 
-打包结果会包含 `/admin-next/**` 静态资源。未启用该 profile 时，后端仍保留 `/admin` Thymeleaf 管理端和
-`/admin/api/**` JSON API，但 jar 内不会包含新 React 前端资产。
+打包结果会包含 `/admin/**` React 静态资源。未启用该 profile 时，`/admin/api/**` JSON API 和
+`/admin-legacy/**` Thymeleaf 后台仍存在，但 jar 内不会包含 React 前端资产。
 
 jar 启动：
 
@@ -157,8 +158,8 @@ java -jar target/refinex-dbflow-0.1.0-SNAPSHOT.jar
 - `/mcp` 不接受 query string token，只接受 Bearer Token。
 - 不要提交真实数据库密码、MCP Token、Token pepper 或 Nacos 密码。
 - 生产应使用受管管理员账号，并轮换 `dbflow.security.mcp-token.pepper`。
-- `/admin` 是当前稳定管理端；`/admin-next` 是 React 新后台试运行入口。cutover 前两者共享登录、session、CSRF 和
-  `/admin/api/**`，不要让 React 新后台绕过 Spring Security。
+- `/admin` 是 React 管理端正式入口；`/admin-legacy/**` 是短期过渡排障入口，仍必须要求管理员 session。
+- `/admin/api/**` 保持 JSON API，不能被 SPA fallback 或 legacy 页面路由捕获。
 - Token 明文只在颁发/重发响应中一次性展示。管理端、日志、审计、文档和部署配置都不得保存真实 Token 明文。
 
 ### 单实例容量治理

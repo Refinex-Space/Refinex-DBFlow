@@ -53,7 +53,7 @@ class AdminConfigRealDataControllerTests {
      */
     @Test
     void shouldRenderRealRedactedConfigRows() throws Exception {
-        mockMvc.perform(get("/admin/config").with(user("config-admin").roles("ADMIN")))
+        mockMvc.perform(get("/admin-legacy/config").with(user("config-admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("config-admin")))
                 .andExpect(content().string(containsString("config-real")))
@@ -78,7 +78,7 @@ class AdminConfigRealDataControllerTests {
      */
     @Test
     void shouldRejectNonAdminConfigRequest() throws Exception {
-        mockMvc.perform(get("/admin/config").with(user("operator").roles("USER")))
+        mockMvc.perform(get("/admin-legacy/config").with(user("operator").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 }

@@ -1664,7 +1664,7 @@ git diff --check
 3. README 标注 `/admin-legacy` 仅用于过渡期排障。
 4. Security 中 `/admin-legacy/**` 仍需 ROLE_ADMIN。
 
-方案 B：完全删除旧后台
+方案 B：完全删除旧后台(推荐)
 1. 删除 `src/main/resources/templates/admin/**`。
 2. 删除 `src/main/resources/static/admin-assets/**` 中仅 Thymeleaf 使用的 CSS/JS。
 3. 删除 `AdminHomeController` 中 SSR page methods，只保留 API controllers。

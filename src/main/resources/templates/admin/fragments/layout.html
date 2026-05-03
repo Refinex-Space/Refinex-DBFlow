@@ -22,40 +22,40 @@
             <div class="nav-group">
                 <div class="nav-label">工作台</div>
                 <a class="nav-item" th:attr="aria-current=${activeNav == 'overview'} ? 'page' : null"
-                   th:classappend="${activeNav == 'overview'} ? ' active'" th:href="@{/admin}">总览</a>
+                   th:classappend="${activeNav == 'overview'} ? ' active'" th:href="@{/admin-legacy}">总览</a>
             </div>
             <div class="nav-group">
                 <div class="nav-label">身份与访问</div>
                 <a class="nav-item" th:classappend="${activeNav == 'users'} ? ' active'"
                    th:attr="aria-current=${activeNav == 'users'} ? 'page' : null"
-                   th:href="@{/admin/users}">用户管理</a>
+                   th:href="@{/admin-legacy/users}">用户管理</a>
                 <a class="nav-item" th:classappend="${activeNav == 'grants'} ? ' active'"
                    th:attr="aria-current=${activeNav == 'grants'} ? 'page' : null"
-                   th:href="@{/admin/grants}">项目授权</a>
+                   th:href="@{/admin-legacy/grants}">项目授权</a>
                 <a class="nav-item" th:attr="aria-current=${activeNav == 'tokens'} ? 'page' : null"
-                   th:classappend="${activeNav == 'tokens'} ? ' active'" th:href="@{/admin/tokens}">Token
+                   th:classappend="${activeNav == 'tokens'} ? ' active'" th:href="@{/admin-legacy/tokens}">Token
                     管理</a>
             </div>
             <div class="nav-group">
                 <div class="nav-label">配置与策略</div>
                 <a class="nav-item" th:classappend="${activeNav == 'config'} ? ' active'"
                    th:attr="aria-current=${activeNav == 'config'} ? 'page' : null"
-                   th:href="@{/admin/config}">配置查看</a>
+                   th:href="@{/admin-legacy/config}">配置查看</a>
                 <a class="nav-item" th:classappend="${activeNav == 'policies'} ? ' active'"
                    th:attr="aria-current=${activeNav == 'policies'} ? 'page' : null"
-                   th:href="@{/admin/policies/dangerous}">危险策略</a>
+                   th:href="@{/admin-legacy/policies/dangerous}">危险策略</a>
             </div>
             <div class="nav-group">
                 <div class="nav-label">审计</div>
                 <a class="nav-item" th:classappend="${activeNav == 'audit'} ? ' active'"
                    th:attr="aria-current=${activeNav == 'audit' || activeNav == 'audit-detail'} ? 'page' : null"
-                   th:href="@{/admin/audit}">审计列表</a>
+                   th:href="@{/admin-legacy/audit}">审计列表</a>
             </div>
             <div class="nav-group">
                 <div class="nav-label">运维</div>
                 <a class="nav-item" th:classappend="${activeNav == 'health'} ? ' active'"
                    th:attr="aria-current=${activeNav == 'health'} ? 'page' : null"
-                   th:href="@{/admin/health}">系统健康</a>
+                   th:href="@{/admin-legacy/health}">系统健康</a>
             </div>
         </div>
 

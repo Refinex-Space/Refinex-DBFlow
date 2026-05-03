@@ -114,7 +114,7 @@ class AdminCsrfSpaTests {
         Cookie csrfCookie = loginResult.getResponse().getCookie(CSRF_COOKIE_NAME);
         String csrfParameter = extractCsrfParameter(loginResult.getResponse().getContentAsString());
 
-        mockMvc.perform(post("/admin/users")
+        mockMvc.perform(post("/admin-legacy/users")
                         .with(user("admin").roles("ADMIN"))
                         .cookie(csrfCookie)
                         .param("_csrf", csrfParameter)
@@ -122,7 +122,7 @@ class AdminCsrfSpaTests {
                         .param("displayName", "CSRF Form User")
                         .param("password", "Admin123456!"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin/users"));
+                .andExpect(redirectedUrl("/admin-legacy/users"));
     }
 
     /**

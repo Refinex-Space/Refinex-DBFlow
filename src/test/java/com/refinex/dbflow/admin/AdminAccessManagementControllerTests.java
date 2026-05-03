@@ -66,22 +66,22 @@ class AdminAccessManagementControllerTests {
          */
         @Test
         void shouldSmokeManageUserGrantIssueAndRevokeToken() throws Exception {
-                mockMvc.perform(post("/admin/users")
+            mockMvc.perform(post("/admin-legacy/users")
                                 .with(user("admin").roles("ADMIN"))
                                 .with(csrf())
                                 .param("username", "ops.bob")
                                 .param("displayName", "Ops Bob")
                                 .param("password", "Admin123456!"))
                                 .andExpect(status().is3xxRedirection())
-                                .andExpect(redirectedUrl("/admin/users"));
+                    .andExpect(redirectedUrl("/admin-legacy/users"));
                 DbfUser createdUser = userRepository.findByUsername("ops.bob").orElseThrow();
 
-                mockMvc.perform(get("/admin/users").with(user("admin").roles("ADMIN")))
+            mockMvc.perform(get("/admin-legacy/users").with(user("admin").roles("ADMIN")))
                                 .andExpect(status().isOk())
                                 .andExpect(content().string(containsString("ops.bob")))
                                 .andExpect(content().string(not(containsString("password_hash"))));
 
-                mockMvc.perform(post("/admin/grants")
+            mockMvc.perform(post("/admin-legacy/grants")
                                 .with(user("admin").roles("ADMIN"))
                                 .with(csrf())
                                 .param("userId", createdUser.getId().toString())
@@ -89,24 +89,24 @@ class AdminAccessManagementControllerTests {
                                 .param("environmentKey", "staging")
                                 .param("grantType", "WRITE"))
                                 .andExpect(status().is3xxRedirection())
-                                .andExpect(redirectedUrl("/admin/grants"));
+                    .andExpect(redirectedUrl("/admin-legacy/grants"));
 
-                mockMvc.perform(get("/admin/grants").with(user("admin").roles("ADMIN")))
+            mockMvc.perform(get("/admin-legacy/grants").with(user("admin").roles("ADMIN")))
                                 .andExpect(status().isOk())
                                 .andExpect(content().string(containsString("ops.bob")))
                                 .andExpect(content().string(containsString("billing-core")))
                                 .andExpect(content().string(not(containsString("password="))));
 
-                MvcResult issueResult = mockMvc.perform(post("/admin/tokens")
+            MvcResult issueResult = mockMvc.perform(post("/admin-legacy/tokens")
                                 .with(user("admin").roles("ADMIN"))
                                 .with(csrf())
                                 .param("userId", createdUser.getId().toString())
                                 .param("expiresInDays", "7"))
                                 .andExpect(status().is3xxRedirection())
-                                .andExpect(redirectedUrl("/admin/tokens"))
+                    .andExpect(redirectedUrl("/admin-legacy/tokens"))
                                 .andReturn();
 
-                MvcResult tokenPage = mockMvc.perform(get("/admin/tokens")
+            MvcResult tokenPage = mockMvc.perform(get("/admin-legacy/tokens")
                                 .with(user("admin").roles("ADMIN"))
                                 .flashAttrs(issueResult.getFlashMap()))
                                 .andExpect(status().isOk())
@@ -115,17 +115,17 @@ class AdminAccessManagementControllerTests {
                                 .andReturn();
                 String plaintextToken = findPlaintextToken(tokenPage.getResponse().getContentAsString());
 
-                mockMvc.perform(get("/admin/tokens").with(user("admin").roles("ADMIN")))
+            mockMvc.perform(get("/admin-legacy/tokens").with(user("admin").roles("ADMIN")))
                                 .andExpect(status().isOk())
                                 .andExpect(content().string(not(containsString(plaintextToken))));
 
-                mockMvc.perform(post("/admin/tokens/" + firstTokenId(tokenPage.getResponse().getContentAsString())
+            mockMvc.perform(post("/admin-legacy/tokens/" + firstTokenId(tokenPage.getResponse().getContentAsString())
                                 + "/revoke")
                                 .with(user("admin").roles("ADMIN"))
                                 .with(csrf()))
                                 .andExpect(status().is3xxRedirection())
-                                .andExpect(redirectedUrl("/admin/tokens"));
-                mockMvc.perform(get("/admin/tokens").with(user("admin").roles("ADMIN")).param("status", "REVOKED"))
+                    .andExpect(redirectedUrl("/admin-legacy/tokens"));
+            mockMvc.perform(get("/admin-legacy/tokens").with(user("admin").roles("ADMIN")).param("status", "REVOKED"))
                                 .andExpect(status().isOk())
                                 .andExpect(content().string(containsString("REVOKED")));
         }
@@ -138,12 +138,12 @@ class AdminAccessManagementControllerTests {
         @Test
         void shouldReissueTokenWithNewOneTimePlaintext() throws Exception {
                 DbfUser user = userRepository.save(DbfUser.create("ops.carol", "Ops Carol", "password-hash"));
-                mockMvc.perform(post("/admin/users/" + user.getId() + "/tokens/reissue")
+            mockMvc.perform(post("/admin-legacy/users/" + user.getId() + "/tokens/reissue")
                                 .with(user("admin").roles("ADMIN"))
                                 .with(csrf())
                                 .param("expiresInDays", "14"))
                                 .andExpect(status().is3xxRedirection())
-                                .andExpect(redirectedUrl("/admin/tokens"))
+                    .andExpect(redirectedUrl("/admin-legacy/tokens"))
                                 .andExpect(flash().attributeExists("issuedToken"));
         }
 
@@ -154,7 +154,7 @@ class AdminAccessManagementControllerTests {
          */
         @Test
         void shouldRejectNonAdminWrite() throws Exception {
-                mockMvc.perform(post("/admin/users")
+            mockMvc.perform(post("/admin-legacy/users")
                                 .with(user("operator").roles("USER"))
                                 .with(csrf())
                                 .param("username", "ops.denied")
@@ -169,7 +169,7 @@ class AdminAccessManagementControllerTests {
          */
         @Test
         void shouldRejectPostWithoutCsrf() throws Exception {
-                mockMvc.perform(post("/admin/users")
+            mockMvc.perform(post("/admin-legacy/users")
                                 .with(user("admin").roles("ADMIN"))
                                 .param("username", "ops.csrf")
                                 .param("displayName", "Csrf"))
@@ -195,7 +195,7 @@ class AdminAccessManagementControllerTests {
          * @return Token 主键
          */
         private String firstTokenId(String html) {
-                Matcher matcher = Pattern.compile("/admin/tokens/(\\d+)/revoke").matcher(html);
+            Matcher matcher = Pattern.compile("/admin-legacy/tokens/(\\d+)/revoke").matcher(html);
                 assertThat(matcher.find()).isTrue();
                 return matcher.group(1);
         }

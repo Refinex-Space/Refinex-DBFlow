@@ -270,7 +270,7 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <!-- 将 Vite dist 复制到 target/classes，使 Spring Boot jar 暴露 /admin-next/ 静态资源。 -->
+                    <!-- 将 Vite dist 复制到 target/classes，使 Spring Boot jar 暴露 /admin/ 静态资源。 -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-resources-plugin</artifactId>
@@ -283,7 +283,7 @@
                                     <goal>copy-resources</goal>
                                 </goals>
                                 <configuration>
-                                    <outputDirectory>${project.build.outputDirectory}/static/admin-next
+                                    <outputDirectory>${project.build.outputDirectory}/static/admin
                                     </outputDirectory>
                                     <resources>
                                         <resource>

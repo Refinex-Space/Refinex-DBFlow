@@ -59,7 +59,7 @@ class AdminThemeControllerTests {
      */
     @Test
     void shouldRenderThemeControlAndSharedShellForAdmin() throws Exception {
-        mockMvc.perform(get("/admin").with(user("theme-admin").roles("ADMIN")))
+        mockMvc.perform(get("/admin-legacy").with(user("theme-admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-theme-choice=\"system\"")))
                 .andExpect(content().string(containsString("data-theme-choice=\"light\"")))
@@ -78,7 +78,7 @@ class AdminThemeControllerTests {
      */
     @Test
     void shouldRejectNonAdminThemeShellRequest() throws Exception {
-        mockMvc.perform(get("/admin").with(user("operator").roles("USER")))
+        mockMvc.perform(get("/admin-legacy").with(user("operator").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 }

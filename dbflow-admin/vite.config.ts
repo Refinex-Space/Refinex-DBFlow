@@ -8,7 +8,7 @@ import {playwright} from '@vitest/browser-playwright'
 
 // https://vite.dev/config/
 export default defineConfig({
-    base: '/admin-next/',
+    base: '/admin/',
     plugins: [
         tanstackRouter({
             target: 'react',

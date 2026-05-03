@@ -35,7 +35,7 @@
             <span class="k">Tool</span><span th:text="${auditPage.filter.tool}">x</span>
         </span>
         <span class="spacer"></span>
-        <a class="btn text" th:href="@{/admin/audit}">重置</a>
+        <a class="btn text" th:href="@{/admin-legacy/audit}">重置</a>
     </div>
 
     <div class="panel">
@@ -66,7 +66,7 @@
                     <td><span th:class="'status ' + ${row.decisionTone}" th:text="${row.decision}">EXECUTED</span></td>
                     <td class="mono" th:text="${row.sqlHash}">sha256:3f72a9bd</td>
                     <td th:text="${row.summary}">返回 100 行，已按 maxRows 截断</td>
-                    <td><a class="btn text" th:href="@{/admin/audit/{id}(id=${row.id})}"
+                    <td><a class="btn text" th:href="@{/admin-legacy/audit/{id}(id=${row.id})}"
                            th:text="${row.decision == 'POLICY_DENIED'} ? '查看拒绝原因' : '查看详情'">查看详情</a></td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(auditPage.rows)}">
@@ -151,7 +151,7 @@
                 </select>
             </div>
             <div class="drawer-foot">
-                <a class="btn" th:href="@{/admin/audit}">重置</a>
+                <a class="btn" th:href="@{/admin-legacy/audit}">重置</a>
                 <button class="btn primary" type="submit">应用筛选</button>
             </div>
         </form>

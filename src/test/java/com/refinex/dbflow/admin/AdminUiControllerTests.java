@@ -38,7 +38,7 @@ class AdminUiControllerTests {
      */
     @Test
     void shouldRedirectAnonymousAdminPageToLogin() throws Exception {
-        mockMvc.perform(get("/admin"))
+        mockMvc.perform(get("/admin-legacy"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrlPattern("**/login"));
     }
@@ -81,7 +81,7 @@ class AdminUiControllerTests {
      */
     @Test
     void shouldRenderAdminOverviewForAdmin() throws Exception {
-        mockMvc.perform(get("/admin").with(user("admin").roles("ADMIN")))
+        mockMvc.perform(get("/admin-legacy").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("SQL 请求")))
                 .andExpect(content().string(containsString("最近审计事件")));
@@ -94,13 +94,13 @@ class AdminUiControllerTests {
      */
     @Test
     void shouldRenderBaseAdminPagesForAdmin() throws Exception {
-        assertAdminPage("/admin/users", "用户管理");
-        assertAdminPage("/admin/grants", "项目授权");
-        assertAdminPage("/admin/tokens", "Token 管理");
-        assertAdminPage("/admin/config", "配置查看");
-        assertAdminPage("/admin/policies/dangerous", "危险策略");
-        assertAdminPage("/admin/audit", "审计列表");
-        assertAdminPage("/admin/health", "系统健康");
+        assertAdminPage("/admin-legacy/users", "用户管理");
+        assertAdminPage("/admin-legacy/grants", "项目授权");
+        assertAdminPage("/admin-legacy/tokens", "Token 管理");
+        assertAdminPage("/admin-legacy/config", "配置查看");
+        assertAdminPage("/admin-legacy/policies/dangerous", "危险策略");
+        assertAdminPage("/admin-legacy/audit", "审计列表");
+        assertAdminPage("/admin-legacy/health", "系统健康");
     }
 
     /**
@@ -110,7 +110,7 @@ class AdminUiControllerTests {
      */
     @Test
     void shouldRejectNonAdminPageRequest() throws Exception {
-        mockMvc.perform(get("/admin").with(user("operator").roles("USER")))
+        mockMvc.perform(get("/admin-legacy").with(user("operator").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 

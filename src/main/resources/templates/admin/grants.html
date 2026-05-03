@@ -31,7 +31,7 @@
             <span class="k">状态</span><span th:text="${param.status[0]}">x</span>
         </span>
         <span class="spacer"></span>
-        <a class="btn text" th:href="@{/admin/grants}">重置</a>
+        <a class="btn text" th:href="@{/admin-legacy/grants}">重置</a>
     </div>
 
     <div class="panel">
@@ -65,7 +65,7 @@
                                     th:data-drawer-open="'#editGrantDrawer-' + ${rowStat.index}"
                                     type="button">编辑</button>
                             <a class="btn text"
-                               th:href="@{/admin/audit(username=${row.username}, project=${row.projectKey})}">审计</a>
+                               th:href="@{/admin-legacy/audit(username=${row.username}, project=${row.projectKey})}">审计</a>
                         </div>
                     </td>
                 </tr>
@@ -84,7 +84,7 @@
                 <h2>编辑授权 · <span class="muted" th:text="${row.username + ' / ' + row.projectKey}">user/proj</span></h2>
                 <button class="btn" data-drawer-close type="button">关闭</button>
             </div>
-            <form class="drawer-body drawer-form" method="post" th:action="@{/admin/grants/update-project}">
+            <form class="drawer-body drawer-form" method="post" th:action="@{/admin-legacy/grants/update-project}">
                 <input type="hidden" name="userId" th:value="${row.userId}">
                 <input type="hidden" name="projectKey" th:value="${row.projectKey}">
 
@@ -128,7 +128,7 @@
             <button class="btn" data-drawer-close type="button">关闭</button>
         </div>
         <form class="drawer-body drawer-form" id="createGrantForm" method="post"
-              th:action="@{/admin/grants/update-project}">
+              th:action="@{/admin-legacy/grants/update-project}">
             <div class="field">
                 <label>用户</label>
                 <select class="select" id="createUserId" name="userId" required>
@@ -199,7 +199,7 @@
                 </select>
             </div>
             <div class="drawer-foot">
-                <a class="btn" th:href="@{/admin/grants}">重置</a>
+                <a class="btn" th:href="@{/admin-legacy/grants}">重置</a>
                 <button class="btn primary" type="submit">应用筛选</button>
             </div>
         </form>

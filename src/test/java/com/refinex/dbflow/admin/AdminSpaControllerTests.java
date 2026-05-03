@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
@@ -37,10 +38,10 @@ class AdminSpaControllerTests {
      * @throws Exception MockMvc 执行异常
      */
     @Test
-    void shouldForwardAdminNextRootToSpaIndex() throws Exception {
-        mockMvc.perform(get("/admin-next"))
+    void shouldForwardAdminRootToSpaIndex() throws Exception {
+        mockMvc.perform(get("/admin").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(forwardedUrl("/admin-next/index.html"));
+                .andExpect(forwardedUrl("/admin/index.html"));
     }
 
     /**
@@ -49,10 +50,10 @@ class AdminSpaControllerTests {
      * @throws Exception MockMvc 执行异常
      */
     @Test
-    void shouldForwardAdminNextRouteToSpaIndex() throws Exception {
-        mockMvc.perform(get("/admin-next/users"))
+    void shouldForwardAdminRouteToSpaIndex() throws Exception {
+        mockMvc.perform(get("/admin/users").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(forwardedUrl("/admin-next/index.html"));
+                .andExpect(forwardedUrl("/admin/index.html"));
     }
 
     /**
@@ -61,33 +62,37 @@ class AdminSpaControllerTests {
      * @throws Exception MockMvc 执行异常
      */
     @Test
-    void shouldServeAdminNextStaticResourceWithoutSpaFallback() throws Exception {
-        mockMvc.perform(get("/admin-next/assets/admin-spa-test.js"))
+    void shouldServeAdminStaticResourceWithoutSpaFallback() throws Exception {
+        mockMvc.perform(get("/admin/assets/admin-spa-test.js"))
                 .andExpect(status().isOk())
                 .andExpect(forwardedUrl(null))
                 .andExpect(content().string(containsString("admin-spa-test")));
     }
 
     /**
-     * 验证管理端 API 仍然需要管理员认证。
+     * 验证管理端 API 仍然返回 JSON，不被 SPA fallback 捕获。
      *
      * @throws Exception MockMvc 执行异常
      */
     @Test
-    void shouldKeepAdminApiProtected() throws Exception {
-        mockMvc.perform(get("/admin/api/audit-events"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrlPattern("**/login"));
+    void shouldKeepAdminApiAsJsonApi() throws Exception {
+        mockMvc.perform(get("/admin/api/session")
+                        .with(user("admin").roles("ADMIN"))
+                        .accept("application/json"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl(null))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(content().string(containsString("\"authenticated\":true")));
     }
 
     /**
-     * 验证既有 Thymeleaf 管理端总览仍然可用。
+     * 验证 legacy Thymeleaf 管理端总览仍然可用。
      *
      * @throws Exception MockMvc 执行异常
      */
     @Test
-    void shouldKeepAdminThymeleafOverview() throws Exception {
-        mockMvc.perform(get("/admin").with(user("admin").roles("ADMIN")))
+    void shouldKeepAdminLegacyThymeleafOverview() throws Exception {
+        mockMvc.perform(get("/admin-legacy").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("SQL 请求")))
                 .andExpect(content().string(containsString("最近审计事件")));

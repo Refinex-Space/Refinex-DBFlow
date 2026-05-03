@@ -89,6 +89,18 @@ class AdminSecurityTests {
     }
 
     /**
+     * 验证旧 Thymeleaf 管理端仍需要管理员登录。
+     *
+     * @throws Exception MockMvc 执行异常
+     */
+    @Test
+    void shouldRedirectAnonymousAdminLegacyRequestToLogin() throws Exception {
+        mockMvc.perform(get("/admin-legacy"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("**/login"));
+    }
+
+    /**
      * 验证正确管理员账号可以登录管理端。
      *
      * @throws Exception MockMvc 执行异常

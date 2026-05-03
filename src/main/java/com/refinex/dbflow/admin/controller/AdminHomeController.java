@@ -89,10 +89,10 @@ public class AdminHomeController {
      * @param authentication 当前认证信息
      * @return 总览页模板
      */
-    @GetMapping("/admin")
+    @GetMapping("/admin-legacy")
     public String overview(Model model, Authentication authentication) {
         addCommonModel(model, authentication, "overview",
-                "route=/admin · template=admin/overview.html · fragment=dashboardSummary + recentAuditTable + attentionList");
+                "route=/admin-legacy · template=admin/overview.html · fragment=dashboardSummary + recentAuditTable + attentionList");
         model.addAttribute("overview", overviewViewService.overview());
         return "admin/overview";
     }
@@ -104,14 +104,14 @@ public class AdminHomeController {
      * @param authentication 当前认证信息
      * @return 用户管理页模板
      */
-    @GetMapping("/admin/users")
+    @GetMapping("/admin-legacy/users")
     public String users(
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String status,
             Model model,
             Authentication authentication) {
         addCommonModel(model, authentication, "users",
-                "route=/admin/users · template=admin/users.html · fragment=filterBar + userTable");
+                "route=/admin-legacy/users · template=admin/users.html · fragment=filterBar + userTable");
         model.addAttribute("users", accessManagementService.listUsers(
                 new UserFilter(username, status)));
         model.addAttribute("initialAdminUsername", adminSecurityProperties.getUsername());
@@ -127,7 +127,7 @@ public class AdminHomeController {
      * @param redirectAttributes 重定向属性
      * @return 用户管理页重定向
      */
-    @PostMapping("/admin/users")
+    @PostMapping("/admin-legacy/users")
     public String createUser(
             @RequestParam String username,
             @RequestParam String displayName,
@@ -140,7 +140,7 @@ public class AdminHomeController {
         } catch (DbflowException | IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
-        return "redirect:/admin/users";
+        return "redirect:/admin-legacy/users";
     }
 
     /**
@@ -150,7 +150,7 @@ public class AdminHomeController {
      * @param redirectAttributes 重定向属性
      * @return 用户管理页重定向
      */
-    @PostMapping("/admin/users/{userId}/disable")
+    @PostMapping("/admin-legacy/users/{userId}/disable")
     public String disableUser(@PathVariable Long userId, RedirectAttributes redirectAttributes) {
         try {
             accessManagementService.disableUser(userId);
@@ -158,7 +158,7 @@ public class AdminHomeController {
         } catch (DbflowException | IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
-        return "redirect:/admin/users";
+        return "redirect:/admin-legacy/users";
     }
 
     /**
@@ -168,7 +168,7 @@ public class AdminHomeController {
      * @param redirectAttributes 重定向属性
      * @return 用户管理页重定向
      */
-    @PostMapping("/admin/users/{userId}/enable")
+    @PostMapping("/admin-legacy/users/{userId}/enable")
     public String enableUser(@PathVariable Long userId, RedirectAttributes redirectAttributes) {
         try {
             accessManagementService.enableUser(userId);
@@ -176,7 +176,7 @@ public class AdminHomeController {
         } catch (DbflowException | IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
-        return "redirect:/admin/users";
+        return "redirect:/admin-legacy/users";
     }
 
     /**
@@ -187,7 +187,7 @@ public class AdminHomeController {
      * @param redirectAttributes 重定向属性
      * @return 用户管理页重定向
      */
-    @PostMapping("/admin/users/{userId}/reset-password")
+    @PostMapping("/admin-legacy/users/{userId}/reset-password")
     public String resetPassword(
             @PathVariable Long userId,
             @RequestParam String newPassword,
@@ -198,7 +198,7 @@ public class AdminHomeController {
         } catch (DbflowException | IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
-        return "redirect:/admin/users";
+        return "redirect:/admin-legacy/users";
     }
 
     /**
@@ -208,7 +208,7 @@ public class AdminHomeController {
      * @param authentication 当前认证信息
      * @return 项目环境授权页模板
      */
-    @GetMapping("/admin/grants")
+    @GetMapping("/admin-legacy/grants")
     public String grants(
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String projectKey,
@@ -217,7 +217,7 @@ public class AdminHomeController {
             Model model,
             Authentication authentication) {
         addCommonModel(model, authentication, "grants",
-                "route=/admin/grants · template=admin/grants.html · fragment=grantFilterBar + grantTable + grantModal");
+                "route=/admin-legacy/grants · template=admin/grants.html · fragment=grantFilterBar + grantTable + grantModal");
         model.addAttribute("grants", accessManagementService.listGrantGroups(
                 new GrantFilter(username, projectKey, environmentKey, status)));
         model.addAttribute("userOptions", accessManagementService.listActiveUserOptions());
@@ -235,7 +235,7 @@ public class AdminHomeController {
      * @param redirectAttributes 重定向属性
      * @return 授权页重定向
      */
-    @PostMapping("/admin/grants")
+    @PostMapping("/admin-legacy/grants")
     public String grantEnvironment(
             @RequestParam Long userId,
             @RequestParam String projectKey,
@@ -252,7 +252,7 @@ public class AdminHomeController {
         } catch (DbflowException | IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
-        return "redirect:/admin/grants";
+        return "redirect:/admin-legacy/grants";
     }
 
     /**
@@ -262,11 +262,11 @@ public class AdminHomeController {
      * @param redirectAttributes 重定向属性
      * @return 授权页重定向
      */
-    @PostMapping("/admin/grants/{grantId}/revoke")
+    @PostMapping("/admin-legacy/grants/{grantId}/revoke")
     public String revokeGrant(@PathVariable Long grantId, RedirectAttributes redirectAttributes) {
         accessManagementService.revokeGrant(grantId);
         redirectAttributes.addFlashAttribute("successMessage", "环境授权已撤销");
-        return "redirect:/admin/grants";
+        return "redirect:/admin-legacy/grants";
     }
 
     /**
@@ -279,7 +279,7 @@ public class AdminHomeController {
      * @param redirectAttributes 重定向属性
      * @return 授权页重定向
      */
-    @PostMapping("/admin/grants/update-project")
+    @PostMapping("/admin-legacy/grants/update-project")
     public String updateProjectGrants(
             @RequestParam Long userId,
             @RequestParam String projectKey,
@@ -294,7 +294,7 @@ public class AdminHomeController {
         } catch (DbflowException | IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
-        return "redirect:/admin/grants";
+        return "redirect:/admin-legacy/grants";
     }
 
     /**
@@ -304,14 +304,14 @@ public class AdminHomeController {
      * @param authentication 当前认证信息
      * @return Token 管理页模板
      */
-    @GetMapping("/admin/tokens")
+    @GetMapping("/admin-legacy/tokens")
     public String tokens(
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String status,
             Model model,
             Authentication authentication) {
         addCommonModel(model, authentication, "tokens",
-                "route=/admin/tokens · template=admin/tokens.html · fragment=tokenFilterBar + tokenTable + tokenIssueModal + revokeModal");
+                "route=/admin-legacy/tokens · template=admin/tokens.html · fragment=tokenFilterBar + tokenTable + tokenIssueModal + revokeModal");
         model.addAttribute("tokens", accessManagementService.listTokens(
                 new TokenFilter(username, status)));
         model.addAttribute("userOptions", accessManagementService.listActiveUserOptions());
@@ -326,7 +326,7 @@ public class AdminHomeController {
      * @param redirectAttributes 重定向属性
      * @return Token 管理页重定向
      */
-    @PostMapping("/admin/tokens")
+    @PostMapping("/admin-legacy/tokens")
     public String issueToken(
             @RequestParam Long userId,
             @RequestParam(required = false) Integer expiresInDays,
@@ -337,7 +337,7 @@ public class AdminHomeController {
         } catch (DbflowException | IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
-        return "redirect:/admin/tokens";
+        return "redirect:/admin-legacy/tokens";
     }
 
     /**
@@ -347,11 +347,11 @@ public class AdminHomeController {
      * @param redirectAttributes 重定向属性
      * @return Token 管理页重定向
      */
-    @PostMapping("/admin/tokens/{tokenId}/revoke")
+    @PostMapping("/admin-legacy/tokens/{tokenId}/revoke")
     public String revokeToken(@PathVariable Long tokenId, RedirectAttributes redirectAttributes) {
         accessManagementService.revokeToken(tokenId);
         redirectAttributes.addFlashAttribute("successMessage", "Token 已吊销");
-        return "redirect:/admin/tokens";
+        return "redirect:/admin-legacy/tokens";
     }
 
     /**
@@ -362,7 +362,7 @@ public class AdminHomeController {
      * @param redirectAttributes 重定向属性
      * @return Token 管理页重定向
      */
-    @PostMapping("/admin/users/{userId}/tokens/reissue")
+    @PostMapping("/admin-legacy/users/{userId}/tokens/reissue")
     public String reissueToken(
             @PathVariable Long userId,
             @RequestParam(required = false) Integer expiresInDays,
@@ -373,7 +373,7 @@ public class AdminHomeController {
         } catch (DbflowException | IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
         }
-        return "redirect:/admin/tokens";
+        return "redirect:/admin-legacy/tokens";
     }
 
     /**
@@ -383,10 +383,10 @@ public class AdminHomeController {
      * @param authentication 当前认证信息
      * @return 配置查看页模板
      */
-    @GetMapping("/admin/config")
+    @GetMapping("/admin-legacy/config")
     public String config(Model model, Authentication authentication) {
         addCommonModel(model, authentication, "config",
-                "route=/admin/config · template=admin/config.html · fragment=configTable + sanitizedConfigCell");
+                "route=/admin-legacy/config · template=admin/config.html · fragment=configTable + sanitizedConfigCell");
         model.addAttribute("configPage", operationsViewService.configPage());
         return "admin/config";
     }
@@ -398,10 +398,10 @@ public class AdminHomeController {
      * @param authentication 当前认证信息
      * @return 危险策略页模板
      */
-    @GetMapping("/admin/policies/dangerous")
+    @GetMapping("/admin-legacy/policies/dangerous")
     public String dangerousPolicies(Model model, Authentication authentication) {
         addCommonModel(model, authentication, "policies",
-                "route=/admin/policies/dangerous · template=admin/policies-dangerous.html · fragment=policyFilterBar + policyTable + reasonDrawer");
+                "route=/admin-legacy/policies/dangerous · template=admin/policies-dangerous.html · fragment=policyFilterBar + policyTable + reasonDrawer");
         model.addAttribute("policyPage", operationsViewService.dangerousPolicyPage());
         return "admin/policies-dangerous";
     }
@@ -414,13 +414,13 @@ public class AdminHomeController {
      * @param authentication 当前认证信息
      * @return 审计列表页模板
      */
-    @GetMapping("/admin/audit")
+    @GetMapping("/admin-legacy/audit")
     public String audit(
             @ModelAttribute AuditQueryFilter filter,
             Model model,
             Authentication authentication) {
         addCommonModel(model, authentication, "audit",
-                "route=/admin/audit · template=admin/audit-list.html · fragment=auditFilterBar + auditTable + pagination");
+                "route=/admin-legacy/audit · template=admin/audit-list.html · fragment=auditFilterBar + auditTable + pagination");
         model.addAttribute("auditPage", operationsViewService.auditPage(filter.toCriteria()));
         return "admin/audit-list";
     }
@@ -433,10 +433,10 @@ public class AdminHomeController {
      * @param authentication 当前认证信息
      * @return 审计详情页模板
      */
-    @GetMapping("/admin/audit/{eventId}")
+    @GetMapping("/admin-legacy/audit/{eventId}")
     public String auditDetail(@PathVariable Long eventId, Model model, Authentication authentication) {
         addCommonModel(model, authentication, "audit-detail",
-                "route=/admin/audit/{eventId} · template=admin/audit-detail.html · fragment=auditIdentityPanel + sqlPanel + timeline");
+                "route=/admin-legacy/audit/{eventId} · template=admin/audit-detail.html · fragment=auditIdentityPanel + sqlPanel + timeline");
         model.addAttribute("audit", operationsViewService.auditDetail(eventId));
         return "admin/audit-detail";
     }
@@ -448,10 +448,10 @@ public class AdminHomeController {
      * @param authentication 当前认证信息
      * @return 系统健康页模板
      */
-    @GetMapping("/admin/health")
+    @GetMapping("/admin-legacy/health")
     public String health(Model model, Authentication authentication) {
         addCommonModel(model, authentication, "health",
-                "route=/admin/health · template=admin/health.html · fragment=healthSummary + healthGrid");
+                "route=/admin-legacy/health · template=admin/health.html · fragment=healthSummary + healthGrid");
         model.addAttribute("healthPage", operationsViewService.healthPage());
         return "admin/health";
     }

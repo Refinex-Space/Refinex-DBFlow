@@ -283,9 +283,9 @@ class OperationalHealthAndMetricsTests {
      */
     @Test
     void shouldKeepAdminHealthPageAdminOnly() throws Exception {
-        mockMvc.perform(get("/admin/health").with(user("operator").roles("USER")))
+        mockMvc.perform(get("/admin-legacy/health").with(user("operator").roles("USER")))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/admin/health").with(user("admin").roles("ADMIN")))
+        mockMvc.perform(get("/admin-legacy/health").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("系统健康")))
                 .andExpect(content().string(not(containsString("jdbc:h2:mem"))));

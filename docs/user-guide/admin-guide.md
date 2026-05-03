@@ -6,17 +6,18 @@
 
 ## 1. 管理端入口
 
-| 场景              | 地址                                           | 说明                                  |
-|-----------------|----------------------------------------------|-------------------------------------|
-| 本地后端管理端         | `http://127.0.0.1:8080/login`                | Spring Security 登录入口。               |
-| 本地 React 新后台试运行 | `http://127.0.0.1:5173/admin-next`           | 前端 dev server，代理 `/admin/api/**`。   |
-| 打包后 React 新后台   | `http://127.0.0.1:8080/admin-next`           | 需要用 `react-admin` Maven profile 打包。 |
-| 内网部署示例          | `https://dbflow.internal.example/login`      | 反向代理后仍先走同一登录入口。                     |
-| 内网 React 新后台示例  | `https://dbflow.internal.example/admin-next` | 仅用于 cutover 前试运行。                   |
+| 场景             | 地址                                      | 说明                                  |
+|----------------|-----------------------------------------|-------------------------------------|
+| 本地后端管理端        | `http://127.0.0.1:8080/login`           | Spring Security 登录入口。               |
+| 本地 React 管理端开发 | `http://127.0.0.1:5173/admin`           | 前端 dev server，代理 `/admin/api/**`。   |
+| 打包后 React 管理端  | `http://127.0.0.1:8080/admin`           | 需要用 `react-admin` Maven profile 打包。 |
+| 内网部署示例         | `https://dbflow.internal.example/login` | 反向代理后仍先走同一登录入口。                     |
+| 旧 Thymeleaf 后台 | `http://127.0.0.1:8080/admin-legacy`    | 仅用于过渡期排障，仍要求管理员登录。                  |
 
-登录后默认进入 `/admin` 总览页。管理端使用 Spring Security form login，`/admin/**` 和 `/admin-next/**`
-共享同一个管理员 session；`/admin/api/**` 是 React 新后台使用的 JSON API，写操作必须携带 Spring Security CSRF
-token。`/mcp` 不使用管理端 session，而是每次请求都要求 `Authorization: Bearer <DBFlow Token>`。
+登录后默认进入 `/admin` React 总览页。管理端使用 Spring Security form login，`/admin/**` 和
+`/admin-legacy/**` 共享同一个管理员 session；`/admin/api/**` 是 React 管理端使用的 JSON API，写操作必须携带
+Spring Security CSRF token。`/mcp` 不使用管理端 session，而是每次请求都要求
+`Authorization: Bearer <DBFlow Token>`。
 
 初始管理员账号应来自外部配置或密钥系统，例如 `dbflow.admin.initial-user.*`。不要把真实密码、BCrypt hash、Token
 pepper 或数据库密码写入仓库。
@@ -35,7 +36,7 @@ pepper 或数据库密码写入仓库。
 pnpm --dir dbflow-admin dev
 ```
 
-开发态访问 `http://127.0.0.1:5173/admin-next`。Vite 会把 `/admin/api/**`、`/login`、`/logout`、`/actuator`
+开发态访问 `http://127.0.0.1:5173/admin`。Vite 会把 `/admin/api/**`、`/login`、`/logout`、`/actuator`
 代理到 `http://localhost:8080`，因此后端必须先启动并完成登录 session 建立。
 
 打包验证：
@@ -44,8 +45,7 @@ pnpm --dir dbflow-admin dev
 ./mvnw -Preact-admin -DskipTests package
 ```
 
-该命令会安装/构建 `dbflow-admin`，并把 `dbflow-admin/dist/**` 复制进 Spring Boot jar 的
-`static/admin-next/`。
+该命令会安装/构建 `dbflow-admin`，并把 `dbflow-admin/dist/**` 复制进 Spring Boot jar 的 `static/admin/`。
 
 ## 3. First-use Smoke Test
 
@@ -59,8 +59,8 @@ curl -s http://127.0.0.1:8080/actuator/health
 
 - 返回有限的 Actuator health 状态，默认不展示敏感详情。
 - 浏览器访问 `http://127.0.0.1:8080/login` 能看到 DBFlow 管理端登录页。
-- 登录后访问 `/admin/health` 能看到 metadata database、target datasource registry、Nacos、MCP endpoint 状态。
-- 登录后访问 `/admin-next` 能看到 React 新后台；未登录访问时应回到登录流程。
+- 登录后访问 `/admin/health` 能看到 React 管理端的系统健康页。
+- 登录后访问 `/admin-legacy/health` 能看到旧 Thymeleaf 健康页，用于过渡期排障。
 - 访问 `/admin/audit` 能看到审计列表页；没有记录时应显示空状态，而不是报错。
 
 ## 4. 登录、CSRF 与 Session
@@ -69,17 +69,18 @@ curl -s http://127.0.0.1:8080/actuator/health
 - 管理端 session 存在服务端，浏览器只保存标准 session cookie；React admin 不在 localStorage 保存登录状态。
 - Spring Security 会下发浏览器可读的 `XSRF-TOKEN` cookie。React admin API client 会在 mutation 请求中把它复制到
   `X-XSRF-TOKEN` header。
-- `/admin/api/**` 缺少 CSRF token 的写请求会被拒绝；Thymeleaf `/admin/**` 表单继续使用隐藏 `_csrf` 字段。
+- `/admin/api/**` 缺少 CSRF token 的写请求会被拒绝；Thymeleaf `/admin-legacy/**` 表单继续使用隐藏 `_csrf`
+  字段。
 - `/mcp` 与管理端 session 完全分离，必须使用 MCP Bearer Token。
 
-## 5. `/admin` 与 `/admin-next` cutover 状态
+## 5. `/admin` 与 `/admin-legacy` cutover 状态
 
 当前 cutover 策略：
 
-- `/admin` 是稳定的服务端渲染管理端，继续作为默认运维入口。
-- `/admin-next` 是 React 新后台试运行入口，复用同一登录、session、CSRF 和 `/admin/api/**` 后端能力。
-- `/admin-next` 在开发态由 `pnpm --dir dbflow-admin dev` 提供，在打包态由 `react-admin` Maven profile 放入 jar。
-- cutover 前不要删除 `/admin`，也不要让 `/admin-next` 绕过既有 Spring Security 管理链。
+- `/admin` 是 React 管理端正式入口，登录成功默认跳转到这里。
+- `/admin/api/**` 保持 JSON API，不被 SPA fallback 捕获。
+- `/admin-legacy/**` 是短期保留的旧 Thymeleaf 后台，仅用于过渡期排障，仍要求 `ROLE_ADMIN`。
+- 稳定一个版本后再评估删除旧模板和 `/admin-assets/**`。
 
 ## 6. 创建和禁用用户
 

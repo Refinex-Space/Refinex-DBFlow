@@ -27,8 +27,9 @@ for creating/disabling users, granting/revoking project environments, issuing/re
 Token plaintext display, and admin-only CSRF-protected POST boundaries. Management operations pages now have smoke
 coverage for audit filtering, pagination, denied-reason detail rendering, dangerous policy read-only rendering,
 system health rendering, non-admin rejection, and page-level secret redaction. React admin SPA routing is covered for
-`/admin-next`, child routes, static resource non-fallback behavior, `/admin/api/**` protection, and `/admin` Thymeleaf
-regression. Management CSRF coverage now verifies browser-readable `XSRF-TOKEN` cookie bootstrap, `X-XSRF-TOKEN` SPA
+`/admin`, child routes, static resource non-fallback behavior, `/admin/api/**` JSON boundary, and `/admin-legacy`
+Thymeleaf regression. Management CSRF coverage now verifies browser-readable `XSRF-TOKEN` cookie bootstrap,
+`X-XSRF-TOKEN` SPA
 header acceptance, missing-token rejection for `/admin/api/**`, and Thymeleaf hidden `_csrf` parameter compatibility.
 React admin session API coverage now verifies authenticated session JSON, shell metadata reuse, sensitive-field
 omission, and anonymous JSON `401` handling for SPA clients. React admin JSON login coverage verifies JSON/XHR login
@@ -68,7 +69,7 @@ and production/test Java sources are kept free of wildcard imports.
 |------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Install dependencies   | `./mvnw dependency:go-offline`                                                                                                               | Maven resolves project dependencies for offline use.                                                                                                                                                                          |
 | Build                  | `./mvnw package`                                                                                                                             | Compiles the application, runs tests, and creates the Spring Boot jar under `target/`.                                                                                                                                        |
-| Package React admin    | `./mvnw -Preact-admin -DskipTests package`                                                                                                   | Runs `pnpm --dir dbflow-admin install --frozen-lockfile`, builds the React admin, copies `dbflow-admin/dist/**` into `target/classes/static/admin-next/`, and includes those assets in the Spring Boot jar.                   |
+| Package React admin    | `./mvnw -Preact-admin -DskipTests package`                                                                                                   | Runs `pnpm --dir dbflow-admin install --frozen-lockfile`, builds the React admin, copies `dbflow-admin/dist/**` into `target/classes/static/admin/`, and includes those assets in the Spring Boot jar.                        |
 | Run tests              | `./mvnw test`                                                                                                                                | Current baseline: Spring Boot context, common model, exception model, request id filter, Flyway migration, security, configuration, JPA service tests, and Docker-optional MySQL execution/explain/schema inspect tests pass. |
 | Lint / format check    | Not available yet; no formatter is configured.                                                                                               | Future scaffold must replace this row.                                                                                                                                                                                        |
 | Start dev server       | `./mvnw spring-boot:run`                                                                                                                     | Starts the Spring Boot application locally with MCP Streamable HTTP available at `http://localhost:8080/mcp`.                                                                                                                 |
@@ -87,7 +88,7 @@ and production/test Java sources are kept free of wildcard imports.
 | Package hygiene        | `rg -n "import .*\\.\\*" src/main/java src/test/java`                                                                                        | No wildcard imports in production or test Java sources.                                                                                                                                                                       |
 | React API client tests | `pnpm --dir dbflow-admin exec vitest run --browser.headless src/api/client.test.ts src/api/csrf.test.ts src/lib/errors.test.ts`              | Verifies Axios `ApiResult` unwrapping, CSRF header handling, typed errors, and `401` propagation.                                                                                                                             |
 | React admin tests      | `pnpm --dir dbflow-admin test`                                                                                                               | Runs Vitest headless browser tests for React admin API clients, stores, DBFlow components, pages, login failure states, Token one-time reveal behavior, and route-adjacent UI state.                                          |
-| React admin build      | `pnpm --dir dbflow-admin build`                                                                                                              | Type-checks and builds the Vite React admin with `/admin-next/` base path.                                                                                                                                                    |
+| React admin build      | `pnpm --dir dbflow-admin build`                                                                                                              | Type-checks and builds the Vite React admin with `/admin/` base path.                                                                                                                                                         |
 
 ## CI Configuration
 
@@ -122,7 +123,7 @@ Planned baseline:
   Node/pnpm; release builds that need the bundled React admin should run `./mvnw -Preact-admin -DskipTests package`
   in an environment where `pnpm` is available.
 - React admin local development runs as two processes: `./mvnw spring-boot:run` for the Spring Boot backend and
-  `pnpm --dir dbflow-admin dev` for the Vite frontend. The development entry is `/admin-next`; Vite proxies
+  `pnpm --dir dbflow-admin dev` for the Vite frontend. The development entry is `/admin`; Vite proxies
   `/admin/api/**`, `/login`, `/logout`, and `/actuator` to the backend.
 
 Local reference checkouts:
@@ -237,21 +238,24 @@ Configuration sources and secret boundary:
   `dbflow.sql.execution.duration{operation,risk,status}`, and
   `dbflow.confirmation.challenges{status=PENDING}`. The metrics layer never stores token plaintext, database
   passwords, JDBC URLs, or full SQL result sets.
-- `/login` exposes the custom Thymeleaf management login page and submits to Spring Security form login. `/admin`,
-  `/admin/config`, `/admin/policies/dangerous`, `/admin/audit`, `/admin/audit/{eventId}`, and `/admin/health` expose
-  the server-rendered management UI shell. The audit pages delegate to `AuditQueryService` for filtered, paginated,
+- `/login` exposes the custom Thymeleaf management login page and submits to Spring Security form login.
+  `/admin-legacy`, `/admin-legacy/config`, `/admin-legacy/policies/dangerous`, `/admin-legacy/audit`,
+  `/admin-legacy/audit/{eventId}`, and `/admin-legacy/health` expose the temporary server-rendered management UI
+  shell. The audit pages delegate to `AuditQueryService` for filtered, paginated,
   sanitized list/detail views. The dangerous policy page is read-only and renders effective YAML/Nacos policy state.
   The health page renders metadata database, configured target Hikari pool, Nacos, and MCP endpoint status without
-  active target business SQL. `/admin/users`, `/admin/grants`, and `/admin/tokens` now execute real metadata
+  active target business SQL. `/admin-legacy/users`, `/admin-legacy/grants`, and `/admin-legacy/tokens` execute real
+  metadata
   operations for user creation/disable, project/environment grant/revoke, and MCP Token issue/revoke/reissue.
   Token plaintext is carried by one-time flash state after issue/reissue; list pages only show prefixes and never show
-  Token hash, password hash, JDBC URLs, or database passwords. `/admin-assets/**` is anonymous-readable for CSS/JS while
-  `/admin/**` remains admin-only. `/admin-next/**` serves the packaged React admin shell: non-resource paths forward to
-  `/admin-next/index.html`, static resource paths are not converted into SPA HTML, and `/admin/api/**` remains
-  administrator-only. The management chain emits a browser-readable `XSRF-TOKEN` cookie and accepts SPA mutations via
+  Token hash, password hash, JDBC URLs, or database passwords. `/admin-assets/**` is anonymous-readable for legacy
+  CSS/JS while `/admin-legacy/**` remains admin-only. `/admin/**` serves the packaged React admin shell: non-resource
+  paths forward to `/admin/index.html`, static resource paths are not converted into SPA HTML, `/admin/assets/**` is
+  anonymous-readable, and `/admin/api/**` remains administrator-only JSON. The management chain emits a
+  browser-readable `XSRF-TOKEN` cookie and accepts SPA mutations via
   `X-XSRF-TOKEN`, while Thymeleaf forms continue to submit hidden `_csrf` parameters.
-- `/admin` remains the stable server-rendered management UI. `/admin-next` is the React new-admin trial path before
-  cutover; it must share the same Spring Security session, CSRF boundary, and JSON API authorization as `/admin`.
+- `/admin` is the React management UI after cutover. `/admin-legacy/**` is retained only for short-term
+  troubleshooting and still shares the Spring Security session, CSRF boundary, and `ROLE_ADMIN` requirement.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -388,8 +392,8 @@ under pressure, and `HEAVY_READ` returns degradation notices instead of unbounde
   field omission/redaction, and non-admin rejection.
 - `AdminUiControllerTests` covers the custom Thymeleaf login page, anonymous redirect to login, anonymous static asset
   access, administrator access to all base admin pages, and non-admin page rejection.
-- `AdminSpaControllerTests` covers `/admin-next` and `/admin-next/users` SPA fallback, static resource non-fallback,
-  `/admin/api/**` anonymous rejection, and the existing `/admin` Thymeleaf overview regression.
+- `AdminSpaControllerTests` covers `/admin` and `/admin/users` SPA fallback, static resource non-fallback,
+  `/admin/api/session` JSON API behavior, and the `/admin-legacy` Thymeleaf overview regression.
 - `AdminSessionApiControllerTests` covers authenticated React session JSON, shell metadata projection, sensitive-field
   omission, and anonymous JSON `401` handling.
 - `AdminOperationsApiControllerTests` covers read-only overview/config/dangerous-policy/health JSON APIs, admin-only

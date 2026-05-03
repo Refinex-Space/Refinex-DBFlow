@@ -23,12 +23,12 @@ public class AdminSpaController {
     /**
      * React 管理端入口转发地址。
      */
-    private static final String ADMIN_NEXT_INDEX_FORWARD = "forward:/admin-next/index.html";
+    private static final String ADMIN_INDEX_FORWARD = "forward:/admin/index.html";
 
     /**
      * React 管理端静态资源 classpath 根目录。
      */
-    private static final String ADMIN_NEXT_RESOURCE_LOCATION = "static/admin-next";
+    private static final String ADMIN_RESOURCE_LOCATION = "static/admin";
 
     /**
      * 不应回退到 SPA 入口的静态资源扩展名。
@@ -42,29 +42,32 @@ public class AdminSpaController {
      *
      * @return SPA 入口转发地址
      */
-    @GetMapping({"/admin-next", "/admin-next/"})
+    @GetMapping({"/admin", "/admin/"})
     public String forwardRoot() {
-        return ADMIN_NEXT_INDEX_FORWARD;
+        return ADMIN_INDEX_FORWARD;
     }
 
     /**
      * 处理 React 管理端子路由和静态资源路径。
      *
-     * @param path `/admin-next` 之后的相对路径
+     * @param path `/admin` 之后的相对路径
      * @return SPA 入口转发地址或静态资源响应
      */
-    @GetMapping("/admin-next/{*path}")
+    @GetMapping("/admin/{*path}")
     public Object forwardRoute(@PathVariable("path") String path) {
+        if (isAdminApiPath(path)) {
+            return ResponseEntity.notFound().build();
+        }
         if (isStaticResourcePath(path)) {
             return staticResource(path);
         }
-        return ADMIN_NEXT_INDEX_FORWARD;
+        return ADMIN_INDEX_FORWARD;
     }
 
     /**
      * 读取 React 管理端静态资源。
      *
-     * @param path `/admin-next` 之后的相对路径
+     * @param path `/admin` 之后的相对路径
      * @return 静态资源响应，找不到时返回 404
      */
     private ResponseEntity<Resource> staticResource(String path) {
@@ -72,7 +75,7 @@ public class AdminSpaController {
         if (normalizedPath == null) {
             return ResponseEntity.notFound().build();
         }
-        ClassPathResource resource = new ClassPathResource(ADMIN_NEXT_RESOURCE_LOCATION + normalizedPath);
+        ClassPathResource resource = new ClassPathResource(ADMIN_RESOURCE_LOCATION + normalizedPath);
         if (!resource.exists() || !resource.isReadable()) {
             return ResponseEntity.notFound().build();
         }
@@ -83,7 +86,7 @@ public class AdminSpaController {
     /**
      * 判断路径是否是静态资源路径。
      *
-     * @param path `/admin-next` 之后的相对路径
+     * @param path `/admin` 之后的相对路径
      * @return 如果路径扩展名属于静态资源则返回 true
      */
     private boolean isStaticResourcePath(String path) {
@@ -103,7 +106,20 @@ public class AdminSpaController {
     /**
      * 规范化资源路径，阻止路径穿越。
      *
-     * @param path `/admin-next` 之后的相对路径
+     * 判断路径是否命中管理端 JSON API。
+     *
+     * @param path `/admin` 之后的相对路径
+     * @return 如果是管理端 API 路径则返回 true
+     */
+    private boolean isAdminApiPath(String path) {
+        String normalizedPath = normalizeResourcePath(path);
+        return normalizedPath != null && normalizedPath.startsWith("/api/");
+    }
+
+    /**
+     * 规范化资源路径，阻止路径穿越。
+     *
+     * @param path `/admin` 之后的相对路径
      * @return 以 `/` 开头的规范路径，非法路径返回 null
      */
     private String normalizeResourcePath(String path) {

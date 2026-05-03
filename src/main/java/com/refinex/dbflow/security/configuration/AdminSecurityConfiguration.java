@@ -126,16 +126,14 @@ public class AdminSecurityConfiguration {
     @Order(ADMIN_SECURITY_ORDER)
     public SecurityFilterChain adminSecurityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
                                                         AdminSessionViewService sessionViewService) throws Exception {
-        http.securityMatcher("/admin", "/admin/**", "/admin-legacy", "/admin-legacy/**", "/login", "/logout",
-                        "/admin-assets/**")
+        http.securityMatcher("/admin", "/admin/**", "/login", "/logout")
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/login",
-                                "/admin-assets/**",
+                                "/admin/index.html",
                                 "/admin/assets/**",
                                 "/admin/favicon*").permitAll()
                         .requestMatchers("/admin/api/**").hasRole("ADMIN")
-                        .requestMatchers("/admin-legacy", "/admin-legacy/**").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/admin").hasRole("ADMIN")
                         .anyRequest().authenticated()
@@ -336,7 +334,7 @@ public class AdminSecurityConfiguration {
     }
 
     /**
-     * 同时支持 React SPA header token 和 Thymeleaf hidden token 的 CSRF 请求处理器。
+     * 支持 React SPA header token 和标准参数 token 的 CSRF 请求处理器。
      */
     private static final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler {
 
@@ -346,7 +344,7 @@ public class AdminSecurityConfiguration {
         private final CsrfTokenRequestHandler plain = new CsrfTokenRequestAttributeHandler();
 
         /**
-         * 使用 XOR token 保护服务端渲染页面中的隐藏字段。
+         * 使用 XOR token 兼容标准参数提交。
          */
         private final CsrfTokenRequestHandler xor = new XorCsrfTokenRequestAttributeHandler();
 

@@ -12,11 +12,9 @@
 | 本地 React 管理端开发 | `http://127.0.0.1:5173/admin`           | 前端 dev server，代理 `/admin/api/**`。   |
 | 打包后 React 管理端  | `http://127.0.0.1:8080/admin`           | 需要用 `react-admin` Maven profile 打包。 |
 | 内网部署示例         | `https://dbflow.internal.example/login` | 反向代理后仍先走同一登录入口。                     |
-| 旧 Thymeleaf 后台 | `http://127.0.0.1:8080/admin-legacy`    | 仅用于过渡期排障，仍要求管理员登录。                  |
 
-登录后默认进入 `/admin` React 总览页。管理端使用 Spring Security form login，`/admin/**` 和
-`/admin-legacy/**` 共享同一个管理员 session；`/admin/api/**` 是 React 管理端使用的 JSON API，写操作必须携带
-Spring Security CSRF token。`/mcp` 不使用管理端 session，而是每次请求都要求
+登录后默认进入 `/admin` React 总览页。管理端使用 Spring Security form login；`/admin/api/**` 是 React
+管理端使用的 JSON API，写操作必须携带 Spring Security CSRF token。`/mcp` 不使用管理端 session，而是每次请求都要求
 `Authorization: Bearer <DBFlow Token>`。
 
 初始管理员账号应来自外部配置或密钥系统，例如 `dbflow.admin.initial-user.*`。不要把真实密码、BCrypt hash、Token
@@ -60,27 +58,24 @@ curl -s http://127.0.0.1:8080/actuator/health
 - 返回有限的 Actuator health 状态，默认不展示敏感详情。
 - 浏览器访问 `http://127.0.0.1:8080/login` 能看到 DBFlow 管理端登录页。
 - 登录后访问 `/admin/health` 能看到 React 管理端的系统健康页。
-- 登录后访问 `/admin-legacy/health` 能看到旧 Thymeleaf 健康页，用于过渡期排障。
 - 访问 `/admin/audit` 能看到审计列表页；没有记录时应显示空状态，而不是报错。
 
 ## 4. 登录、CSRF 与 Session
 
-- `/login` 仍是统一登录入口，支持普通 Thymeleaf form login，也支持 React admin 的 JSON/XHR 登录。
+- `/login` 仍是统一登录入口，GET 由 React SPA 渲染，POST 由 Spring Security 处理，也支持 React admin 的 JSON/XHR 登录。
 - 管理端 session 存在服务端，浏览器只保存标准 session cookie；React admin 不在 localStorage 保存登录状态。
 - Spring Security 会下发浏览器可读的 `XSRF-TOKEN` cookie。React admin API client 会在 mutation 请求中把它复制到
   `X-XSRF-TOKEN` header。
-- `/admin/api/**` 缺少 CSRF token 的写请求会被拒绝；Thymeleaf `/admin-legacy/**` 表单继续使用隐藏 `_csrf`
-  字段。
+- `/admin/api/**` 缺少 CSRF token 的写请求会被拒绝。
 - `/mcp` 与管理端 session 完全分离，必须使用 MCP Bearer Token。
 
-## 5. `/admin` 与 `/admin-legacy` cutover 状态
+## 5. `/admin` cutover 状态
 
 当前 cutover 策略：
 
 - `/admin` 是 React 管理端正式入口，登录成功默认跳转到这里。
 - `/admin/api/**` 保持 JSON API，不被 SPA fallback 捕获。
-- `/admin-legacy/**` 是短期保留的旧 Thymeleaf 后台，仅用于过渡期排障，仍要求 `ROLE_ADMIN`。
-- 稳定一个版本后再评估删除旧模板和 `/admin-assets/**`。
+- 旧 Thymeleaf 后台已删除，`/admin-legacy/**` 不再作为管理入口。
 
 ## 6. 创建和禁用用户
 

@@ -1,5 +1,5 @@
 /**
- * 管理端页面视图模型边界，承载 Thymeleaf 模板使用的只读数据结构。
+ * 管理端只读视图模型边界，承载 React JSON API 使用的安全投影数据结构。
  *
  * @author refinex
  */

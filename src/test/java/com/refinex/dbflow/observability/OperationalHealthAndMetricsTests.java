@@ -277,17 +277,17 @@ class OperationalHealthAndMetricsTests {
     }
 
     /**
-     * 验证管理端健康页面仍要求管理员权限。
+     * 验证管理端健康 JSON 仍要求管理员权限。
      *
      * @throws Exception MockMvc 执行异常
      */
     @Test
-    void shouldKeepAdminHealthPageAdminOnly() throws Exception {
-        mockMvc.perform(get("/admin-legacy/health").with(user("operator").roles("USER")))
+    void shouldKeepAdminHealthApiAdminOnly() throws Exception {
+        mockMvc.perform(get("/admin/api/health").with(user("operator").roles("USER")))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/admin-legacy/health").with(user("admin").roles("ADMIN")))
+        mockMvc.perform(get("/admin/api/health").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("系统健康")))
+                .andExpect(content().string(containsString("\"success\":true")))
                 .andExpect(content().string(not(containsString("jdbc:h2:mem"))));
     }
 }

@@ -9,14 +9,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * React 管理端 CSRF cookie 安全测试。
@@ -41,12 +39,6 @@ class AdminCsrfSpaTests {
      * SPA 提交 CSRF token 的请求头名称。
      */
     private static final String CSRF_HEADER_NAME = "X-XSRF-TOKEN";
-
-    /**
-     * Thymeleaf 渲染的 CSRF 隐藏字段匹配规则。
-     */
-    private static final Pattern CSRF_INPUT_PATTERN = Pattern.compile(
-            "name=\"_csrf\"[^>]*value=\"([^\"]+)\"|value=\"([^\"]+)\"[^>]*name=\"_csrf\"");
 
     /**
      * MockMvc 测试客户端。
@@ -102,30 +94,6 @@ class AdminCsrfSpaTests {
     }
 
     /**
-     * 验证 Thymeleaf 隐藏字段形式的 CSRF token 仍可用于表单提交。
-     *
-     * @throws Exception MockMvc 执行异常
-     */
-    @Test
-    void shouldKeepThymeleafHiddenCsrfFormSubmission() throws Exception {
-        MvcResult loginResult = mockMvc.perform(get("/login"))
-                .andExpect(status().isOk())
-                .andReturn();
-        Cookie csrfCookie = loginResult.getResponse().getCookie(CSRF_COOKIE_NAME);
-        String csrfParameter = extractCsrfParameter(loginResult.getResponse().getContentAsString());
-
-        mockMvc.perform(post("/admin-legacy/users")
-                        .with(user("admin").roles("ADMIN"))
-                        .cookie(csrfCookie)
-                        .param("_csrf", csrfParameter)
-                        .param("username", "csrf.form.user")
-                        .param("displayName", "CSRF Form User")
-                        .param("password", "Admin123456!"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/admin-legacy/users"));
-    }
-
-    /**
      * 获取 CSRF cookie。
      *
      * @return CSRF cookie
@@ -141,17 +109,4 @@ class AdminCsrfSpaTests {
         return csrfCookie;
     }
 
-    /**
-     * 提取 Thymeleaf 渲染出的 CSRF 隐藏字段值。
-     *
-     * @param html 登录页 HTML
-     * @return CSRF 隐藏字段值
-     */
-    private String extractCsrfParameter(String html) {
-        Matcher matcher = CSRF_INPUT_PATTERN.matcher(html);
-        assertThat(matcher.find()).isTrue();
-        String token = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
-        assertThat(token).isNotBlank();
-        return token;
-    }
 }

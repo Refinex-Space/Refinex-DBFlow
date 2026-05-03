@@ -50,7 +50,6 @@ set +a
 |----------------|-----------------------------------------|
 | 管理端登录          | `http://127.0.0.1:8080/login`           |
 | React 管理端      | `http://127.0.0.1:8080/admin`           |
-| 旧 Thymeleaf 后台 | `http://127.0.0.1:8080/admin-legacy`    |
 | Health         | `http://127.0.0.1:8080/actuator/health` |
 | MCP            | `http://127.0.0.1:8080/mcp`             |
 
@@ -139,8 +138,8 @@ Testcontainers 集成测试在本机无 Docker runtime 时会自动跳过。
 ./mvnw -Preact-admin -DskipTests package
 ```
 
-打包结果会包含 `/admin/**` React 静态资源。未启用该 profile 时，`/admin/api/**` JSON API 和
-`/admin-legacy/**` Thymeleaf 后台仍存在，但 jar 内不会包含 React 前端资产。
+打包结果会包含 `/admin/**` React 静态资源。未启用该 profile 时，`/admin/api/**` JSON API 仍存在，但 jar 内
+不会包含 React 前端资产。
 
 jar 启动：
 
@@ -158,7 +157,7 @@ java -jar target/refinex-dbflow-0.1.0-SNAPSHOT.jar
 - `/mcp` 不接受 query string token，只接受 Bearer Token。
 - 不要提交真实数据库密码、MCP Token、Token pepper 或 Nacos 密码。
 - 生产应使用受管管理员账号，并轮换 `dbflow.security.mcp-token.pepper`。
-- `/admin` 是 React 管理端正式入口；`/admin-legacy/**` 是短期过渡排障入口，仍必须要求管理员 session。
+- `/admin` 是 React 管理端正式入口；旧 Thymeleaf 后台已删除，不再提供 `/admin-legacy/**` 管理入口。
 - `/admin/api/**` 保持 JSON API，不能被 SPA fallback 或 legacy 页面路由捕获。
 - Token 明文只在颁发/重发响应中一次性展示。管理端、日志、审计、文档和部署配置都不得保存真实 Token 明文。
 

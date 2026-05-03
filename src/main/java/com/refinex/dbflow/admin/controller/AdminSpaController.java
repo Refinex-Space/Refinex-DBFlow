@@ -48,6 +48,16 @@ public class AdminSpaController {
     }
 
     /**
+     * 将 React 登录页入口交给 SPA 渲染。
+     *
+     * @return SPA 入口静态资源响应
+     */
+    @GetMapping("/login")
+    public Object login() {
+        return staticResource("index.html");
+    }
+
+    /**
      * 处理 React 管理端子路由和静态资源路径。
      *
      * @param path `/admin` 之后的相对路径
@@ -104,8 +114,6 @@ public class AdminSpaController {
     }
 
     /**
-     * 规范化资源路径，阻止路径穿越。
-     *
      * 判断路径是否命中管理端 JSON API。
      *
      * @param path `/admin` 之后的相对路径

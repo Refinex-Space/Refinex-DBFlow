@@ -18,6 +18,9 @@ Harness Powers lifecycle:
 
 ## Completed Plans
 
+- [2026-05-03 Remove Legacy Thymeleaf Admin](exec-plans/completed/2026-05-03-remove-legacy-thymeleaf-admin.md) -
+  Completed; deleted the legacy Thymeleaf admin controller, templates, and assets; removed the Thymeleaf dependency and
+  SSR-only tests; kept React `/admin`, React `/login`, and `/admin/api/**` as the only maintained admin surfaces.
 - [2026-05-03 React Admin `/admin` Cutover](exec-plans/completed/2026-05-03-react-admin-admin-cutover.md) -
   Completed; promoted the accepted React admin SPA from `/admin-next` to `/admin`, moved legacy Thymeleaf routes to
   `/admin-legacy`, verified `/admin/api/**` and `/admin/assets/**` boundaries, and packaged React assets under

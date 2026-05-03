@@ -86,15 +86,28 @@ class AdminSpaControllerTests {
     }
 
     /**
-     * 验证 legacy Thymeleaf 管理端总览仍然可用。
+     * 验证 React 登录页入口由 SPA index 渲染。
      *
      * @throws Exception MockMvc 执行异常
      */
     @Test
-    void shouldKeepAdminLegacyThymeleafOverview() throws Exception {
-        mockMvc.perform(get("/admin-legacy").with(user("admin").roles("ADMIN")))
+    void shouldServeReactLoginPageFromSpaIndex() throws Exception {
+        mockMvc.perform(get("/login"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("SQL 请求")))
-                .andExpect(content().string(containsString("最近审计事件")));
+                .andExpect(forwardedUrl(null))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(content().string(containsString("DBFlow Admin")))
+                .andExpect(content().string(containsString("/admin/assets/")));
+    }
+
+    /**
+     * 验证旧后台入口已经不可用。
+     *
+     * @throws Exception MockMvc 执行异常
+     */
+    @Test
+    void shouldNotExposeAdminLegacyRoute() throws Exception {
+        mockMvc.perform(get("/admin-legacy").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isNotFound());
     }
 }

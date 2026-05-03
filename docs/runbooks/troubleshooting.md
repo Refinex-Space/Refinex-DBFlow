@@ -360,7 +360,7 @@ Steps:
 ```bash
 curl -i http://localhost:8080/admin
 curl -i http://localhost:8080/login
-./mvnw -Dtest=AdminSecurityTests,AdminUiControllerTests test
+./mvnw -Dtest=AdminSecurityTests,AdminSpaControllerTests test
 ```
 
 Checks:

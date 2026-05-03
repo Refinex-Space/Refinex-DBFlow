@@ -21,13 +21,10 @@ It also exposes management-side JSON APIs for audit list/detail, user management
 read-only
 overview/configuration/dangerous policy/health data, with administrator-only access and sanitized DTOs that exclude
 Token metadata and redact
-password-like text. It now includes a Thymeleaf-based
-management UI foundation converted from the P09 admin prototype: custom form-login page, shared admin shell, navigation,
-top status bar, dense table/filter/detail layouts, static CSS/JS, and real management flows for users, MCP Tokens, and
-project/environment grants. Token plaintext is shown only through a one-time flash result after issue/reissue, while
-lists omit Token hash, password hash, database passwords, and full Token plaintext. The audit, dangerous policy, and
-system health pages now render real server-side views for audit filtering/pagination/details, YAML/Nacos dangerous
-DDL policy state, metadata database status, target Hikari pools, Nacos enablement, and MCP endpoint state. It does not
+password-like text. It now includes a React management SPA under `/admin` with JSON-backed real management flows for
+users, MCP Tokens, project/environment grants, audit, dangerous policy, configuration, and health. Token plaintext is
+shown only through one-time JSON issue/reissue responses, while list payloads omit Token hash, password hash, database
+passwords, and full Token plaintext. It does not
 yet contain CI configuration or production deployment configuration. The MCP Streamable HTTP endpoint is now hardened
 with configurable trusted Origin validation, request size limits, fixed-window source-IP rate limiting, query-string
 token rejection, stable sanitized HTTP errors, and bounded MCP tool error metadata for denial/failure/expiry/truncation.
@@ -136,7 +133,6 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- AdminAccessManagementService.java
 |   |   |   |   +-- AdminAuditEventController.java
 |   |   |   |   +-- AdminGrantApiController.java
-|   |   |   |   +-- AdminHomeController.java
 |   |   |   |   +-- AdminOperationsApiController.java
 |   |   |   |   +-- AdminOperationsViewService.java
 |   |   |   |   +-- AdminOverviewApiController.java
@@ -264,32 +260,14 @@ and must be updated as implementation packages are added.
 |   |   |   |   +-- package-info.java
 |   |   +-- resources/application.yml
 |   |   +-- resources/db/migration/V1__create_metadata_schema.sql
-|   |   +-- resources/static/admin-assets/
-|   |   |   +-- css/admin.css
-|   |   |   +-- js/admin.js
-|   |   +-- resources/templates/admin/
-|   |   |   +-- fragments/layout.html
-|   |   |   +-- login.html
-|   |   |   +-- overview.html
-|   |   |   +-- users.html
-|   |   |   +-- grants.html
-|   |   |   +-- tokens.html
-|   |   |   +-- config.html
-|   |   |   +-- policies-dangerous.html
-|   |   |   +-- audit-list.html
-|   |   |   +-- audit-detail.html
-|   |   |   +-- health.html
 |   |   +-- resources/logback-spring.xml
 |   +-- test/
 |       +-- java/com/refinex/dbflow/
 |           +-- DbflowApplicationTests.java
-|           +-- admin/AdminAccessManagementControllerTests.java
 |           +-- admin/AdminAccessManagementServiceTests.java
 |           +-- admin/AdminAuditEventControllerTests.java
 |           +-- admin/AdminTokenApiControllerTests.java
 |           +-- admin/AdminOperationsApiControllerTests.java
-|           +-- admin/AdminOperationsPageControllerTests.java
-|           +-- admin/AdminUiControllerTests.java
 |           +-- common/
 |           |   +-- ApiResultTests.java
 |           |   +-- DbflowExceptionTests.java
@@ -345,24 +323,17 @@ and must be updated as implementation packages are added.
   `projectKey/environmentKey`, applies shared `dbflow.datasource-defaults.hikari` settings, supports optional startup
   connection validation, supports candidate-first atomic replacement through `DataSourceConfigReloader`, and closes all
   managed pools on shutdown.
-- Admin UI baseline: `/login` renders a custom Thymeleaf form-login page; `/admin` and the base admin routes render
-  Thymeleaf templates that preserve the P09 prototype shell, navigation, top status, dense tables, filters, details,
-  and state samples. `/admin/audit` and `/admin/audit/{eventId}` now reuse `AuditQueryService` for real filtered,
-  paginated, sanitized audit views; `/admin/policies/dangerous` renders read-only dangerous DDL defaults, DROP
-  whitelist entries, TRUNCATE confirmation policy, and prod strengthening rules from effective configuration; and
-  `/admin/health` renders metadata database, target Hikari pool, Nacos, and MCP endpoint state without exposing
-  credentials or full JDBC URLs. Static admin assets are served from `/admin-assets/**` without a Node/Vite build chain.
-- React admin SPA baseline: packaged React assets under `/admin-next/**` support production jar routing; `/admin-next`
-  and non-resource child routes forward to `/admin-next/index.html`, while `.js`, `.css`, `.svg`, `.png`, and similar
-  asset paths are served or 404 as static resources instead of falling back to HTML.
+- Admin UI baseline: `/login` and `/admin/**` render the React management SPA. Packaged React assets live under
+  `static/admin/`; non-resource `/admin/**` paths forward to `/admin/index.html`, while `.js`, `.css`, `.svg`, `.png`,
+  and similar asset paths are served or 404 as static resources instead of falling back to HTML.
 - React admin read-only API baseline: `GET /admin/api/overview`, `GET /admin/api/config`,
   `GET /admin/api/policies/dangerous`, and `GET /admin/api/health` return `ApiResult.ok(data)` using the same
-  sanitized view services as the Thymeleaf overview, configuration, dangerous policy, and health pages. These APIs do
+  sanitized admin view services. These APIs do
   not expose full JDBC URLs, passwords, Token plaintext, Token hashes, or password hashes.
-- Admin security baseline: `/admin/**`, `/admin-next/**`, `/login`, `/logout`, and `/admin-assets/**` are handled by a
-  management-side Spring Security form-login session chain with CSRF, BCrypt-backed users, custom login page,
-  admin-only `/admin/**` and `/admin/api/**` access, anonymous static asset plus React SPA shell access, and JSON
-  `401` responses for unauthenticated API requests that explicitly accept JSON. JSON or XHR `POST /login` returns the
+- Admin security baseline: `/admin/**`, `/login`, and `/logout` are handled by a management-side Spring Security
+  form-login session chain with CSRF, BCrypt-backed users, React login page, admin-only `/admin/**` and
+  `/admin/api/**` access, anonymous static asset access, and JSON `401` responses for unauthenticated API requests
+  that explicitly accept JSON. JSON or XHR `POST /login` returns the
   same safe session projection used by `GET /admin/api/session` on success and JSON `401` on failure; ordinary form
   login still redirects to `/admin` or `/login?error`. JSON or XHR `POST /logout` returns JSON success after Spring
   Security invalidates the session; ordinary logout still redirects to `/login?logout`.
@@ -415,20 +386,20 @@ and must be updated as implementation packages are added.
   sanitized admin view services and are protected by the `/admin/api/**` administrator-only security rule.
 - Management user API baseline: `GET /admin/api/users`, `POST /admin/api/users`, `POST
   /admin/api/users/{userId}/disable`, `POST /admin/api/users/{userId}/enable`, and `POST
-  /admin/api/users/{userId}/reset-password` reuse `AdminAccessManagementService` for the same user-management behavior
-  as the Thymeleaf page. Responses use `ApiResult`, return only the safe `UserRow` projection or operation markers, do
+  /admin/api/users/{userId}/reset-password` reuse `AdminAccessManagementService` for user-management behavior.
+  Responses use `ApiResult`, return only the safe `UserRow` projection or operation markers, do
   not expose password hashes or reset-password plaintext, and remain protected by the administrator-only `/admin/api/**`
   rule plus CSRF for mutations.
 - Management grant API baseline: `GET /admin/api/grants`, `GET /admin/api/grants/options`, `POST /admin/api/grants`,
   `POST /admin/api/grants/update-project`, and `POST /admin/api/grants/{grantId}/revoke` reuse
-  `AdminAccessManagementService` for the same project/environment grant behavior as the Thymeleaf page. Responses use
+  `AdminAccessManagementService` for project/environment grant behavior. Responses use
   existing safe grant/user/environment projections, omit JDBC URLs and database credentials, and keep mutation requests
   protected by CSRF. Empty `environmentKeys` in `update-project` intentionally revokes all of that user's grants under
   the selected project.
 - Management Token API baseline: `GET /admin/api/tokens`, `GET /admin/api/tokens/options`, `POST
   /admin/api/tokens`, `POST /admin/api/tokens/{tokenId}/revoke`, and `POST
-  /admin/api/users/{userId}/tokens/reissue` reuse `AdminAccessManagementService` for the same MCP Token lifecycle
-  behavior as the Thymeleaf page. List responses map to a dedicated safe DTO that exposes only id, user, prefix,
+  /admin/api/users/{userId}/tokens/reissue` reuse `AdminAccessManagementService` for MCP Token lifecycle behavior.
+  List responses map to a dedicated safe DTO that exposes only id, user, prefix,
   status, expiry, and last-used metadata; they do not expose `plaintextToken` or `tokenHash`. Issue and reissue
   responses may include `plaintextToken` only for the successful one-time response, while revoke returns only an
   operation marker and keeps mutation requests protected by CSRF.
@@ -710,8 +681,7 @@ The current implemented security boundary is management-side browser/session aut
   can distinguish login state without parsing HTML. Browser page requests such as `/admin` continue to redirect to
   `/login`.
 - Management CSRF remains enabled. The management chain uses the default `XSRF-TOKEN` cookie with `HttpOnly=false` for
-  React admin reads and accepts SPA mutations through the `X-XSRF-TOKEN` header, while server-rendered Thymeleaf forms
-  continue to submit hidden `_csrf` parameters.
+  React admin reads and accepts SPA mutations through the `X-XSRF-TOKEN` header.
 - `AdminUserDetailsService` loads active users from `dbf_users` and authenticates against BCrypt hashes stored in
   `password_hash`.
 - `InitialAdminUserInitializer` can create the first administrator when `dbflow.admin.initial-user.enabled=true` and

@@ -20,21 +20,14 @@ authorized `dbflow_inspect_schema` and schema resource coverage for `information
 views, procedures, functions, filtering, truncation, and denial-before-target-access behavior. The audit layer now has
 `AuditEventWriter` coverage for request received, policy denied, confirmation-required, executed, failed, and
 confirmation-expired decisions with bounded summaries and token-plaintext exclusion. The management backend now has
-audit query service/API coverage for filters, pagination, sanitized details, and admin-only access. The management UI
-now has Thymeleaf controller coverage for the custom login page, anonymous redirect, static admin assets, admin-only
-page access, and the base admin pages converted from the P09 prototype. It also has management access smoke coverage
-for creating/disabling users, granting/revoking project environments, issuing/revoking/reissuing MCP Tokens, one-time
-Token plaintext display, and admin-only CSRF-protected POST boundaries. Management operations pages now have smoke
-coverage for audit filtering, pagination, denied-reason detail rendering, dangerous policy read-only rendering,
-system health rendering, non-admin rejection, and page-level secret redaction. React admin SPA routing is covered for
-`/admin`, child routes, static resource non-fallback behavior, `/admin/api/**` JSON boundary, and `/admin-legacy`
-Thymeleaf regression. Management CSRF coverage now verifies browser-readable `XSRF-TOKEN` cookie bootstrap,
-`X-XSRF-TOKEN` SPA
-header acceptance, missing-token rejection for `/admin/api/**`, and Thymeleaf hidden `_csrf` parameter compatibility.
+audit query service/API coverage for filters, pagination, sanitized details, and admin-only access. React admin SPA
+routing is covered for `/admin`, child routes, `/login`, static resource non-fallback behavior, `/admin/api/**` JSON
+boundary, and unavailable `/admin-legacy`. Management CSRF coverage now verifies browser-readable `XSRF-TOKEN` cookie
+bootstrap, `X-XSRF-TOKEN` SPA header acceptance, and missing-token rejection for `/admin/api/**`.
 React admin session API coverage now verifies authenticated session JSON, shell metadata reuse, sensitive-field
 omission, and anonymous JSON `401` handling for SPA clients. React admin JSON login coverage verifies JSON/XHR login
 success and failure responses, CSRF-required login, and JSON logout session invalidation while preserving ordinary
-Thymeleaf form-login redirects through the existing management security regression suite. React admin read-only
+form-login redirects through the existing management security regression suite. React admin read-only
 operations API coverage now verifies overview, configuration, dangerous policy, and health JSON responses, admin-only
 access, and absence of full JDBC URLs, Token prefixes, password hashes, and Token hashes. React admin user API coverage
 now verifies list/filter/create/disable/enable/reset-password JSON behavior, admin-only access, CSRF-required
@@ -109,7 +102,7 @@ Planned baseline:
 - Maven compiler release 21, UTF-8 encoding, and compiler `-parameters`
 - Flyway V1 metadata migration with H2 MySQL mode verification
 - Spring Security management session login for `/admin/**`, `/login`, and `/logout`
-- Thymeleaf management templates under `templates/admin/` and static assets under `/admin-assets/**`
+- React management SPA static assets under `/admin/**` when packaged with the `react-admin` profile
 - Spring AI MCP WebMVC Server starter with Streamable HTTP endpoint `/mcp`
 - `/mcp` endpoint guard with configurable trusted Origin validation, request size limit, and fixed-window source-IP
   rate limiting
@@ -238,24 +231,12 @@ Configuration sources and secret boundary:
   `dbflow.sql.execution.duration{operation,risk,status}`, and
   `dbflow.confirmation.challenges{status=PENDING}`. The metrics layer never stores token plaintext, database
   passwords, JDBC URLs, or full SQL result sets.
-- `/login` exposes the custom Thymeleaf management login page and submits to Spring Security form login.
-  `/admin-legacy`, `/admin-legacy/config`, `/admin-legacy/policies/dangerous`, `/admin-legacy/audit`,
-  `/admin-legacy/audit/{eventId}`, and `/admin-legacy/health` expose the temporary server-rendered management UI
-  shell. The audit pages delegate to `AuditQueryService` for filtered, paginated,
-  sanitized list/detail views. The dangerous policy page is read-only and renders effective YAML/Nacos policy state.
-  The health page renders metadata database, configured target Hikari pool, Nacos, and MCP endpoint status without
-  active target business SQL. `/admin-legacy/users`, `/admin-legacy/grants`, and `/admin-legacy/tokens` execute real
-  metadata
-  operations for user creation/disable, project/environment grant/revoke, and MCP Token issue/revoke/reissue.
-  Token plaintext is carried by one-time flash state after issue/reissue; list pages only show prefixes and never show
-  Token hash, password hash, JDBC URLs, or database passwords. `/admin-assets/**` is anonymous-readable for legacy
-  CSS/JS while `/admin-legacy/**` remains admin-only. `/admin/**` serves the packaged React admin shell: non-resource
-  paths forward to `/admin/index.html`, static resource paths are not converted into SPA HTML, `/admin/assets/**` is
-  anonymous-readable, and `/admin/api/**` remains administrator-only JSON. The management chain emits a
-  browser-readable `XSRF-TOKEN` cookie and accepts SPA mutations via
-  `X-XSRF-TOKEN`, while Thymeleaf forms continue to submit hidden `_csrf` parameters.
-- `/admin` is the React management UI after cutover. `/admin-legacy/**` is retained only for short-term
-  troubleshooting and still shares the Spring Security session, CSRF boundary, and `ROLE_ADMIN` requirement.
+- `/login` and `/admin/**` serve the packaged React admin shell. Non-resource `/admin/**` paths forward to
+  `/admin/index.html`, static resource paths are not converted into SPA HTML, `/admin/assets/**` is anonymous-readable,
+  and `/admin/api/**` remains administrator-only JSON. The old Thymeleaf admin and `/admin-legacy/**` routes have been
+  removed. The management chain emits a browser-readable `XSRF-TOKEN` cookie and accepts SPA mutations via
+  `X-XSRF-TOKEN`.
+- `/admin` is the React management UI after cutover. `/admin-legacy/**` is no longer a management entry.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.
@@ -390,10 +371,8 @@ under pressure, and `HEAVY_READ` returns degradation notices instead of unbounde
   sorting, and sanitized detail results.
 - `AdminAuditEventControllerTests` covers administrator audit list/detail API access, JSON response shape, sensitive
   field omission/redaction, and non-admin rejection.
-- `AdminUiControllerTests` covers the custom Thymeleaf login page, anonymous redirect to login, anonymous static asset
-  access, administrator access to all base admin pages, and non-admin page rejection.
 - `AdminSpaControllerTests` covers `/admin` and `/admin/users` SPA fallback, static resource non-fallback,
-  `/admin/api/session` JSON API behavior, and the `/admin-legacy` Thymeleaf overview regression.
+  `/login` SPA rendering, `/admin/api/session` JSON API behavior, and unavailable `/admin-legacy`.
 - `AdminSessionApiControllerTests` covers authenticated React session JSON, shell metadata projection, sensitive-field
   omission, and anonymous JSON `401` handling.
 - `AdminOperationsApiControllerTests` covers read-only overview/config/dangerous-policy/health JSON APIs, admin-only
@@ -409,20 +388,14 @@ under pressure, and `HEAVY_READ` returns degradation notices instead of unbounde
 - `dbflow-admin/src/api/client.test.ts`, `dbflow-admin/src/api/csrf.test.ts`, and
   `dbflow-admin/src/lib/errors.test.ts` cover the React admin Axios client, Spring Security CSRF cookie/header mapping,
   `ApiResult` unwrapping, typed API errors, and non-redirecting `401` propagation.
-- `AdminOperationsPageControllerTests` covers audit page filtering and pagination, denied-reason detail rendering,
-  page-level secret redaction, read-only dangerous policy rendering, system health rendering, and non-admin rejection
-  for operations pages.
 - `AdminAccessManagementServiceTests` covers the service-level user, environment grant, Token issue, revoke, reissue,
   disable flow and verifies Token hash is not exposed in service list views.
-- `AdminAccessManagementControllerTests` covers management smoke for creating users, granting environments, issuing
-  one-time plaintext Tokens, hiding plaintext on later GET, revoking Tokens, reissuing Tokens, non-admin POST rejection,
-  and missing-CSRF rejection.
 - `AdminSecurityTests` covers unauthenticated admin redirect, login success, login failure, CSRF protection for logout,
   and BCrypt storage of the initialized admin password.
 - `AdminJsonLoginTests` covers JSON login success with safe session payload, XHR login failure JSON `401`, CSRF-required
   JSON login, and JSON logout session invalidation.
-- `AdminCsrfSpaTests` covers `XSRF-TOKEN` cookie exposure, `X-XSRF-TOKEN` header acceptance for SPA requests,
-  missing-CSRF rejection on `/admin/api/**`, and Thymeleaf hidden `_csrf` form compatibility.
+- `AdminCsrfSpaTests` covers `XSRF-TOKEN` cookie exposure, `X-XSRF-TOKEN` header acceptance for SPA requests, and
+  missing-CSRF rejection on `/admin/api/**`.
 - `McpSecurityTests` covers `/mcp` no-token, invalid-token, query-string-token, revoked-token, valid-token,
   no-session-auth-reuse, SecurityContext-to-MCP-context propagation, unauthorized environment denial, stable tool error
   metadata, and token/secret redaction paths.

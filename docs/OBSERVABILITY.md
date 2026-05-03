@@ -86,6 +86,8 @@ and production/test Java sources are kept free of wildcard imports.
 | Validate Harness       | `python3 scripts/check_harness.py`                                                                                                           | Exit 0, all manifest entries and AGENTS links valid.                                                                                                                                                                          |
 | Package hygiene        | `rg -n "import .*\\.\\*" src/main/java src/test/java`                                                                                        | No wildcard imports in production or test Java sources.                                                                                                                                                                       |
 | React API client tests | `pnpm --dir dbflow-admin exec vitest run --browser.headless src/api/client.test.ts src/api/csrf.test.ts src/lib/errors.test.ts`              | Verifies Axios `ApiResult` unwrapping, CSRF header handling, typed errors, and `401` propagation.                                                                                                                             |
+| React admin tests      | `pnpm --dir dbflow-admin test`                                                                                                               | Runs Vitest headless browser tests for React admin API clients, stores, DBFlow components, pages, login failure states, Token one-time reveal behavior, and route-adjacent UI state.                                          |
+| React admin build      | `pnpm --dir dbflow-admin build`                                                                                                              | Type-checks and builds the Vite React admin with `/admin-next/` base path.                                                                                                                                                    |
 
 ## CI Configuration
 
@@ -119,6 +121,9 @@ Planned baseline:
 - React admin packaging is opt-in through the Maven `react-admin` profile. Default `./mvnw test` does not execute
   Node/pnpm; release builds that need the bundled React admin should run `./mvnw -Preact-admin -DskipTests package`
   in an environment where `pnpm` is available.
+- React admin local development runs as two processes: `./mvnw spring-boot:run` for the Spring Boot backend and
+  `pnpm --dir dbflow-admin dev` for the Vite frontend. The development entry is `/admin-next`; Vite proxies
+  `/admin/api/**`, `/login`, `/logout`, and `/actuator` to the backend.
 
 Local reference checkouts:
 
@@ -173,8 +178,8 @@ Configuration sources and secret boundary:
 - Operational logs use `requestId` and `traceId` for correlation. HTTP requests accept `X-Request-Id` and
   `X-Trace-Id`; when `X-Trace-Id` is absent, DBFlow uses the request id as the trace id. Background config reload paths
   generate a `config-reload-*` correlation id when no request context exists.
-- Dev deployment YAML initializes `admin/admin` for first login. Administrators should change the password immediately
-  after login and use managed credentials for non-dev deployments.
+- Dev deployment YAML initializes the first login credentials from `dbflow.admin.initial-user.*`. Administrators
+  should change the password immediately after login and use managed credentials for non-dev deployments.
 - MCP Token pepper is read from `dbflow.security.mcp-token.pepper`. Dev templates use `dev-only-change-me`; non-dev
   deployments must replace it through Nacos YAML or a secret-managed configuration source.
 - MCP endpoint protection is configured under `dbflow.security.mcp-endpoint.*`. Local/LAN deployments may add trusted
@@ -245,6 +250,8 @@ Configuration sources and secret boundary:
   `/admin-next/index.html`, static resource paths are not converted into SPA HTML, and `/admin/api/**` remains
   administrator-only. The management chain emits a browser-readable `XSRF-TOKEN` cookie and accepts SPA mutations via
   `X-XSRF-TOKEN`, while Thymeleaf forms continue to submit hidden `_csrf` parameters.
+- `/admin` remains the stable server-rendered management UI. `/admin-next` is the React new-admin trial path before
+  cutover; it must share the same Spring Security session, CSRF boundary, and JSON API authorization as `/admin`.
 - MCP Bearer Token authentication is not part of the management session chain. `/mcp` requires
   `Authorization: Bearer <DBFlow Token>` on every request, rejects query string tokens, and validates tokens through
   `McpTokenService`.

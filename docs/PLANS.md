@@ -18,6 +18,9 @@ Harness Powers lifecycle:
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Tests And Docs](exec-plans/completed/2026-05-03-react-admin-tests-and-docs.md) -
+  Completed; added Vitest setup, DBFlow badge tests, Token plaintext reveal copy/clear coverage, login error-state
+  coverage, and React admin development/deployment/cutover documentation.
 - [2026-05-03 React Admin Monaco SQL Viewer](exec-plans/completed/2026-05-03-react-admin-monaco-sql-viewer.md) -
   Completed; upgraded the React audit detail SQL viewer to readonly Monaco Editor with SQL language, default height,
   dark/light theme support, local worker configuration, and build/test verification.

@@ -1,6 +1,6 @@
 # Refinex-DBFlow Deployment
 
-这份文档只保留一条主路径：复制 Nacos dev YAML，启动应用，使用 `admin/admin` 登录，随后在管理端修改密码并按需添加
+这份文档只保留一条主路径：复制 Nacos dev YAML，启动应用，使用外部配置中的初始管理员凭据登录，随后在管理端修改密码并按需添加
 project/env。首次启动不需要提前准备示例业务库环境变量。
 
 ## 1. 前置条件
@@ -46,15 +46,27 @@ set +a
 
 访问：
 
-| 入口     | 地址                                      |
-|--------|-----------------------------------------|
-| 管理端    | `http://127.0.0.1:8080/login`           |
-| 初始账号   | `admin`                                 |
-| 初始密码   | `admin`                                 |
-| Health | `http://127.0.0.1:8080/actuator/health` |
-| MCP    | `http://127.0.0.1:8080/mcp`             |
+| 入口           | 地址                                      |
+|--------------|-----------------------------------------|
+| 管理端登录        | `http://127.0.0.1:8080/login`           |
+| React 新后台试运行 | `http://127.0.0.1:8080/admin-next`      |
+| Health       | `http://127.0.0.1:8080/actuator/health` |
+| MCP          | `http://127.0.0.1:8080/mcp`             |
 
-首次登录后请立即修改管理员密码，再创建个人用户、授权 project/env、颁发 MCP Token。
+初始管理员 username/password 以 Nacos dev YAML 或受管密钥配置中的 `dbflow.admin.initial-user.*`
+为准。首次登录后请立即修改管理员密码，再创建个人用户、授权 project/env、颁发 MCP Token。
+
+### React admin 开发态
+
+本地开发 React 新后台时，后端和前端分两个进程启动：
+
+```bash
+./mvnw spring-boot:run
+pnpm --dir dbflow-admin dev
+```
+
+访问 `http://127.0.0.1:5173/admin-next`。Vite dev server 会代理 `/admin/api/**`、`/login`、`/logout` 和
+`/actuator` 到后端。未登录时先访问 `/login` 建立管理端 session。
 
 ## 3. 配置 project/env
 
@@ -71,7 +83,7 @@ dbflow:
           name: Dev
           jdbc-url: jdbc:mysql://127.0.0.1:3306/your_schema?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
           username: your_dbflow_user
-          password: your_dbflow_password
+          password: <target-db-password>
 ```
 
 建议：
@@ -95,7 +107,7 @@ spring:
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/dbflow_metadata?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
     username: dbflow_meta
-    password: dbflow_meta_password
+    password: <metadata-db-password>
     driver-class-name: com.mysql.cj.jdbc.Driver
 ```
 
@@ -120,6 +132,15 @@ ls -lh target/refinex-dbflow-0.1.0-SNAPSHOT.jar
 
 Testcontainers 集成测试在本机无 Docker runtime 时会自动跳过。
 
+如果要把 React 新后台打进 jar，使用 opt-in profile：
+
+```bash
+./mvnw -Preact-admin -DskipTests package
+```
+
+打包结果会包含 `/admin-next/**` 静态资源。未启用该 profile 时，后端仍保留 `/admin` Thymeleaf 管理端和
+`/admin/api/**` JSON API，但 jar 内不会包含新 React 前端资产。
+
 jar 启动：
 
 ```bash
@@ -135,7 +156,10 @@ java -jar target/refinex-dbflow-0.1.0-SNAPSHOT.jar
 - 建议应用只监听内网或 `127.0.0.1`，由内网反向代理终止 TLS。
 - `/mcp` 不接受 query string token，只接受 Bearer Token。
 - 不要提交真实数据库密码、MCP Token、Token pepper 或 Nacos 密码。
-- 生产应把 `admin/admin` 改成受管管理员账号，并轮换 `dbflow.security.mcp-token.pepper`。
+- 生产应使用受管管理员账号，并轮换 `dbflow.security.mcp-token.pepper`。
+- `/admin` 是当前稳定管理端；`/admin-next` 是 React 新后台试运行入口。cutover 前两者共享登录、session、CSRF 和
+  `/admin/api/**`，不要让 React 新后台绕过 Spring Security。
+- Token 明文只在颁发/重发响应中一次性展示。管理端、日志、审计、文档和部署配置都不得保存真实 Token 明文。
 
 ### 单实例容量治理
 

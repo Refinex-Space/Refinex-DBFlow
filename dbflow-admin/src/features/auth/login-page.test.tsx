@@ -107,6 +107,21 @@ describe('LoginPage', () => {
         expect(useSessionStore.getState().session).toBeNull()
     })
 
+    it('shows the generic error message for non-API login failures', async () => {
+        loginMock.mockRejectedValue(new Error('network is hidden from users'))
+        const screen = await renderLoginPage()
+
+        await submitLogin(screen, 'admin', 'wrong-password')
+
+        await vi.waitFor(() =>
+            expect(toastErrorMock).toHaveBeenCalledWith(
+                'Sign in failed. Please check your username and password.'
+            )
+        )
+        expect(navigateMock).not.toHaveBeenCalled()
+        expect(useSessionStore.getState().session).toBeNull()
+    })
+
     it('stores session and navigates to redirect after successful login', async () => {
         loginMock.mockResolvedValue(authenticatedSession)
         const screen = await renderLoginPage('/users')

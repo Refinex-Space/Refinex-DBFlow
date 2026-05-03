@@ -6,26 +6,50 @@
 
 ## 1. 管理端入口
 
-| 场景     | 地址                                      |
-|--------|-----------------------------------------|
-| 本地开发   | `http://127.0.0.1:8080/login`           |
-| 内网部署示例 | `https://dbflow.internal.example/login` |
+| 场景              | 地址                                           | 说明                                  |
+|-----------------|----------------------------------------------|-------------------------------------|
+| 本地后端管理端         | `http://127.0.0.1:8080/login`                | Spring Security 登录入口。               |
+| 本地 React 新后台试运行 | `http://127.0.0.1:5173/admin-next`           | 前端 dev server，代理 `/admin/api/**`。   |
+| 打包后 React 新后台   | `http://127.0.0.1:8080/admin-next`           | 需要用 `react-admin` Maven profile 打包。 |
+| 内网部署示例          | `https://dbflow.internal.example/login`      | 反向代理后仍先走同一登录入口。                     |
+| 内网 React 新后台示例  | `https://dbflow.internal.example/admin-next` | 仅用于 cutover 前试运行。                   |
 
-登录后进入 `/admin` 总览页。管理端使用 Spring Security form login，`/admin/**` 需要管理员会话；
-`/mcp` 不使用管理端 session，而是每次请求都要求 `Authorization: Bearer <DBFlow Token>`。
+登录后默认进入 `/admin` 总览页。管理端使用 Spring Security form login，`/admin/**` 和 `/admin-next/**`
+共享同一个管理员 session；`/admin/api/**` 是 React 新后台使用的 JSON API，写操作必须携带 Spring Security CSRF
+token。`/mcp` 不使用管理端 session，而是每次请求都要求 `Authorization: Bearer <DBFlow Token>`。
 
 初始管理员账号应来自外部配置或密钥系统，例如 `dbflow.admin.initial-user.*`。不要把真实密码、BCrypt hash、Token
 pepper 或数据库密码写入仓库。
 
-## 2. First-use Smoke Test
+## 2. 本地开发启动
 
-本地开发环境首次验证：
+后端：
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-另开终端检查最小健康面：
+前端：
+
+```bash
+pnpm --dir dbflow-admin dev
+```
+
+开发态访问 `http://127.0.0.1:5173/admin-next`。Vite 会把 `/admin/api/**`、`/login`、`/logout`、`/actuator`
+代理到 `http://localhost:8080`，因此后端必须先启动并完成登录 session 建立。
+
+打包验证：
+
+```bash
+./mvnw -Preact-admin -DskipTests package
+```
+
+该命令会安装/构建 `dbflow-admin`，并把 `dbflow-admin/dist/**` 复制进 Spring Boot jar 的
+`static/admin-next/`。
+
+## 3. First-use Smoke Test
+
+本地开发环境首次验证后端：
 
 ```bash
 curl -s http://127.0.0.1:8080/actuator/health
@@ -36,9 +60,28 @@ curl -s http://127.0.0.1:8080/actuator/health
 - 返回有限的 Actuator health 状态，默认不展示敏感详情。
 - 浏览器访问 `http://127.0.0.1:8080/login` 能看到 DBFlow 管理端登录页。
 - 登录后访问 `/admin/health` 能看到 metadata database、target datasource registry、Nacos、MCP endpoint 状态。
+- 登录后访问 `/admin-next` 能看到 React 新后台；未登录访问时应回到登录流程。
 - 访问 `/admin/audit` 能看到审计列表页；没有记录时应显示空状态，而不是报错。
 
-## 3. 创建和禁用用户
+## 4. 登录、CSRF 与 Session
+
+- `/login` 仍是统一登录入口，支持普通 Thymeleaf form login，也支持 React admin 的 JSON/XHR 登录。
+- 管理端 session 存在服务端，浏览器只保存标准 session cookie；React admin 不在 localStorage 保存登录状态。
+- Spring Security 会下发浏览器可读的 `XSRF-TOKEN` cookie。React admin API client 会在 mutation 请求中把它复制到
+  `X-XSRF-TOKEN` header。
+- `/admin/api/**` 缺少 CSRF token 的写请求会被拒绝；Thymeleaf `/admin/**` 表单继续使用隐藏 `_csrf` 字段。
+- `/mcp` 与管理端 session 完全分离，必须使用 MCP Bearer Token。
+
+## 5. `/admin` 与 `/admin-next` cutover 状态
+
+当前 cutover 策略：
+
+- `/admin` 是稳定的服务端渲染管理端，继续作为默认运维入口。
+- `/admin-next` 是 React 新后台试运行入口，复用同一登录、session、CSRF 和 `/admin/api/**` 后端能力。
+- `/admin-next` 在开发态由 `pnpm --dir dbflow-admin dev` 提供，在打包态由 `react-admin` Maven profile 放入 jar。
+- cutover 前不要删除 `/admin`，也不要让 `/admin-next` 绕过既有 Spring Security 管理链。
+
+## 6. 创建和禁用用户
 
 页面：`/admin/users`
 
@@ -69,7 +112,7 @@ curl -s http://127.0.0.1:8080/actuator/health
 - 禁用用户不会成为保留 Token 的理由。高风险场景下应同步吊销该用户 Token。
 - 管理端列表不展示 password hash。
 
-## 4. 授权项目环境
+## 7. 授权项目环境
 
 页面：`/admin/grants`
 
@@ -102,7 +145,7 @@ curl -s http://127.0.0.1:8080/actuator/health
 - 撤销授权后，员工对该 project/env 的 `dbflow_inspect_schema`、`dbflow_explain_sql`、`dbflow_execute_sql`
   都应被拒绝。
 
-## 5. 颁发、吊销和重新颁发 Token
+## 8. 颁发、吊销和重新颁发 Token
 
 页面：`/admin/tokens`
 
@@ -124,6 +167,7 @@ curl -s http://127.0.0.1:8080/actuator/health
 安全规则：
 
 - Token 明文只在颁发或重新颁发成功后通过一次性页面状态展示一次。
+- React 新后台的明文 reveal dialog 关闭后会清空本地明文状态；刷新、返回列表或重新打开页面都不能再次取回明文。
 - 管理端列表不展示 Token 明文、Token hash 或 pepper。
 - 不通过 IM、邮件正文、截图或共享文档传播真实 Token。
 - 如果员工反馈 Token 丢失，管理员应重新颁发并吊销旧 Token，而不是查询旧明文。
@@ -132,12 +176,12 @@ curl -s http://127.0.0.1:8080/actuator/health
 
 ```text
 MCP URL: https://dbflow.internal.example/mcp
-Token: dbf_xxx_only_visible_once
+Token: <DBFLOW_TOKEN_ONLY_VISIBLE_ONCE>
 Authorized targets: billing-core/staging
 Client guide: docs/user-guide/mcp-clients.md
 ```
 
-## 6. 查看审计
+## 9. 查看审计
 
 页面：
 
@@ -163,7 +207,7 @@ Client guide: docs/user-guide/mcp-clients.md
 审计详情会展示 SQL text、SQL hash、operation、risk、decision、result summary 等信息。`result_summary` 是摘要，
 不会保存完整结果集；详情也不会展示 Token 明文、Token hash、数据库密码或 JDBC 连接串。
 
-## 7. 查看危险策略
+## 10. 查看危险策略
 
 页面：`/admin/policies/dangerous`
 
@@ -183,7 +227,7 @@ Client guide: docs/user-guide/mcp-clients.md
 
 策略页 MVP 只读展示，配置来源仍以外部 YAML 或 Nacos 为准。
 
-## 8. 排查连接
+## 11. 排查连接
 
 页面：`/admin/health`
 
@@ -205,7 +249,7 @@ curl -s http://127.0.0.1:8080/actuator/metrics
 
 更多场景见 [troubleshooting.md](../runbooks/troubleshooting.md)。
 
-## 9. 日常检查清单
+## 12. 日常检查清单
 
 - 每周检查即将过期或长期未使用的 Token。
 - 每次员工转岗、离职或项目结束后，撤销不需要的 project/env 授权。

@@ -4,10 +4,11 @@ import {KeyRound, RefreshCw, Search as SearchIcon} from 'lucide-react'
 import {fetchTokenOptions, fetchTokens, tokenOptionsQueryKey, tokensQueryKey,} from '@/api/tokens'
 import type {IssuedTokenResponse, TokenFilters} from '@/types/token'
 import {isApiClientError} from '@/lib/errors'
+import {dbflowBreadcrumbs} from '@/lib/routes'
 import {cn} from '@/lib/utils'
 import {ConfigDrawer} from '@/components/config-drawer'
 import {EmptyState} from '@/components/dbflow/empty-state'
-import {PageHeader} from '@/components/dbflow/page-header'
+import {PageBreadcrumb} from '@/components/dbflow/page-breadcrumb'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
@@ -71,11 +72,9 @@ export function TokensPage({search, onSearchChange}: TokensPageProps) {
             </Header>
 
             <Main>
-                <section className='space-y-6'>
-                    <PageHeader
-                        eyebrow='身份与访问'
-                        title='Token 管理'
-                        description='管理 DBFlow MCP SQL Gateway 的访问 Token，并确保明文只在颁发后一次性展示。'
+                <section className='space-y-4'>
+                    <PageBreadcrumb
+                        items={dbflowBreadcrumbs.tokens}
                         actions={
                             <IssueTokenSheet
                                 options={optionsQuery.data}
@@ -157,7 +156,6 @@ export function TokensPage({search, onSearchChange}: TokensPageProps) {
                             <EmptyState
                                 icon={<KeyRound className='size-5'/>}
                                 title='没有匹配的 Token'
-                                description='调整筛选条件，或为 active 用户颁发新的 MCP Token。'
                             />
                         )}
                 </section>

@@ -18,6 +18,11 @@ Harness Powers lifecycle:
 
 ## Completed Plans
 
+- [2026-05-03 React Admin Copy Density](exec-plans/completed/2026-05-03-react-admin-copy-density.md) -
+  Completed; replaced authenticated React Admin page headers with compact breadcrumbs, aggressively removed explanatory
+  UI prose across dashboard, access, config, policy, audit, health, and settings pages, preserved operation/security/error
+  text, and verified full frontend tests, lint, build, Harness validation, diff hygiene, and mocked browser desktop/mobile
+  screenshots.
 - [2026-05-03 React Admin Login Polish](exec-plans/completed/2026-05-03-react-admin-login-polish.md) -
   Completed; Chinese-localized and visually simplified the React `/login` page to a top-left logo plus centered
   administrator form, removed the explanatory access-boundary copy and safety signals, preserved Spring Security JSON

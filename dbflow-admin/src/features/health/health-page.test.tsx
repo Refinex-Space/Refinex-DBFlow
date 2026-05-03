@@ -50,9 +50,9 @@ describe('HealthPageView', () => {
     it('renders overall health summary and all health item fields', async () => {
         const screen = await renderHealthPage()
 
-        await expect
-            .element(screen.getByRole('heading', {name: '系统健康'}))
-            .toBeInTheDocument()
+        const breadcrumb = screen.getByRole('navigation', {name: '页面路径'})
+        await expect.element(breadcrumb.getByText('运维')).toBeInTheDocument()
+        await expect.element(breadcrumb.getByText('系统健康')).toBeInTheDocument()
         await expect
             .element(screen.getByText('HEALTHY').first())
             .toBeInTheDocument()

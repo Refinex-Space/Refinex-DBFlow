@@ -2,13 +2,14 @@ import {useQuery} from '@tanstack/react-query'
 import {ArrowLeft, RefreshCw} from 'lucide-react'
 import {auditEventDetailQueryKey, fetchAuditEventDetail} from '@/api/audit'
 import {isApiClientError} from '@/lib/errors'
+import {dbflowBreadcrumbs} from '@/lib/routes'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
 import {Skeleton} from '@/components/ui/skeleton'
 import {ConfigDrawer} from '@/components/config-drawer'
 import {CopyButton} from '@/components/dbflow/copy-button'
 import {DecisionBadge} from '@/components/dbflow/decision-badge'
-import {PageHeader} from '@/components/dbflow/page-header'
+import {PageBreadcrumb} from '@/components/dbflow/page-breadcrumb'
 import {Header} from '@/components/layout/header'
 import {Main} from '@/components/layout/main'
 import {ProfileDropdown} from '@/components/profile-dropdown'
@@ -42,11 +43,9 @@ export function AuditDetailPage({eventId}: AuditDetailPageProps) {
             </Header>
 
             <Main>
-                <section className='space-y-6'>
-                    <PageHeader
-                        eyebrow='审计'
-                        title={`Audit #${eventId}`}
-                        description='只读审计详情，用于复盘 MCP SQL 请求、策略判定与失败原因。'
+                <section className='space-y-4'>
+                    <PageBreadcrumb
+                        items={dbflowBreadcrumbs.auditDetail}
                         actions={
                             <>
                                 <Button variant='outline' asChild>
@@ -82,6 +81,9 @@ export function AuditDetailPage({eventId}: AuditDetailPageProps) {
                     {detailQuery.isSuccess && (
                         <>
                             <div className='flex flex-wrap items-center gap-2'>
+                                <span className='font-mono text-xs text-muted-foreground'>
+                                    Audit #{eventId}
+                                </span>
                                 <DecisionBadge decision={detailQuery.data.decision}/>
                                 <span className='font-mono text-xs text-muted-foreground'>
                   {detailQuery.data.sqlHash}

@@ -9,7 +9,6 @@ import {Label} from '@/components/ui/label'
 import {
     Sheet,
     SheetContent,
-    SheetDescription,
     SheetFooter,
     SheetHeader,
     SheetTitle,
@@ -86,14 +85,13 @@ export function AuditFilterSheet({
                     高级筛选
                 </Button>
             </SheetTrigger>
-            <SheetContent className='overflow-y-auto sm:max-w-lg'>
+            <SheetContent
+                aria-describedby={undefined}
+                className='overflow-y-auto sm:max-w-lg'
+            >
                 <form key={formKey} className='grid h-full gap-6' onSubmit={handleSubmit}>
                     <SheetHeader>
                         <SheetTitle>高级筛选</SheetTitle>
-                        <SheetDescription>
-                            按时间、用户、项目、环境、risk、decision、SQL hash 和 tool
-                            查询审计事件。
-                        </SheetDescription>
                     </SheetHeader>
 
                     <div className='grid gap-4'>

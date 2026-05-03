@@ -1,6 +1,6 @@
 import type {PolicyReason} from '@/types/policy'
 import {formatText} from '@/lib/format'
-import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,} from '@/components/ui/sheet'
+import {Sheet, SheetContent, SheetHeader, SheetTitle,} from '@/components/ui/sheet'
 import {DecisionBadge} from '@/components/dbflow/decision-badge'
 import {RiskBadge} from '@/components/dbflow/risk-badge'
 
@@ -21,12 +21,9 @@ export function PolicyReasonSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className='sm:max-w-lg'>
+            <SheetContent aria-describedby={undefined} className='sm:max-w-lg'>
                 <SheetHeader>
                     <SheetTitle>{reason.title}</SheetTitle>
-                    <SheetDescription>
-                        危险策略只读说明，来自当前后端生效配置。
-                    </SheetDescription>
                 </SheetHeader>
 
                 <dl className='grid gap-3 overflow-y-auto px-4 pb-4 text-sm'>

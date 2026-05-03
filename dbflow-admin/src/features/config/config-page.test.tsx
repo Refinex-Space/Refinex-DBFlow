@@ -48,9 +48,9 @@ describe('ConfigPageView', () => {
     it('renders source label and sanitized config table fields', async () => {
         const screen = await renderConfigPage()
 
-        await expect
-            .element(screen.getByRole('heading', {name: '配置查看'}))
-            .toBeInTheDocument()
+        const breadcrumb = screen.getByRole('navigation', {name: '页面路径'})
+        await expect.element(breadcrumb.getByText('配置与策略')).toBeInTheDocument()
+        await expect.element(breadcrumb.getByText('配置查看')).toBeInTheDocument()
         await expect.element(screen.getByText('Local application config')).toBeInTheDocument()
         const table = screen.getByRole('table')
         for (const text of [

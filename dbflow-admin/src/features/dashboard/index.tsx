@@ -1,8 +1,9 @@
 import {useQuery} from '@tanstack/react-query'
 import {fetchOverview} from '@/api/overview'
 import {isApiClientError} from '@/lib/errors'
+import {dbflowBreadcrumbs} from '@/lib/routes'
 import {ConfigDrawer} from '@/components/config-drawer'
-import {PageHeader} from '@/components/dbflow/page-header'
+import {PageBreadcrumb} from '@/components/dbflow/page-breadcrumb'
 import {Header} from '@/components/layout/header'
 import {Main} from '@/components/layout/main'
 import {ProfileDropdown} from '@/components/profile-dropdown'
@@ -38,11 +39,9 @@ export function Dashboard() {
                 )}
 
                 {overviewQuery.isSuccess && (
-                    <section className='space-y-6'>
-                        <PageHeader
-                            eyebrow='MCP SQL Gateway'
-                            title='总览'
-                            description={overviewQuery.data.windowLabel}
+                    <section className='space-y-4'>
+                        <PageBreadcrumb
+                            items={dbflowBreadcrumbs.dashboard}
                             actions={
                                 <EnvironmentSelector
                                     options={overviewQuery.data.environmentOptions}
@@ -52,7 +51,7 @@ export function Dashboard() {
 
                         <OverviewMetrics metrics={overviewQuery.data.metrics}/>
 
-                        <div className='grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]'>
+                        <div className='grid gap-4 2xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]'>
                             <RecentAuditTable rows={overviewQuery.data.recentAuditRows}/>
                             <AttentionItems items={overviewQuery.data.attentionItems}/>
                         </div>

@@ -4,12 +4,13 @@ import {ChevronLeft, ChevronRight, RefreshCw, ScrollText} from 'lucide-react'
 import {auditEventsQueryKey, fetchAuditEvents, normalizeAuditFilters,} from '@/api/audit'
 import {isApiClientError} from '@/lib/errors'
 import {formatNumber} from '@/lib/format'
+import {dbflowBreadcrumbs} from '@/lib/routes'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
 import {Skeleton} from '@/components/ui/skeleton'
 import {ConfigDrawer} from '@/components/config-drawer'
 import {EmptyState} from '@/components/dbflow/empty-state'
-import {PageHeader} from '@/components/dbflow/page-header'
+import {PageBreadcrumb} from '@/components/dbflow/page-breadcrumb'
 import {Header} from '@/components/layout/header'
 import {Main} from '@/components/layout/main'
 import {ProfileDropdown} from '@/components/profile-dropdown'
@@ -52,11 +53,9 @@ export function AuditListPage({search, onSearchChange}: AuditListPageProps) {
             </Header>
 
             <Main>
-                <section className='space-y-6'>
-                    <PageHeader
-                        eyebrow='审计'
-                        title='审计列表'
-                        description='按时间、用户、项目、环境、risk、decision、SQL hash 和 tool 查询 MCP SQL Gateway 审计事件。'
+                <section className='space-y-4'>
+                    <PageBreadcrumb
+                        items={dbflowBreadcrumbs.auditList}
                         actions={
                             <AuditFilterSheet
                                 filters={filters}
@@ -98,7 +97,6 @@ export function AuditListPage({search, onSearchChange}: AuditListPageProps) {
                         <EmptyState
                             icon={<ScrollText className='size-5'/>}
                             title='当前筛选条件下没有审计事件'
-                            description='调整筛选条件，或等待新的 MCP SQL 请求进入 DBFlow 网关。'
                         />
                     )}
                 </section>

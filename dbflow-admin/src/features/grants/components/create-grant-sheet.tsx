@@ -13,7 +13,6 @@ import {Label} from '@/components/ui/label'
 import {
     Sheet,
     SheetContent,
-    SheetDescription,
     SheetFooter,
     SheetHeader,
     SheetTitle,
@@ -108,13 +107,10 @@ export function CreateGrantSheet({options}: CreateGrantSheetProps) {
                     新建授权
                 </Button>
             </SheetTrigger>
-            <SheetContent className='sm:max-w-md'>
+            <SheetContent aria-describedby={undefined} className='sm:max-w-md'>
                 <form className='flex h-full flex-col' onSubmit={handleSubmit}>
                     <SheetHeader>
                         <SheetTitle>新建授权</SheetTitle>
-                        <SheetDescription>
-                            为用户批量授权指定项目下的一个或多个环境。
-                        </SheetDescription>
                     </SheetHeader>
 
                     <div className='grid gap-4 overflow-y-auto px-4'>

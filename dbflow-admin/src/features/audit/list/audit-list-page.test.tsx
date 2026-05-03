@@ -90,9 +90,11 @@ describe('AuditListPage', () => {
     it('renders server-paged audit rows without sensitive text', async () => {
         const screen = await renderAuditListPage()
 
+        const breadcrumb = screen.getByRole('navigation', {name: '页面路径'})
         await expect
-            .element(screen.getByRole('heading', {name: '审计列表'}))
+            .element(breadcrumb.getByText('审计', {exact: true}))
             .toBeInTheDocument()
+        await expect.element(breadcrumb.getByText('审计列表')).toBeInTheDocument()
         const table = screen.getByRole('table')
         await expect.element(table.getByText('1001')).toBeInTheDocument()
         await expect

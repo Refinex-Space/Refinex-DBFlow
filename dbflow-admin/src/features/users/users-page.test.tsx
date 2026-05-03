@@ -70,9 +70,9 @@ describe('UsersPage', () => {
     it('renders safe user rows and never displays passwordHash', async () => {
         const screen = await renderUsersPage()
 
-        await expect
-            .element(screen.getByRole('heading', {name: '用户管理'}))
-            .toBeInTheDocument()
+        const breadcrumb = screen.getByRole('navigation', {name: '页面路径'})
+        await expect.element(breadcrumb.getByText('身份与访问')).toBeInTheDocument()
+        await expect.element(breadcrumb.getByText('用户管理')).toBeInTheDocument()
         const table = screen.getByRole('table')
         await expect.element(table.getByText('授权数')).toBeInTheDocument()
         await expect.element(table.getByText('活跃 Token')).toBeInTheDocument()

@@ -3,12 +3,13 @@ import {Activity, RefreshCw} from 'lucide-react'
 import {fetchHealthPage, healthQueryKey} from '@/api/health'
 import {isApiClientError} from '@/lib/errors'
 import {formatNumber} from '@/lib/format'
+import {dbflowBreadcrumbs} from '@/lib/routes'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
 import {Skeleton} from '@/components/ui/skeleton'
 import {ConfigDrawer} from '@/components/config-drawer'
 import {MetricCard} from '@/components/dbflow/metric-card'
-import {PageHeader} from '@/components/dbflow/page-header'
+import {PageBreadcrumb} from '@/components/dbflow/page-breadcrumb'
 import {StatusBadge} from '@/components/dbflow/status-badge'
 import {Header} from '@/components/layout/header'
 import {Main} from '@/components/layout/main'
@@ -34,11 +35,9 @@ export function HealthPageView() {
             </Header>
 
             <Main>
-                <section className='space-y-6'>
-                    <PageHeader
-                        eyebrow='运维'
-                        title='系统健康'
-                        description='查看 DBFlow 元数据、目标数据源、Nacos 与 MCP Endpoint 的只读健康摘要。'
+                <section className='space-y-4'>
+                    <PageBreadcrumb
+                        items={dbflowBreadcrumbs.health}
                         actions={
                             <Button
                                 type='button'
@@ -78,17 +77,14 @@ export function HealthPageView() {
                                 <MetricCard
                                     title='overall'
                                     value={<StatusBadge status={healthQuery.data.overall}/>}
-                                    description={`tone: ${healthQuery.data.tone}`}
                                 />
                                 <MetricCard
                                     title='unhealthy / total'
                                     value={`${formatNumber(healthQuery.data.unhealthyCount)} / ${formatNumber(healthQuery.data.totalCount)}`}
-                                    description='非健康项数量 / 健康项总数'
                                 />
                                 <MetricCard
                                     title='components'
                                     value={formatNumber(healthQuery.data.items.length)}
-                                    description='当前后端返回的健康项数量'
                                 />
                             </div>
 

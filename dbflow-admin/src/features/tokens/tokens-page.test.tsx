@@ -71,9 +71,9 @@ describe('TokensPage', () => {
     it('renders safe token rows without plaintext, hash, password, or connection text', async () => {
         const screen = await renderTokensPage()
 
-        await expect
-            .element(screen.getByRole('heading', {name: 'Token 管理'}))
-            .toBeInTheDocument()
+        const breadcrumb = screen.getByRole('navigation', {name: '页面路径'})
+        await expect.element(breadcrumb.getByText('身份与访问')).toBeInTheDocument()
+        await expect.element(breadcrumb.getByText('Token 管理')).toBeInTheDocument()
         const table = screen.getByRole('table')
         await expect.element(table.getByText(/^10$/)).toBeInTheDocument()
         await expect.element(table.getByText(/^alice$/)).toBeInTheDocument()

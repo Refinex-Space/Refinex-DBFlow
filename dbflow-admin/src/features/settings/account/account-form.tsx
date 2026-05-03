@@ -6,36 +6,35 @@ import {showSubmittedData} from '@/lib/show-submitted-data'
 import {cn} from '@/lib/utils'
 import {Button} from '@/components/ui/button'
 import {Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,} from '@/components/ui/command'
-import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from '@/components/ui/form'
+import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage,} from '@/components/ui/form'
 import {Input} from '@/components/ui/input'
 import {Popover, PopoverContent, PopoverTrigger,} from '@/components/ui/popover'
 import {DatePicker} from '@/components/date-picker'
 
 const languages = [
-    {label: 'English', value: 'en'},
-    {label: 'French', value: 'fr'},
-    {label: 'German', value: 'de'},
-    {label: 'Spanish', value: 'es'},
-    {label: 'Portuguese', value: 'pt'},
-    {label: 'Russian', value: 'ru'},
-    {label: 'Japanese', value: 'ja'},
-    {label: 'Korean', value: 'ko'},
-    {label: 'Chinese', value: 'zh'},
+    {label: '英文', value: 'en'},
+    {label: '法文', value: 'fr'},
+    {label: '德文', value: 'de'},
+    {label: '西班牙文', value: 'es'},
+    {label: '葡萄牙文', value: 'pt'},
+    {label: '俄文', value: 'ru'},
+    {label: '日文', value: 'ja'},
+    {label: '韩文', value: 'ko'},
+    {label: '中文', value: 'zh'},
 ] as const
 
 const accountFormSchema = z.object({
     name: z
         .string()
-        .min(1, 'Please enter your name.')
-        .min(2, 'Name must be at least 2 characters.')
-        .max(30, 'Name must not be longer than 30 characters.'),
-    dob: z.date('Please select your date of birth.'),
-    language: z.string('Please select a language.'),
+        .min(1, '请输入名称。')
+        .min(2, '名称至少 2 个字符。')
+        .max(30, '名称不能超过 30 个字符。'),
+    dob: z.date('请选择日期。'),
+    language: z.string('请选择语言。'),
 })
 
 type AccountFormValues = z.infer<typeof accountFormSchema>
 
-// This can come from your database or API.
 const defaultValues: Partial<AccountFormValues> = {
     name: '',
 }
@@ -58,14 +57,10 @@ export function AccountForm() {
                     name='name'
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>Name</FormLabel>
+                            <FormLabel>名称</FormLabel>
                             <FormControl>
-                                <Input placeholder='Your name' {...field} />
+                                <Input placeholder='管理员' {...field} />
                             </FormControl>
-                            <FormDescription>
-                                This is the name that will be displayed on your profile and in
-                                emails.
-                            </FormDescription>
                             <FormMessage/>
                         </FormItem>
                     )}
@@ -75,11 +70,8 @@ export function AccountForm() {
                     name='dob'
                     render={({field}) => (
                         <FormItem className='flex flex-col'>
-                            <FormLabel>Date of birth</FormLabel>
+                            <FormLabel>日期</FormLabel>
                             <DatePicker selected={field.value} onSelect={field.onChange}/>
-                            <FormDescription>
-                                Your date of birth is used to calculate your age.
-                            </FormDescription>
                             <FormMessage/>
                         </FormItem>
                     )}
@@ -89,7 +81,7 @@ export function AccountForm() {
                     name='language'
                     render={({field}) => (
                         <FormItem className='flex flex-col'>
-                            <FormLabel>Language</FormLabel>
+                            <FormLabel>语言</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>
@@ -105,15 +97,15 @@ export function AccountForm() {
                                                 ? languages.find(
                                                     (language) => language.value === field.value
                                                 )?.label
-                                                : 'Select language'}
+                                                : '选择语言'}
                                             <CaretSortIcon className='ms-2 h-4 w-4 shrink-0 opacity-50'/>
                                         </Button>
                                     </FormControl>
                                 </PopoverTrigger>
                                 <PopoverContent className='w-50 p-0'>
                                     <Command>
-                                        <CommandInput placeholder='Search language...'/>
-                                        <CommandEmpty>No language found.</CommandEmpty>
+                                        <CommandInput placeholder='搜索语言'/>
+                                        <CommandEmpty>没有匹配语言。</CommandEmpty>
                                         <CommandGroup>
                                             <CommandList>
                                                 {languages.map((language) => (
@@ -140,14 +132,11 @@ export function AccountForm() {
                                     </Command>
                                 </PopoverContent>
                             </Popover>
-                            <FormDescription>
-                                This is the language that will be used in the dashboard.
-                            </FormDescription>
                             <FormMessage/>
                         </FormItem>
                     )}
                 />
-                <Button type='submit'>Update account</Button>
+                <Button type='submit'>保存账户</Button>
             </form>
         </Form>
     )

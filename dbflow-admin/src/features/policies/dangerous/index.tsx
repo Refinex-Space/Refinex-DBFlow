@@ -4,12 +4,13 @@ import type {PolicyDefaultRow, PolicyReason, PolicyWhitelistRow,} from '@/types/
 import {FileWarning, RefreshCw, ShieldAlert} from 'lucide-react'
 import {dangerousPoliciesQueryKey, fetchDangerousPolicies,} from '@/api/policies'
 import {isApiClientError} from '@/lib/errors'
+import {dbflowBreadcrumbs} from '@/lib/routes'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
 import {Skeleton} from '@/components/ui/skeleton'
 import {ConfigDrawer} from '@/components/config-drawer'
 import {EmptyState} from '@/components/dbflow/empty-state'
-import {PageHeader} from '@/components/dbflow/page-header'
+import {PageBreadcrumb} from '@/components/dbflow/page-breadcrumb'
 import {Header} from '@/components/layout/header'
 import {Main} from '@/components/layout/main'
 import {ProfileDropdown} from '@/components/profile-dropdown'
@@ -37,11 +38,9 @@ export function DangerousPoliciesPageView() {
             </Header>
 
             <Main>
-                <section className='space-y-6'>
-                    <PageHeader
-                        eyebrow='配置与策略'
-                        title='危险策略'
-                        description='只读查看 DBFlow 对 DROP 与 TRUNCATE 等高危操作的服务端策略。'
+                <section className='space-y-4'>
+                    <PageBreadcrumb
+                        items={dbflowBreadcrumbs.dangerousPolicies}
                         actions={
                             <div className='flex flex-wrap gap-2'>
                                 <Button type='button' variant='outline' asChild>
@@ -84,10 +83,7 @@ export function DangerousPoliciesPageView() {
                     {policiesQuery.isSuccess && (
                         <>
                             <section className='space-y-3'>
-                                <SectionTitle
-                                    title='默认高危策略'
-                                    description='未命中白名单或确认挑战时，后端按默认策略 fail-closed。'
-                                />
+                                <SectionTitle title='默认高危策略'/>
                                 <div className='rounded-md border bg-card'>
                                     <PolicyDefaultsTable
                                         rows={policiesQuery.data.defaults}
@@ -97,10 +93,7 @@ export function DangerousPoliciesPageView() {
                             </section>
 
                             <section className='space-y-3'>
-                                <SectionTitle
-                                    title='DROP 白名单'
-                                    description='仅展示 YAML/Nacos 当前生效的 DROP 白名单范围。'
-                                />
+                                <SectionTitle title='DROP 白名单'/>
                                 {policiesQuery.data.whitelist.length > 0 ? (
                                     <div className='rounded-md border bg-card'>
                                         <DropWhitelistTable
@@ -111,20 +104,13 @@ export function DangerousPoliciesPageView() {
                                 ) : (
                                     <EmptyState
                                         icon={<ShieldAlert className='size-5'/>}
-                                        title='当前无 DROP 白名单条目'
-                                        description={
-                                            policiesQuery.data.emptyHint ||
-                                            'DROP_DATABASE / DROP_TABLE 将按默认策略拒绝。'
-                                        }
+                                        title='无白名单条目'
                                     />
                                 )}
                             </section>
 
                             <section className='space-y-3'>
-                                <SectionTitle
-                                    title='固定强化规则'
-                                    description='这些规则由服务端强制执行，React 页面只读展示。'
-                                />
+                                <SectionTitle title='固定强化规则'/>
                                 <PolicyRules rules={policiesQuery.data.rules}/>
                             </section>
                         </>
@@ -145,18 +131,9 @@ export function DangerousPoliciesPageView() {
     )
 }
 
-function SectionTitle({
-                          title,
-                          description,
-                      }: {
-    title: string
-    description: string
-}) {
+function SectionTitle({title}: { title: string }) {
     return (
-        <div className='space-y-1'>
-            <h2 className='text-base font-semibold'>{title}</h2>
-            <p className='text-sm text-muted-foreground'>{description}</p>
-        </div>
+        <h2 className='text-base font-semibold'>{title}</h2>
     )
 }
 

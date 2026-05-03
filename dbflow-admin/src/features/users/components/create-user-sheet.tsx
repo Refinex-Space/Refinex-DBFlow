@@ -11,7 +11,6 @@ import {Label} from '@/components/ui/label'
 import {
     Sheet,
     SheetContent,
-    SheetDescription,
     SheetFooter,
     SheetHeader,
     SheetTitle,
@@ -75,13 +74,10 @@ export function CreateUserSheet() {
                     新建用户
                 </Button>
             </SheetTrigger>
-            <SheetContent className='sm:max-w-md'>
+            <SheetContent aria-describedby={undefined} className='sm:max-w-md'>
                 <form className='flex h-full flex-col' onSubmit={handleSubmit}>
                     <SheetHeader>
                         <SheetTitle>新建用户</SheetTitle>
-                        <SheetDescription>
-                            创建可访问 DBFlow MCP SQL Gateway 的管理对象。
-                        </SheetDescription>
                     </SheetHeader>
 
                     <div className='grid gap-4 px-4'>

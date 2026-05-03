@@ -3,9 +3,10 @@ import {KeyRound, RefreshCw, TriangleAlert} from 'lucide-react'
 import {fetchGrantGroups, fetchGrantOptions, grantOptionsQueryKey, grantsQueryKey,} from '@/api/grants'
 import type {GrantFilters} from '@/types/access'
 import {isApiClientError} from '@/lib/errors'
+import {dbflowBreadcrumbs} from '@/lib/routes'
 import {ConfigDrawer} from '@/components/config-drawer'
 import {EmptyState} from '@/components/dbflow/empty-state'
-import {PageHeader} from '@/components/dbflow/page-header'
+import {PageBreadcrumb} from '@/components/dbflow/page-breadcrumb'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Skeleton} from '@/components/ui/skeleton'
 import {Header} from '@/components/layout/header'
@@ -48,11 +49,9 @@ export function GrantsPage({search, onSearchChange}: GrantsPageProps) {
             </Header>
 
             <Main>
-                <section className='space-y-6'>
-                    <PageHeader
-                        eyebrow='身份与访问'
-                        title='项目授权'
-                        description='按用户和项目管理可访问的 DBFlow 环境边界。'
+                <section className='space-y-4'>
+                    <PageBreadcrumb
+                        items={dbflowBreadcrumbs.grants}
                         actions={<CreateGrantSheet options={optionsQuery.data}/>}
                     />
 
@@ -99,7 +98,6 @@ export function GrantsPage({search, onSearchChange}: GrantsPageProps) {
                             <EmptyState
                                 icon={<KeyRound className='size-5'/>}
                                 title='当前没有项目授权'
-                                description='调整筛选条件，或为用户新建项目环境授权。'
                             />
                         )}
                 </section>

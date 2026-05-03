@@ -16,12 +16,7 @@ export function RecentAuditTable({rows}: RecentAuditTableProps) {
     return (
         <section className='space-y-3'>
             <div className='flex items-center justify-between gap-3'>
-                <div>
-                    <h2 className='text-base font-semibold'>最近审计事件</h2>
-                    <p className='text-sm text-muted-foreground'>
-                        按创建时间倒序展示最近 5 条审计记录
-                    </p>
-                </div>
+                <h2 className='text-base font-semibold'>最近审计事件</h2>
                 <Button variant='ghost' size='sm' asChild>
                     <a href='/admin/audit'>查看全部</a>
                 </Button>
@@ -30,7 +25,6 @@ export function RecentAuditTable({rows}: RecentAuditTableProps) {
             {rows.length === 0 ? (
                 <EmptyState
                     title='当前暂无审计事件。'
-                    description='当 MCP SQL 请求进入网关后，最近的执行、拒绝和确认事件会显示在这里。'
                     className='py-8'
                 />
             ) : (

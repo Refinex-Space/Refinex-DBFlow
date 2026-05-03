@@ -1,6 +1,6 @@
 import type {AuditEventDetail} from '@/types/audit'
 import {formatText} from '@/lib/format'
-import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from '@/components/ui/card'
+import {Card, CardContent, CardHeader, CardTitle,} from '@/components/ui/card'
 import {DecisionBadge} from '@/components/dbflow/decision-badge'
 import {StatusBadge} from '@/components/dbflow/status-badge'
 
@@ -13,9 +13,6 @@ export function AuditFailurePanel({detail}: AuditFailurePanelProps) {
         <Card className='rounded-md shadow-none'>
             <CardHeader>
                 <CardTitle className='text-base'>拒绝 / 失败原因</CardTitle>
-                <CardDescription>
-                    状态、错误码、失败原因和后端脱敏后的结果摘要。
-                </CardDescription>
             </CardHeader>
             <CardContent className='grid gap-4 md:grid-cols-2'>
                 <div className='space-y-1'>

@@ -13,12 +13,7 @@ export function AttentionItems({ items }: AttentionItemsProps) {
   return (
     <section className='space-y-3'>
       <div className='flex items-center justify-between gap-3'>
-        <div>
-          <h2 className='text-base font-semibold'>需要关注事项</h2>
-          <p className='text-sm text-muted-foreground'>
-            策略拒绝、待确认 SQL、异常连接池和临期 Token
-          </p>
-        </div>
+        <h2 className='text-base font-semibold'>需要关注事项</h2>
         <Button variant='ghost' size='sm' asChild>
           <a href='/admin/policies/dangerous'>危险策略</a>
         </Button>
@@ -27,7 +22,6 @@ export function AttentionItems({ items }: AttentionItemsProps) {
       {items.length === 0 ? (
         <EmptyState
           title='当前无需要关注的运行时事项。'
-          description=''
           className='py-8'
         />
       ) : (

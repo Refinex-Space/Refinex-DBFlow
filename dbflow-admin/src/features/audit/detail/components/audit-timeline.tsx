@@ -1,7 +1,7 @@
 import type {AuditEventDetail} from '@/types/audit'
 import {CheckCircle2, CircleDot, ShieldCheck} from 'lucide-react'
 import {formatDateTime, formatText} from '@/lib/format'
-import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from '@/components/ui/card'
+import {Card, CardContent, CardHeader, CardTitle,} from '@/components/ui/card'
 
 type AuditTimelineProps = {
     detail: AuditEventDetail
@@ -35,9 +35,6 @@ export function AuditTimeline({detail}: AuditTimelineProps) {
         <Card className='rounded-md shadow-none'>
             <CardHeader>
                 <CardTitle className='text-base'>审计时间线</CardTitle>
-                <CardDescription>
-                    基于已持久化审计详情重建的只读链路摘要。
-                </CardDescription>
             </CardHeader>
             <CardContent>
                 <ol className='space-y-4'>

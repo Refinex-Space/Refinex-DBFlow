@@ -13,7 +13,6 @@ import {Label} from '@/components/ui/label'
 import {
     Sheet,
     SheetContent,
-    SheetDescription,
     SheetFooter,
     SheetHeader,
     SheetTitle,
@@ -46,7 +45,7 @@ export function EditProjectGrantsSheet({
                     编辑
                 </Button>
             </SheetTrigger>
-            <SheetContent className='sm:max-w-md'>
+            <SheetContent aria-describedby={undefined} className='sm:max-w-md'>
                 <EditProjectGrantsForm
                     key={editFormKey(row)}
                     row={row}
@@ -106,9 +105,6 @@ function EditProjectGrantsForm({
         <form className='flex h-full flex-col' onSubmit={handleSubmit}>
                     <SheetHeader>
                         <SheetTitle>编辑授权</SheetTitle>
-                        <SheetDescription>
-                            {row.username} / {row.projectKey}
-                        </SheetDescription>
                     </SheetHeader>
 
                     <div className='grid gap-4 overflow-y-auto px-4'>

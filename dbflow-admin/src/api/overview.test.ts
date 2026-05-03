@@ -20,12 +20,12 @@ describe('fetchOverview', () => {
                 recentAuditRows: [],
                 attentionItems: [],
                 environmentOptions: [],
-                windowLabel: '最近 24 小时网关安全、执行和健康摘要。',
+                windowLabel: '后端窗口标签',
             })
         })
 
         await expect(fetchOverview()).resolves.toMatchObject({
-            windowLabel: '最近 24 小时网关安全、执行和健康摘要。',
+            windowLabel: '后端窗口标签',
         })
     })
 })

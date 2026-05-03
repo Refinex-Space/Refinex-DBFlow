@@ -50,9 +50,9 @@ describe('DangerousPoliciesPageView', () => {
     it('renders defaults, whitelist, strengthened rules and denied-audit link', async () => {
         const screen = await renderPolicyPage()
 
-        await expect
-            .element(screen.getByRole('heading', {name: '危险策略'}))
-            .toBeInTheDocument()
+        const breadcrumb = screen.getByRole('navigation', {name: '页面路径'})
+        await expect.element(breadcrumb.getByText('配置与策略')).toBeInTheDocument()
+        await expect.element(breadcrumb.getByText('危险策略')).toBeInTheDocument()
         await expect
             .element(screen.getByRole('cell', {name: 'DROP_TABLE'}).first())
             .toBeInTheDocument()
@@ -96,21 +96,13 @@ describe('DangerousPoliciesPageView', () => {
         mocks.fetchDangerousPolicies.mockResolvedValue({
             ...policyFixture,
             whitelist: [],
-            emptyHint:
-                '当前无 DROP 白名单条目，DROP_DATABASE / DROP_TABLE 将按默认策略拒绝。',
+            emptyHint: '后端空白名单提示',
         })
 
         const screen = await renderPolicyPage()
 
         await expect
-            .element(screen.getByRole('heading', {name: '当前无 DROP 白名单条目'}))
-            .toBeInTheDocument()
-        await expect
-            .element(
-                screen.getByText(
-                    '当前无 DROP 白名单条目，DROP_DATABASE / DROP_TABLE 将按默认策略拒绝。'
-                )
-            )
+            .element(screen.getByRole('heading', {name: '无白名单条目'}))
             .toBeInTheDocument()
     })
 

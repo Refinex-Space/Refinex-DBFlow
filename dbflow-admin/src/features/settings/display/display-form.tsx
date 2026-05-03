@@ -4,44 +4,43 @@ import {zodResolver} from '@hookform/resolvers/zod'
 import {showSubmittedData} from '@/lib/show-submitted-data'
 import {Button} from '@/components/ui/button'
 import {Checkbox} from '@/components/ui/checkbox'
-import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from '@/components/ui/form'
+import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage,} from '@/components/ui/form'
 
 const items = [
     {
         id: 'recents',
-        label: 'Recents',
+        label: '最近',
     },
     {
         id: 'home',
-        label: 'Home',
+        label: '首页',
     },
     {
         id: 'applications',
-        label: 'Applications',
+        label: '应用',
     },
     {
         id: 'desktop',
-        label: 'Desktop',
+        label: '桌面',
     },
     {
         id: 'downloads',
-        label: 'Downloads',
+        label: '下载',
     },
     {
         id: 'documents',
-        label: 'Documents',
+        label: '文档',
     },
 ] as const
 
 const displayFormSchema = z.object({
     items: z.array(z.string()).refine((value) => value.some((item) => item), {
-        message: 'You have to select at least one item.',
+        message: '至少选择一项。',
     }),
 })
 
 type DisplayFormValues = z.infer<typeof displayFormSchema>
 
-// This can come from your database or API.
 const defaultValues: Partial<DisplayFormValues> = {
     items: ['recents', 'home'],
 }
@@ -64,10 +63,7 @@ export function DisplayForm() {
                     render={() => (
                         <FormItem>
                             <div className='mb-4'>
-                                <FormLabel className='text-base'>Sidebar</FormLabel>
-                                <FormDescription>
-                                    Select the items you want to display in the sidebar.
-                                </FormDescription>
+                                <FormLabel className='text-base'>侧边栏</FormLabel>
                             </div>
                             {items.map((item) => (
                                 <FormField
@@ -106,7 +102,7 @@ export function DisplayForm() {
                         </FormItem>
                     )}
                 />
-                <Button type='submit'>Update display</Button>
+                <Button type='submit'>保存显示设置</Button>
             </form>
         </Form>
     )

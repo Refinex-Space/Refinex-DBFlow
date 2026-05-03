@@ -21,7 +21,6 @@ export function OverviewMetrics({metrics}: OverviewMetricsProps) {
               {metric.value}
             </span>
                     }
-                    description={metric.hint}
                 />
             ))}
         </section>

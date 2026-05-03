@@ -1,7 +1,7 @@
 import type {ConfigRow} from '@/types/config'
 import {formatText} from '@/lib/format'
 import {StatusBadge} from '@/components/dbflow/status-badge'
-import {Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,} from '@/components/ui/sheet'
+import {Sheet, SheetContent, SheetHeader, SheetTitle,} from '@/components/ui/sheet'
 
 type ConfigDetailSheetProps = {
     row: ConfigRow | null
@@ -20,12 +20,9 @@ export function ConfigDetailSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className='sm:max-w-lg'>
+            <SheetContent aria-describedby={undefined} className='sm:max-w-lg'>
                 <SheetHeader>
                     <SheetTitle>{row.project}/{row.env}</SheetTitle>
-                    <SheetDescription>
-                        仅展示后端返回的脱敏配置摘要。
-                    </SheetDescription>
                 </SheetHeader>
 
                 <dl className='grid gap-3 overflow-y-auto px-4 pb-4 text-sm'>

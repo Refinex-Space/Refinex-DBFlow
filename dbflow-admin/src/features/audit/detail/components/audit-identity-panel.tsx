@@ -1,7 +1,7 @@
 import type {ReactNode} from 'react'
 import type {AuditEventDetail} from '@/types/audit'
 import {formatDateTime, formatNumber, formatText} from '@/lib/format'
-import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from '@/components/ui/card'
+import {Card, CardContent, CardHeader, CardTitle,} from '@/components/ui/card'
 import {EnvBadge} from '@/components/dbflow/env-badge'
 import {RiskBadge} from '@/components/dbflow/risk-badge'
 
@@ -14,9 +14,6 @@ export function AuditIdentityPanel({detail}: AuditIdentityPanelProps) {
         <Card className='rounded-md shadow-none'>
             <CardHeader>
                 <CardTitle className='text-base'>请求身份</CardTitle>
-                <CardDescription>
-                    请求来源、目标环境、工具调用和执行上下文。
-                </CardDescription>
             </CardHeader>
             <CardContent>
                 <dl className='grid gap-4 md:grid-cols-2 xl:grid-cols-3'>

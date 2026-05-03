@@ -4,10 +4,11 @@ import {RefreshCw, Search as SearchIcon, UserRound} from 'lucide-react'
 import {fetchUsers, usersQueryKey} from '@/api/users'
 import type {UserFilters} from '@/types/access'
 import {isApiClientError} from '@/lib/errors'
+import {dbflowBreadcrumbs} from '@/lib/routes'
 import {cn} from '@/lib/utils'
 import {ConfigDrawer} from '@/components/config-drawer'
 import {EmptyState} from '@/components/dbflow/empty-state'
-import {PageHeader} from '@/components/dbflow/page-header'
+import {PageBreadcrumb} from '@/components/dbflow/page-breadcrumb'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
@@ -65,11 +66,9 @@ export function UsersPage({search, onSearchChange}: UsersPageProps) {
             </Header>
 
             <Main>
-                <section className='space-y-6'>
-                    <PageHeader
-                        eyebrow='身份与访问'
-                        title='用户管理'
-                        description='管理 DBFlow 操作员账户、访问状态、授权数量与活跃 MCP Token。'
+                <section className='space-y-4'>
+                    <PageBreadcrumb
+                        items={dbflowBreadcrumbs.users}
                         actions={<CreateUserSheet/>}
                     />
 
@@ -141,7 +140,6 @@ export function UsersPage({search, onSearchChange}: UsersPageProps) {
                         <EmptyState
                             icon={<UserRound className='size-5'/>}
                             title='没有匹配的用户'
-                            description='调整筛选条件，或创建新的 DBFlow 管理用户。'
                         />
                     )}
                 </section>

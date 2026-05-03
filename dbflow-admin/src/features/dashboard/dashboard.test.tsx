@@ -43,12 +43,9 @@ describe('Dashboard', () => {
 
         const screen = await renderDashboard()
 
-        await expect
-            .element(screen.getByRole('heading', {name: '总览'}))
-            .toBeInTheDocument()
-        await expect
-            .element(screen.getByText('最近 24 小时网关安全、执行和健康摘要。'))
-            .toBeInTheDocument()
+        const breadcrumb = screen.getByRole('navigation', {name: '页面路径'})
+        await expect.element(breadcrumb.getByText('工作台')).toBeInTheDocument()
+        await expect.element(breadcrumb.getByText('总览')).toBeInTheDocument()
         await expect.element(screen.getByText('SQL 请求')).toBeInTheDocument()
         await expect.element(screen.getByText('12')).toBeInTheDocument()
         await expect.element(screen.getByText('alice')).toBeInTheDocument()
@@ -157,5 +154,5 @@ const overviewFixture: Overview = {
             label: 'demo / prod',
         },
     ],
-    windowLabel: '最近 24 小时网关安全、执行和健康摘要。',
+    windowLabel: '后端窗口标签',
 }

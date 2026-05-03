@@ -8,7 +8,7 @@ import {cn} from '@/lib/utils'
 import {useFont} from '@/context/font-provider'
 import {useTheme} from '@/context/theme-provider'
 import {Button, buttonVariants} from '@/components/ui/button'
-import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from '@/components/ui/form'
+import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage,} from '@/components/ui/form'
 import {RadioGroup, RadioGroupItem} from '@/components/ui/radio-group'
 
 const appearanceFormSchema = z.object({
@@ -22,7 +22,6 @@ export function AppearanceForm() {
     const {font, setFont} = useFont()
     const {theme, setTheme} = useTheme()
 
-    // This can come from your database or API.
     const defaultValues: Partial<AppearanceFormValues> = {
         theme: theme as 'light' | 'dark',
         font,
@@ -48,7 +47,7 @@ export function AppearanceForm() {
                     name='font'
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>Font</FormLabel>
+                            <FormLabel>字体</FormLabel>
                             <div className='relative w-max'>
                                 <FormControl>
                                     <select
@@ -68,9 +67,6 @@ export function AppearanceForm() {
                                 </FormControl>
                                 <ChevronDownIcon className='absolute inset-e-3 top-2.5 h-4 w-4 opacity-50'/>
                             </div>
-                            <FormDescription className='font-manrope'>
-                                Set the font you want to use in the dashboard.
-                            </FormDescription>
                             <FormMessage/>
                         </FormItem>
                     )}
@@ -80,10 +76,7 @@ export function AppearanceForm() {
                     name='theme'
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>Theme</FormLabel>
-                            <FormDescription>
-                                Select the theme for the dashboard.
-                            </FormDescription>
+                            <FormLabel>主题</FormLabel>
                             <FormMessage/>
                             <RadioGroup
                                 onValueChange={field.onChange}
@@ -115,7 +108,7 @@ export function AppearanceForm() {
                                             </div>
                                         </div>
                                         <span className='block w-full p-2 text-center font-normal'>
-                      Light
+                      浅色
                     </span>
                                     </FormLabel>
                                 </FormItem>
@@ -144,7 +137,7 @@ export function AppearanceForm() {
                                             </div>
                                         </div>
                                         <span className='block w-full p-2 text-center font-normal'>
-                      Dark
+                      深色
                     </span>
                                     </FormLabel>
                                 </FormItem>
@@ -153,7 +146,7 @@ export function AppearanceForm() {
                     )}
                 />
 
-                <Button type='submit'>Update preferences</Button>
+                <Button type='submit'>保存外观</Button>
             </form>
         </Form>
     )

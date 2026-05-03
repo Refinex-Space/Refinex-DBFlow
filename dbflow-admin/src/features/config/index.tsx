@@ -5,9 +5,10 @@ import {configQueryKey, fetchConfigPage} from '@/api/config'
 import type {ConfigRow} from '@/types/config'
 import {isApiClientError} from '@/lib/errors'
 import {formatText} from '@/lib/format'
+import {dbflowBreadcrumbs} from '@/lib/routes'
 import {ConfigDrawer} from '@/components/config-drawer'
 import {EmptyState} from '@/components/dbflow/empty-state'
-import {PageHeader} from '@/components/dbflow/page-header'
+import {PageBreadcrumb} from '@/components/dbflow/page-breadcrumb'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
 import {Skeleton} from '@/components/ui/skeleton'
@@ -37,11 +38,9 @@ export function ConfigPageView() {
             </Header>
 
             <Main>
-                <section className='space-y-6'>
-                    <PageHeader
-                        eyebrow='配置与策略'
-                        title='配置查看'
-                        description='查看 DBFlow 项目环境配置的脱敏摘要。'
+                <section className='space-y-4'>
+                    <PageBreadcrumb
+                        items={dbflowBreadcrumbs.config}
                         actions={
                             <Button
                                 type='button'
@@ -87,10 +86,6 @@ export function ConfigPageView() {
                                 <EmptyState
                                     icon={<Database className='size-5'/>}
                                     title='当前未配置 dbflow.projects。'
-                                    description={
-                                        configQuery.data.emptyHint ||
-                                        '请在外部配置源中添加项目和环境后再刷新。'
-                                    }
                                 />
                             )}
                         </>

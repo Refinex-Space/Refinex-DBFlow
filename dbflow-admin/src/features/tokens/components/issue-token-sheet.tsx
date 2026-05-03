@@ -13,7 +13,6 @@ import {Label} from '@/components/ui/label'
 import {
     Sheet,
     SheetContent,
-    SheetDescription,
     SheetFooter,
     SheetHeader,
     SheetTitle,
@@ -90,13 +89,10 @@ export function IssueTokenSheet({options, onTokenIssued}: IssueTokenSheetProps) 
                     颁发 Token
                 </Button>
             </SheetTrigger>
-            <SheetContent className='sm:max-w-md'>
+            <SheetContent aria-describedby={undefined} className='sm:max-w-md'>
                 <form className='flex h-full flex-col' onSubmit={handleSubmit}>
                     <SheetHeader>
                         <SheetTitle>颁发 Token</SheetTitle>
-                        <SheetDescription>
-                            为 active 用户生成新的 MCP 访问 Token。明文只会在保存后展示一次。
-                        </SheetDescription>
                     </SheetHeader>
 
                     <div className='grid gap-4 px-4'>

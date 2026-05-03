@@ -68,9 +68,9 @@ describe('GrantsPage', () => {
     it('renders grouped grants without sensitive connection or credential text', async () => {
         const screen = await renderGrantsPage()
 
-        await expect
-            .element(screen.getByRole('heading', {name: '项目授权'}))
-            .toBeInTheDocument()
+        const breadcrumb = screen.getByRole('navigation', {name: '页面路径'})
+        await expect.element(breadcrumb.getByText('身份与访问')).toBeInTheDocument()
+        await expect.element(breadcrumb.getByText('项目授权')).toBeInTheDocument()
         const table = screen.getByRole('table')
         await expect.element(table.getByText(/^alice$/)).toBeInTheDocument()
         await expect.element(table.getByText('billing-core')).toBeInTheDocument()

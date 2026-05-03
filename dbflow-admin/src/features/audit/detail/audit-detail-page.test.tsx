@@ -67,9 +67,12 @@ describe('AuditDetailPage', () => {
     it('loads detail by id and renders the investigation panels', async () => {
         const screen = await renderAuditDetailPage()
 
+        const breadcrumb = screen.getByRole('navigation', {name: '页面路径'})
         await expect
-            .element(screen.getByRole('heading', {name: 'Audit #42'}))
+            .element(breadcrumb.getByText('审计', {exact: true}))
             .toBeInTheDocument()
+        await expect.element(breadcrumb.getByText('审计详情')).toBeInTheDocument()
+        await expect.element(screen.getByText(/^Audit #42$/)).toBeInTheDocument()
         await expect.element(screen.getByText('请求身份')).toBeInTheDocument()
         await expect.element(screen.getByText('project / env')).toBeInTheDocument()
         await expect.element(screen.getByText('tool')).toBeInTheDocument()
